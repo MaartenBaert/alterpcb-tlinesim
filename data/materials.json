@@ -1,0 +1,984 @@
+{
+	"conductors": [
+		{
+			"name": "Aluminium",
+			"conductivity": 3.5e+07
+		},
+		{
+			"name": "Constantan",
+			"conductivity": 2.04e+06
+		},
+		{
+			"name": "Copper",
+			"conductivity": 5.96e+07
+		},
+		{
+			"name": "Gold",
+			"conductivity": 4.1e+07
+		},
+		{
+			"name": "Iron",
+			"conductivity": 1e+07,
+			"permeability": 5000,
+			"permeability_unity_frequency": 1e+09
+		},
+		{
+			"name": "Lead",
+			"conductivity": 4.55e+06
+		},
+		{
+			"name": "Manganin",
+			"conductivity": 2.07e+06
+		},
+		{
+			"name": "Nichrome",
+			"conductivity": 670000
+		},
+		{
+			"name": "Nickel",
+			"conductivity": 1.43e+07,
+			"permeability": 100,
+			"permeability_unity_frequency": 1e+09
+		},
+		{
+			"name": "Platinum",
+			"conductivity": 9.43e+06
+		},
+		{
+			"name": "Silver",
+			"conductivity": 6.3e+07
+		},
+		{
+			"name": "Solder (SnAgCu)",
+			"conductivity": 7.54e+06
+		},
+		{
+			"name": "Solder (SnPb)",
+			"conductivity": 6.85e+06
+		},
+		{
+			"name": "Steel (carbon)",
+			"conductivity": 6.99e+06,
+			"permeability": 100,
+			"permeability_unity_frequency": 1e+09
+		},
+		{
+			"name": "Steel (electrical)",
+			"conductivity": 2.17e+06,
+			"permeability": 4000,
+			"permeability_unity_frequency": 1e+09
+		},
+		{
+			"name": "Steel (stainless)",
+			"conductivity": 1.45e+06,
+			"permeability": 4,
+			"permeability_unity_frequency": 1e+09
+		},
+		{
+			"name": "Tin",
+			"conductivity": 9.17e+06
+		},
+		{
+			"name": "Titanium",
+			"conductivity": 2.38e+06
+		},
+		{
+			"name": "Tungsten",
+			"conductivity": 1.79e+07
+		},
+		{
+			"name": "Zinc",
+			"conductivity": 1.69e+07
+		}
+	],
+	"dielectrics": [
+		{
+			"name": "3M Epsilam 10",
+			"permittivity_x": 11.64,
+			"permittivity_y": 9.25,
+			"loss_tangent_x": 0.0022,
+			"loss_tangent_y": 0.0045,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Air",
+			"permittivity_x": 1.0,
+			"permittivity_y": 1.0,
+			"loss_tangent_x": 0.0,
+			"loss_tangent_y": 0.0,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Arlon 25N",
+			"permittivity_x": 3.57,
+			"permittivity_y": 3.37,
+			"loss_tangent_x": 0.0041,
+			"loss_tangent_y": 0.0033,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Arlon DiClad880",
+			"permittivity_x": 2.32,
+			"permittivity_y": 2.15,
+			"loss_tangent_x": 0.0016,
+			"loss_tangent_y": 0.00093,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Corsa Alumina",
+			"permittivity_x": 9.65,
+			"permittivity_y": 10.35,
+			"loss_tangent_x": 0.0003,
+			"loss_tangent_y": 0.0004,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "GE Getek R54",
+			"permittivity_x": 3.91,
+			"permittivity_y": 3.5,
+			"loss_tangent_x": 0.005,
+			"loss_tangent_y": 0.0038,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Isola 185HR",
+			"permittivity_x": 4.318,
+			"permittivity_y": 3.893,
+			"loss_tangent_x": 0.02032,
+			"loss_tangent_y": 0.02568,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola 250HR",
+			"permittivity_x": 4.34,
+			"permittivity_y": 3.913,
+			"loss_tangent_x": 0.01902,
+			"loss_tangent_y": 0.02404,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola 254",
+			"permittivity_x": 4.674,
+			"permittivity_y": 4.214,
+			"loss_tangent_x": 0.01902,
+			"loss_tangent_y": 0.02404,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola 370 TURBO",
+			"permittivity_x": 4.451,
+			"permittivity_y": 4.013,
+			"loss_tangent_x": 0.02075,
+			"loss_tangent_y": 0.02622,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola 370HR",
+			"permittivity_x": 4.362,
+			"permittivity_y": 3.933,
+			"loss_tangent_x": 0.02161,
+			"loss_tangent_y": 0.02732,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola Astra MT77",
+			"permittivity_x": 3.302,
+			"permittivity_y": 2.954,
+			"loss_tangent_x": 0.00237,
+			"loss_tangent_y": 0.00204,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola Auto-HR",
+			"permittivity_x": 4.585,
+			"permittivity_y": 4.134,
+			"loss_tangent_x": 0.01729,
+			"loss_tangent_y": 0.02185,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola Chronon",
+			"permittivity_x": 4.051,
+			"permittivity_y": 3.623,
+			"loss_tangent_x": 0.00558,
+			"loss_tangent_y": 0.00479,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola DE104",
+			"permittivity_x": 4.841,
+			"permittivity_y": 4.365,
+			"loss_tangent_x": 0.01989,
+			"loss_tangent_y": 0.02513,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola DE156",
+			"permittivity_x": 4.418,
+			"permittivity_y": 3.983,
+			"loss_tangent_x": 0.01487,
+			"loss_tangent_y": 0.01879,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola FR402",
+			"permittivity_x": 4.73,
+			"permittivity_y": 4.264,
+			"loss_tangent_x": 0.01297,
+			"loss_tangent_y": 0.01639,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Isola FR406",
+			"permittivity_x": 4.362,
+			"permittivity_y": 3.933,
+			"loss_tangent_x": 0.01487,
+			"loss_tangent_y": 0.01879,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola FR408",
+			"permittivity_x": 4.073,
+			"permittivity_y": 3.672,
+			"loss_tangent_x": 0.01098,
+			"loss_tangent_y": 0.01388,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola FR408HR",
+			"permittivity_x": 4.051,
+			"permittivity_y": 3.652,
+			"loss_tangent_x": 0.00847,
+			"loss_tangent_y": 0.01071,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola G200",
+			"permittivity_x": 4.062,
+			"permittivity_y": 3.662,
+			"loss_tangent_x": 0.01297,
+			"loss_tangent_y": 0.01639,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola I-Speed",
+			"permittivity_x": 3.996,
+			"permittivity_y": 3.574,
+			"loss_tangent_x": 0.00935,
+			"loss_tangent_y": 0.00802,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola I-Speed IS",
+			"permittivity_x": 3.611,
+			"permittivity_y": 3.23,
+			"loss_tangent_x": 0.00921,
+			"loss_tangent_y": 0.0079,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola I-Tera MT (3.00)",
+			"permittivity_x": 3.302,
+			"permittivity_y": 2.954,
+			"loss_tangent_x": 0.00489,
+			"loss_tangent_y": 0.00419,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola I-Tera MT RF (3.38)",
+			"permittivity_x": 3.721,
+			"permittivity_y": 3.328,
+			"loss_tangent_x": 0.00391,
+			"loss_tangent_y": 0.00335,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT RF (3.45)",
+			"permittivity_x": 3.798,
+			"permittivity_y": 3.397,
+			"loss_tangent_x": 0.00433,
+			"loss_tangent_y": 0.00371,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT RF (3.50)",
+			"permittivity_x": 3.853,
+			"permittivity_y": 3.446,
+			"loss_tangent_x": 0.00447,
+			"loss_tangent_y": 0.00383,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT RF (3.80)",
+			"permittivity_x": 4.183,
+			"permittivity_y": 3.742,
+			"loss_tangent_x": 0.0053,
+			"loss_tangent_y": 0.00455,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT40 (3.38)",
+			"permittivity_x": 3.721,
+			"permittivity_y": 3.328,
+			"loss_tangent_x": 0.00391,
+			"loss_tangent_y": 0.00335,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT40 (3.45)",
+			"permittivity_x": 3.798,
+			"permittivity_y": 3.397,
+			"loss_tangent_x": 0.00433,
+			"loss_tangent_y": 0.00371,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola I-Tera MT40 (3.75)",
+			"permittivity_x": 4.128,
+			"permittivity_y": 3.692,
+			"loss_tangent_x": 0.00489,
+			"loss_tangent_y": 0.00419,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola IS300MD",
+			"permittivity_x": 3.368,
+			"permittivity_y": 3.013,
+			"loss_tangent_x": 0.00461,
+			"loss_tangent_y": 0.00395,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS400",
+			"permittivity_x": 4.34,
+			"permittivity_y": 3.913,
+			"loss_tangent_x": 0.01902,
+			"loss_tangent_y": 0.02404,
+			"test_frequency": 5e+08
+		},
+		{
+			"name": "Isola IS400HR",
+			"permittivity_x": 4.674,
+			"permittivity_y": 4.214,
+			"loss_tangent_x": 0.01383,
+			"loss_tangent_y": 0.01748,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Isola IS410",
+			"permittivity_x": 4.307,
+			"permittivity_y": 3.883,
+			"loss_tangent_x": 0.01989,
+			"loss_tangent_y": 0.02513,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS415",
+			"permittivity_x": 4.129,
+			"permittivity_y": 3.722,
+			"loss_tangent_x": 0.01098,
+			"loss_tangent_y": 0.01388,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS420",
+			"permittivity_x": 4.362,
+			"permittivity_y": 3.933,
+			"loss_tangent_x": 0.02161,
+			"loss_tangent_y": 0.02732,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS620i",
+			"permittivity_x": 3.897,
+			"permittivity_y": 3.486,
+			"loss_tangent_x": 0.00921,
+			"loss_tangent_y": 0.0079,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (2.80)",
+			"permittivity_x": 3.082,
+			"permittivity_y": 2.757,
+			"loss_tangent_x": 0.00349,
+			"loss_tangent_y": 0.00299,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (3.00)",
+			"permittivity_x": 3.302,
+			"permittivity_y": 2.954,
+			"loss_tangent_x": 0.00419,
+			"loss_tangent_y": 0.00359,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (3.20)",
+			"permittivity_x": 3.522,
+			"permittivity_y": 3.151,
+			"loss_tangent_x": 0.00419,
+			"loss_tangent_y": 0.00359,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (3.33)",
+			"permittivity_x": 3.666,
+			"permittivity_y": 3.279,
+			"loss_tangent_x": 0.00419,
+			"loss_tangent_y": 0.00359,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (3.38)",
+			"permittivity_x": 3.721,
+			"permittivity_y": 3.328,
+			"loss_tangent_x": 0.00489,
+			"loss_tangent_y": 0.00419,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 (3.45)",
+			"permittivity_x": 3.798,
+			"permittivity_y": 3.397,
+			"loss_tangent_x": 0.00489,
+			"loss_tangent_y": 0.00419,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola IS680 AG (3.00)",
+			"permittivity_x": 3.302,
+			"permittivity_y": 2.954,
+			"loss_tangent_x": 0.00279,
+			"loss_tangent_y": 0.00239,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola IS680 AG (3.45)",
+			"permittivity_x": 3.798,
+			"permittivity_y": 3.397,
+			"loss_tangent_x": 0.00363,
+			"loss_tangent_y": 0.00311,
+			"test_frequency": 1e+10
+		},
+		{
+			"name": "Isola TerraGreen",
+			"permittivity_x": 3.787,
+			"permittivity_y": 3.387,
+			"loss_tangent_x": 0.00544,
+			"loss_tangent_y": 0.00467,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola Tachyon 100G",
+			"permittivity_x": 3.324,
+			"permittivity_y": 2.974,
+			"loss_tangent_x": 0.00293,
+			"loss_tangent_y": 0.00251,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola P96/P26",
+			"permittivity_x": 4.151,
+			"permittivity_y": 3.742,
+			"loss_tangent_x": 0.01625,
+			"loss_tangent_y": 0.02054,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola P95/P25",
+			"permittivity_x": 4.151,
+			"permittivity_y": 3.742,
+			"loss_tangent_x": 0.01625,
+			"loss_tangent_y": 0.02054,
+			"test_frequency": 5e+09
+		},
+		{
+			"name": "Isola P25N (60%)",
+			"permittivity_x": 4.084,
+			"permittivity_y": 3.682,
+			"loss_tangent_x": 0.01617,
+			"loss_tangent_y": 0.02043,
+			"test_frequency": 2e+09
+		},
+		{
+			"name": "Isola P25N (65%)",
+			"permittivity_x": 3.973,
+			"permittivity_y": 3.582,
+			"loss_tangent_x": 0.01712,
+			"loss_tangent_y": 0.02163,
+			"test_frequency": 2e+09
+		},
+		{
+			"name": "Neltec NH9300",
+			"permittivity_x": 3.42,
+			"permittivity_y": 2.82,
+			"loss_tangent_x": 0.0038,
+			"loss_tangent_y": 0.0023,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Neltec NH9338",
+			"permittivity_x": 4.02,
+			"permittivity_y": 3.14,
+			"loss_tangent_x": 0.0051,
+			"loss_tangent_y": 0.0025,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Nylon",
+			"permittivity_x": 2.9,
+			"permittivity_y": 2.9,
+			"loss_tangent_x": 0.012,
+			"loss_tangent_y": 0.012,
+			"test_frequency": 3e+09
+		},
+		{
+			"name": "PET",
+			"permittivity_x": 2.8,
+			"permittivity_y": 2.8,
+			"loss_tangent_x": 0.005,
+			"loss_tangent_y": 0.005,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "PMMA",
+			"permittivity_x": 2.58,
+			"permittivity_y": 2.58,
+			"loss_tangent_x": 0.009,
+			"loss_tangent_y": 0.009,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Polycarbonate",
+			"permittivity_x": 2.768,
+			"permittivity_y": 2.768,
+			"loss_tangent_x": 0.0054,
+			"loss_tangent_y": 0.0054,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Polyethylene",
+			"permittivity_x": 2.26,
+			"permittivity_y": 2.26,
+			"loss_tangent_x": 0.00031,
+			"loss_tangent_y": 0.00031,
+			"test_frequency": 3e+09
+		},
+		{
+			"name": "Polyimide",
+			"permittivity_x": 3.3,
+			"permittivity_y": 3.3,
+			"loss_tangent_x": 0.004,
+			"loss_tangent_y": 0.004,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Polyolefin (irradiated)",
+			"permittivity_x": 2.314,
+			"permittivity_y": 2.314,
+			"loss_tangent_x": 0.00407,
+			"loss_tangent_y": 0.00407,
+			"test_frequency": 12.4e+09
+		},
+		{
+			"name": "Polypropylene",
+			"permittivity_x": 2.2,
+			"permittivity_y": 2.2,
+			"loss_tangent_x": 0.0003,
+			"loss_tangent_y": 0.0003,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "Polystyrene",
+			"permittivity_x": 2.53,
+			"permittivity_y": 2.53,
+			"loss_tangent_x": 0.00033,
+			"loss_tangent_y": 0.00033,
+			"test_frequency": 3e+09
+		},
+		{
+			"name": "PVC",
+			"permittivity_x": 2.8,
+			"permittivity_y": 2.8,
+			"loss_tangent_x": 0.019,
+			"loss_tangent_y": 0.019,
+			"test_frequency": 1e+09
+		},
+		{
+			"name": "PTFE",
+			"permittivity_x": 2.046,
+			"permittivity_y": 2.046,
+			"loss_tangent_x": 0.00025,
+			"loss_tangent_y": 0.00025,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Pyrex",
+			"permittivity_x": 4.84,
+			"permittivity_y": 4.84,
+			"loss_tangent_x": 0.0054,
+			"loss_tangent_y": 0.0054,
+			"test_frequency": 3e+09
+		},
+		{
+			"name": "Quartz (fused)",
+			"permittivity_x": 3.8,
+			"permittivity_y": 3.8,
+			"loss_tangent_x": 0.00006,
+			"loss_tangent_y": 0.00006,
+			"test_frequency": 3e+09
+		},
+		{
+			"name": "Rogers DiClad 527 (2.40)",
+			"permittivity_x": 2.566,
+			"permittivity_y": 2.378,
+			"loss_tangent_x": 0.00320,
+			"loss_tangent_y": 0.00186,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers DiClad 527 (2.65)",
+			"permittivity_x": 2.834,
+			"permittivity_y": 2.626,
+			"loss_tangent_x": 0.00320,
+			"loss_tangent_y": 0.00186,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers DiClad 870",
+			"permittivity_x": 2.492,
+			"permittivity_y": 2.309,
+			"loss_tangent_x": 0.00231,
+			"loss_tangent_y": 0.00134,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers DiClad 880 (2.17)",
+			"permittivity_x": 2.321,
+			"permittivity_y": 2.150,
+			"loss_tangent_x": 0.00160,
+			"loss_tangent_y": 0.00093,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers DiClad 880 (2.20)",
+			"permittivity_x": 2.353,
+			"permittivity_y": 2.180,
+			"loss_tangent_x": 0.00160,
+			"loss_tangent_y": 0.00093,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3003",
+			"permittivity_x": 3.000,
+			"permittivity_y": 2.971,
+			"loss_tangent_x": 0.00120,
+			"loss_tangent_y": 0.00130,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3035",
+			"permittivity_x": 3.601,
+			"permittivity_y": 3.565,
+			"loss_tangent_x": 0.00180,
+			"loss_tangent_y": 0.00195,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3006",
+			"permittivity_x": 6.816,
+			"permittivity_y": 5.882,
+			"loss_tangent_x": 0.00227,
+			"loss_tangent_y": 0.00345,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3010",
+			"permittivity_x": 11.744,
+			"permittivity_y": 10.135,
+			"loss_tangent_x": 0.00250,
+			"loss_tangent_y": 0.00380,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3203",
+			"permittivity_x": 3.181,
+			"permittivity_y": 2.961,
+			"loss_tangent_x": 0.00270,
+			"loss_tangent_y": 0.00210,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3206",
+			"permittivity_x": 6.921,
+			"permittivity_y": 5.973,
+			"loss_tangent_x": 0.00307,
+			"loss_tangent_y": 0.00466,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO3210",
+			"permittivity_x": 11.325,
+			"permittivity_y": 9.773,
+			"loss_tangent_x": 0.00307,
+			"loss_tangent_y": 0.00466,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4003C",
+			"permittivity_x": 3.662,
+			"permittivity_y": 3.371,
+			"loss_tangent_x": 0.00370,
+			"loss_tangent_y": 0.00290,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4350B",
+			"permittivity_x": 3.775,
+			"permittivity_y": 3.476,
+			"loss_tangent_x": 0.00507,
+			"loss_tangent_y": 0.00397,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4360G2",
+			"permittivity_x": 6.449,
+			"permittivity_y": 5.565,
+			"loss_tangent_x": 0.00432,
+			"loss_tangent_y": 0.00656,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4450B (3.30)",
+			"permittivity_x": 3.404,
+			"permittivity_y": 3.134,
+			"loss_tangent_x": 0.00548,
+			"loss_tangent_y": 0.00429,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4450B (3.54)",
+			"permittivity_x": 3.652,
+			"permittivity_y": 3.362,
+			"loss_tangent_x": 0.00548,
+			"loss_tangent_y": 0.00429,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4450F",
+			"permittivity_x": 3.631,
+			"permittivity_y": 3.343,
+			"loss_tangent_x": 0.00548,
+			"loss_tangent_y": 0.00429,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4533",
+			"permittivity_x": 3.404,
+			"permittivity_y": 3.134,
+			"loss_tangent_x": 0.00342,
+			"loss_tangent_y": 0.00268,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4534",
+			"permittivity_x": 3.507,
+			"permittivity_y": 3.229,
+			"loss_tangent_x": 0.00370,
+			"loss_tangent_y": 0.00290,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4535",
+			"permittivity_x": 3.548,
+			"permittivity_y": 3.267,
+			"loss_tangent_x": 0.05068,
+			"loss_tangent_y": 0.03972,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4725JXR",
+			"permittivity_x": 2.723,
+			"permittivity_y": 2.507,
+			"loss_tangent_x": 0.00356,
+			"loss_tangent_y": 0.00279,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4730JXR",
+			"permittivity_x": 3.074,
+			"permittivity_y": 2.830,
+			"loss_tangent_x": 0.00370,
+			"loss_tangent_y": 0.00290,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4730G3",
+			"permittivity_x": 3.074,
+			"permittivity_y": 2.830,
+			"loss_tangent_x": 0.00397,
+			"loss_tangent_y": 0.00311,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RO4830",
+			"permittivity_x": 3.342,
+			"permittivity_y": 3.077,
+			"loss_tangent_x": 0.00452,
+			"loss_tangent_y": 0.00354,
+			"test_frequency": 77.0e9
+		},
+		{
+			"name": "Rogers RO4835",
+			"permittivity_x": 3.775,
+			"permittivity_y": 3.476,
+			"loss_tangent_x": 0.00507,
+			"loss_tangent_y": 0.00397,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 5870",
+			"permittivity_x": 2.330,
+			"permittivity_y": 2.330,
+			"loss_tangent_x": 0.00120,
+			"loss_tangent_y": 0.00120,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 5880",
+			"permittivity_x": 2.200,
+			"permittivity_y": 2.200,
+			"loss_tangent_x": 0.00090,
+			"loss_tangent_y": 0.00090,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 5880LZ",
+			"permittivity_x": 2.000,
+			"permittivity_y": 2.000,
+			"loss_tangent_x": 0.00210,
+			"loss_tangent_y": 0.00210,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6002",
+			"permittivity_x": 2.940,
+			"permittivity_y": 2.940,
+			"loss_tangent_x": 0.00120,
+			"loss_tangent_y": 0.00120,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6006",
+			"permittivity_x": 6.450,
+			"permittivity_y": 6.450,
+			"loss_tangent_x": 0.00270,
+			"loss_tangent_y": 0.00270,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6010LM",
+			"permittivity_x": 10.700,
+			"permittivity_y": 10.700,
+			"loss_tangent_x": 0.00230,
+			"loss_tangent_y": 0.00230,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6035HTC",
+			"permittivity_x": 3.600,
+			"permittivity_y": 3.600,
+			"loss_tangent_x": 0.00130,
+			"loss_tangent_y": 0.00130,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6202",
+			"permittivity_x": 2.900,
+			"permittivity_y": 2.900,
+			"loss_tangent_x": 0.00150,
+			"loss_tangent_y": 0.00150,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6202PR (2.90)",
+			"permittivity_x": 2.900,
+			"permittivity_y": 2.900,
+			"loss_tangent_x": 0.00200,
+			"loss_tangent_y": 0.00200,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers RT/duroid 6202PR (2.98)",
+			"permittivity_x": 2.980,
+			"permittivity_y": 2.980,
+			"loss_tangent_x": 0.00200,
+			"loss_tangent_y": 0.00200,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM3",
+			"permittivity_x": 3.848,
+			"permittivity_y": 3.609,
+			"loss_tangent_x": 0.00190,
+			"loss_tangent_y": 0.00350,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM4",
+			"permittivity_x": 5.243,
+			"permittivity_y": 4.916,
+			"loss_tangent_x": 0.00190,
+			"loss_tangent_y": 0.00350,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM6",
+			"permittivity_x": 7.027,
+			"permittivity_y": 6.590,
+			"loss_tangent_x": 0.00218,
+			"loss_tangent_y": 0.00402,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM10",
+			"permittivity_x": 10.931,
+			"permittivity_y": 10.250,
+			"loss_tangent_x": 0.00209,
+			"loss_tangent_y": 0.00385,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM10i",
+			"permittivity_x": 11.043,
+			"permittivity_y": 10.355,
+			"loss_tangent_x": 0.00190,
+			"loss_tangent_y": 0.00350,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Rogers TMM13i",
+			"permittivity_x": 13.608,
+			"permittivity_y": 12.761,
+			"loss_tangent_x": 0.00180,
+			"loss_tangent_y": 0.00332,
+			"test_frequency": 10.0e9
+		},
+		{
+			"name": "Taconic RF-35",
+			"permittivity_x": 3.9,
+			"permittivity_y": 3.45,
+			"loss_tangent_x": 0.0049,
+			"loss_tangent_y": 0.0038,
+			"test_frequency": 1.24e+10
+		},
+		{
+			"name": "Water (distilled)",
+			"permittivity_x": 77.0,
+			"permittivity_y": 77.0,
+			"loss_tangent_x": 0.16,
+			"loss_tangent_y": 0.16,
+			"test_frequency": 3e+09
+		}
+	]
+}
