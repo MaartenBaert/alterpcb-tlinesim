@@ -33,14 +33,16 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 typedef double real_t;
 typedef std::complex<real_t> complex_t;
-typedef uint32_t index_t;
-typedef uint32_t stringtag_t;
+typedef size_t stringtag_t;
 typedef uint32_t hash_t;
 
 constexpr real_t REAL_MAX = std::numeric_limits<real_t>::max();
-constexpr index_t INDEX_NONE = (index_t) -1;
-constexpr index_t INDEX_OFFSET = ~(INDEX_NONE >> 1);
+constexpr size_t INDEX_NONE = (size_t) -1;
+constexpr size_t INDEX_OFFSET = ~(INDEX_NONE >> 1);
 constexpr stringtag_t STRINGTAG_NONE = (stringtag_t) -1;
+
+static_assert(sizeof(void*) == sizeof(size_t), "Size of size_t does not match pointer size!");
+static_assert(sizeof(void*) == sizeof(ptrdiff_t), "Size of ptrdiff_t does not match pointer size!");
 
 #define UNUSED(x) ((void) (x))
 

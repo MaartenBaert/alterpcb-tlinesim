@@ -32,10 +32,10 @@ private:
 	const VData &m_data;
 	VDataPath *m_parent;
 	stringtag_t m_key;
-	index_t m_index;
+	size_t m_index;
 
 public:
-	inline VDataPath(const VData &data, VDataPath *parent = NULL, stringtag_t key = INDEX_NONE, index_t index = INDEX_NONE)
+	inline VDataPath(const VData &data, VDataPath *parent = NULL, stringtag_t key = INDEX_NONE, size_t index = INDEX_NONE)
 		: m_data(data), m_parent(parent), m_key(key), m_index(index) {}
 
 	inline bool AsBool() {
@@ -64,14 +64,14 @@ public:
 		throw std::runtime_error(MakeString("Expected '", *this, "' to be string, got ", EnumToString(m_data.GetType()), " instead."));
 	}
 
-	inline index_t GetElementCount() {
+	inline size_t GetElementCount() {
 		if(m_data.GetType() != VDATA_LIST)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be list, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::List &list = m_data.AsList();
 		return list.size();
 	}
 
-	inline VDataPath GetElement(index_t index) {
+	inline VDataPath GetElement(size_t index) {
 		if(m_data.GetType() != VDATA_LIST)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be list, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::List &list = m_data.AsList();
@@ -84,7 +84,7 @@ public:
 		if(m_data.GetType() != VDATA_DICT)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be dict, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::Dict &dict = m_data.AsDict();
-		index_t index = dict.Find(key);
+		size_t index = dict.Find(key);
 		if(index == INDEX_NONE)
 			throw std::runtime_error(MakeString("Key '", StringRegistry::GetString(key), "' not found in '", *this, "'."));
 		return VDataPath(dict[index].Value(), this, key, INDEX_NONE);
@@ -97,7 +97,7 @@ public:
 		if(m_data.GetType() != VDATA_DICT)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be dict, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::Dict &dict = m_data.AsDict();
-		index_t index = dict.Find(key);
+		size_t index = dict.Find(key);
 		if(index == INDEX_NONE)
 			return VDataPath(default_value, this, key, INDEX_NONE);
 		return VDataPath(dict[index].Value(), this, key, INDEX_NONE);
@@ -137,7 +137,7 @@ public:
 	inline VDataPathDict(const VData::Dict &dict) : m_dict(dict) {}
 
 	inline VDataPath GetMember(stringtag_t key) {
-		index_t index = m_dict.Find(key);
+		size_t index = m_dict.Find(key);
 		if(index == INDEX_NONE)
 			throw std::runtime_error(MakeString("Key '", StringRegistry::GetString(key), "' not found."));
 		return VDataPath(m_dict[index].Value(), NULL, key, INDEX_NONE);
@@ -147,7 +147,7 @@ public:
 	}
 
 	inline VDataPath GetMemberDefault(stringtag_t key, const VData &default_value) {
-		index_t index = m_dict.Find(key);
+		size_t index = m_dict.Find(key);
 		if(index == INDEX_NONE)
 			return VDataPath(default_value, NULL, key, INDEX_NONE);
 		return VDataPath(m_dict[index].Value(), NULL, key, INDEX_NONE);

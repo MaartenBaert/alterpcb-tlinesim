@@ -75,7 +75,7 @@ std::ostream& operator<<(std::ostream &stream, const VData &data) {
 			const VData::Dict &ref = data.AsDict();
 			if(ref.GetSize() != 0) {
 				stream << '"' << StringRegistry::GetString(ref[0].Key()) << "\": " << ref[0].Value();
-				for(index_t i = 1; i < ref.GetSize(); ++i) {
+				for(size_t i = 1; i < ref.GetSize(); ++i) {
 					stream << ", \"" << StringRegistry::GetString(ref[i].Key()) << "\": " << ref[i].Value();
 				}
 			}
@@ -122,7 +122,7 @@ int VDataCompare(const VData &a, const VData &b) {
 			const VData::Dict &ref1 = a.AsDict(), &ref2 = b.AsDict();
 			if(ref1.GetSize() != ref2.GetSize())
 				return (ref1.GetSize() < ref2.GetSize())? -1 : 1;
-			for(index_t i = 0; i < ref1.GetSize(); ++i) {
+			for(size_t i = 0; i < ref1.GetSize(); ++i) {
 				if(ref1[i].Key() != ref2[i].Key())
 					return (ref1[i].Key() < ref2[i].Key())? -1 : 1;
 				int res = VDataCompare(ref1[i].Value(), ref2[i].Value());
@@ -160,7 +160,7 @@ bool operator==(const VData &a, const VData &b) {
 			const VData::Dict &ref1 = a.AsDict(), &ref2 = b.AsDict();
 			if(ref1.GetSize() != ref2.GetSize())
 				return false;
-			for(index_t i = 0; i < ref1.GetSize(); ++i) {
+			for(size_t i = 0; i < ref1.GetSize(); ++i) {
 				if(ref1[i].Key() != ref2[i].Key())
 					return false;
 				if(ref1[i].Value() != ref2[i].Value())

@@ -46,7 +46,7 @@ private:
 
 private:
 	std::unique_ptr<MaterialDatabase> m_material_database;
-	index_t m_tline_type;
+	size_t m_tline_type;
 
 	QComboBox *m_combobox_tline_types;
 	QPlainTextEdit *m_textedit_description;

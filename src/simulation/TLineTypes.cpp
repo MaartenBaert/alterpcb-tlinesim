@@ -77,10 +77,8 @@ std::string CanonicalName(const std::string &name) {
 		if(c >= 'a' && c <= 'z') {
 			out += c;
 		} else if(c >= 'A' && c <= 'Z') {
-			out += c - 'A' + 'a';
+			out += (char) (c - 'A' + 'a');
 		} else if(c >= '0' && c <= '9') {
-			if(i == 0)
-				out += '_';
 			out += c;
 		} else {
 			out += '_';
@@ -90,7 +88,7 @@ std::string CanonicalName(const std::string &name) {
 }
 
 void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, const std::vector<real_t> &mode_scale) {
-	index_t ports = modes.size() / mode_scale.size();
+	size_t ports = modes.size() / mode_scale.size();
 
 	// initialize
 	context.m_output_mesh->Initialize();

@@ -45,17 +45,17 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 template<typename T>
 struct SparseMatrixBulk {
-	index_t row;
+	size_t row;
 	T value;
 	inline SparseMatrixBulk() {}
-	inline SparseMatrixBulk(index_t row, T value) : row(row), value(value) {}
+	inline SparseMatrixBulk(size_t row, T value) : row(row), value(value) {}
 };
 
 template<typename T>
 struct SparseMatrixEntry {
-	index_t row, col;
+	size_t row, col;
 	T value;
-	inline SparseMatrixEntry(index_t row, index_t col, T value) : row(row), col(col), value(value) {}
+	inline SparseMatrixEntry(size_t row, size_t col, T value) : row(row), col(col), value(value) {}
 };
 
 template<typename T>
@@ -80,11 +80,11 @@ private:
 	typedef HashTable<SparseMatrixEntry<T>, SparseMatrixHasher<T>> EntryTable;
 
 private:
-	index_t m_size1, m_size2, m_bulk_rows;
+	size_t m_size1, m_size2, m_bulk_rows;
 	std::vector<SparseMatrixBulk<T>> m_data_a_bulk;
 	EntryTable m_data_a_extra;
 	EntryTable m_data_bcd;
-	index_t m_coefficients_bulk;
+	size_t m_coefficients_bulk;
 
 public:
 	inline SymmetricSparseMatrix() : m_data_a_extra(1024), m_data_bcd(1024) {
@@ -94,15 +94,15 @@ public:
 		m_coefficients_bulk = 0;
 	}
 
-	inline void Reset(index_t size1, index_t size2, index_t bulk_rows) {
+	inline void Reset(size_t size1, size_t size2, size_t bulk_rows) {
 		assert(size1 != INDEX_NONE);
 		assert(size2 != INDEX_NONE);
 		m_size1 = size1;
 		m_size2 = size2;
 		m_bulk_rows = bulk_rows;
-		index_t total_bulk = m_bulk_rows * m_size1;
+		size_t total_bulk = m_bulk_rows * m_size1;
 		m_data_a_bulk.resize(total_bulk);
-		for(index_t i = 0; i < total_bulk; ++i) {
+		for(size_t i = 0; i < total_bulk; ++i) {
 			m_data_a_bulk[i].row = INDEX_NONE;
 		}
 		m_data_a_extra.Clear();
@@ -110,7 +110,7 @@ public:
 		m_coefficients_bulk = 0;
 	}
 
-	inline void Add(index_t row, index_t col, T value) {
+	inline void Add(size_t row, size_t col, T value) {
 		assert(row < m_size1 || (row >= INDEX_OFFSET && row < INDEX_OFFSET + m_size2));
 		assert(col < m_size1 || (col >= INDEX_OFFSET && col < INDEX_OFFSET + m_size2));
 		if(row > col) {
@@ -118,7 +118,7 @@ public:
 		}
 		if(col < INDEX_OFFSET) {
 			SparseMatrixBulk<T> *col_bulk = m_data_a_bulk.data() + m_bulk_rows * col;
-			for(index_t i = 0; i < m_bulk_rows; ++i) {
+			for(size_t i = 0; i < m_bulk_rows; ++i) {
 				if(col_bulk[i].row == row) {
 					col_bulk[i].value += value;
 					return;
@@ -133,17 +133,17 @@ public:
 		}
 		EntryTable &table = (col < INDEX_OFFSET)? m_data_a_extra : m_data_bcd;
 		SparseMatrixEntry<T> temp = {row, col, value};
-		std::pair<index_t, bool> p = table.TryPushBack(temp);
+		std::pair<size_t, bool> p = table.TryPushBack(temp);
 		if(!p.second) {
 			table[p.first].value += value;
 		}
 	}
 
-	inline index_t GetCoefficientsA() {
+	inline size_t GetCoefficientsA() {
 		return m_coefficients_bulk + m_data_a_extra.GetSize();
 	}
 
-	inline index_t GetCoefficientsBCD() {
+	inline size_t GetCoefficientsBCD() {
 		return m_data_bcd.GetSize();
 	}
 
@@ -153,43 +153,43 @@ public:
 
 		// count coefficients per column
 		std::fill_n(offsets, m_size1, 0);
-		for(index_t col = 0; col < m_size1; ++col) {
+		for(size_t col = 0; col < m_size1; ++col) {
 			SparseMatrixBulk<T> *col_bulk = m_data_a_bulk.data() + m_bulk_rows * col;
-			for(index_t i = 0; i < m_bulk_rows; ++i) {
+			for(size_t i = 0; i < m_bulk_rows; ++i) {
 				if(col_bulk[i].row == INDEX_NONE)
 					break;
 				++offsets[col];
 			}
 		}
-		for(index_t i = 0; i < m_data_a_extra.GetSize(); ++i) {
+		for(size_t i = 0; i < m_data_a_extra.GetSize(); ++i) {
 			SparseMatrixEntry<T> &entry = m_data_a_extra[i];
 			++offsets[entry.col];
 		}
 
 		// calculate offsets
 		I total = 0;
-		for(index_t i = 0; i < m_size1; ++i) {
+		for(size_t i = 0; i < m_size1; ++i) {
 			total += offsets[i];
 			offsets[i] = total;
 		}
 		offsets[m_size1] = total;
 
 		// calculate indices and values
-		for(index_t col = 0; col < m_size1; ++col) {
+		for(size_t col = 0; col < m_size1; ++col) {
 			SparseMatrixBulk<T> *col_bulk = m_data_a_bulk.data() + m_bulk_rows * col;
-			for(index_t i = 0; i < m_bulk_rows; ++i) {
+			for(size_t i = 0; i < m_bulk_rows; ++i) {
 				SparseMatrixBulk<T> &entry = col_bulk[i];
 				if(entry.row == INDEX_NONE)
 					break;
-				index_t j = --offsets[col];
-				indices[j] = entry.row;
+				size_t j = --offsets[col];
+				indices[j] = (I) entry.row;
 				values[j] = (entry.row == col)? 2.0 * entry.value : entry.value;
 			}
 		}
-		for(index_t i = 0; i < m_data_a_extra.GetSize(); ++i) {
+		for(size_t i = 0; i < m_data_a_extra.GetSize(); ++i) {
 			SparseMatrixEntry<T> &entry = m_data_a_extra[i];
-			index_t j = --offsets[entry.col];
-			indices[j] = entry.row;
+			size_t j = --offsets[entry.col];
+			indices[j] = (I) entry.row;
 			values[j] = (entry.row == entry.col)? 2.0 * entry.value : entry.value;
 		}
 
@@ -197,7 +197,7 @@ public:
 
 	// Calculates B * fixed_values and subtracts the result from the right-hand-side matrix.
 	void SubtractFromRhs(T *rhs, const T *fixed_values) {
-		for(index_t i = 0; i < m_data_bcd.GetSize(); ++i) {
+		for(size_t i = 0; i < m_data_bcd.GetSize(); ++i) {
 			SparseMatrixEntry<T> &entry = m_data_bcd[i];
 			if(entry.row < INDEX_OFFSET) {
 				rhs[entry.row] -= entry.value * fixed_values[entry.col - INDEX_OFFSET];
@@ -208,7 +208,7 @@ public:
 	// Calculates C * x + D * fixed_values.
 	void CalculateResidual(T *residual, const T *solution, const T *fixed_values) {
 		std::fill_n(residual, m_size2, T());
-		for(index_t i = 0; i < m_data_bcd.GetSize(); ++i) {
+		for(size_t i = 0; i < m_data_bcd.GetSize(); ++i) {
 			SparseMatrixEntry<T> &entry = m_data_bcd[i];
 			if(entry.row < INDEX_OFFSET) {
 				residual[entry.col - INDEX_OFFSET] += entry.value * solution[entry.row];
@@ -220,7 +220,7 @@ public:
 	}
 
 public:
-	inline index_t GetSize1() { return m_size1; }
-	inline index_t GetSize2() { return m_size2; }
+	inline size_t GetSize1() { return m_size1; }
+	inline size_t GetSize2() { return m_size2; }
 
 };

@@ -37,9 +37,9 @@ public:
 
 	inline Color operator()(real_t val) const {
 		real_t scaled = clamp<real_t>(val, 0.0, 1.0) * m_scale;
-		int64_t index = clamp<int64_t>(lrint(scaled - 0.5), 0, m_colors.size() - 2);
+		size_t index = clamp<ptrdiff_t>(rints(scaled - 0.5), 0, m_colors.size() - 2);
 		real_t frac = scaled - (real_t) index;
-		return ColorMix(m_colors[index], m_colors[index + 1], frac);
+		return ColorMix(m_colors[index], m_colors[index + 1], (float) frac);
 	}
 
 };

@@ -38,14 +38,14 @@ public:
 	virtual ~GenericMesh();
 
 	virtual void Initialize() = 0;
-	virtual void Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, const std::vector<real_t> &modes, index_t mode_count, real_t frequency) = 0;
+	virtual void Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) = 0;
 	virtual void Cleanup() = 0;
 
 	virtual Box2D GetWorldBox2D() = 0;
 	virtual Box2D GetWorldFocus2D() = 0;
 	virtual bool IsInitialized() = 0;
 	virtual bool IsSolved() = 0;
-	virtual index_t GetModeCount() = 0;
-	virtual bool GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, index_t mode) = 0;
+	virtual size_t GetModeCount() = 0;
+	virtual bool GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) = 0;
 
 };

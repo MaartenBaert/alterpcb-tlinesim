@@ -36,7 +36,7 @@ private:
 	real_t m_zoom;
 	MeshImageType m_image_type;
 	bool m_mesh_overlay;
-	index_t m_mode;
+	size_t m_mode;
 
 public:
 	MeshViewer(QWidget* parent);
@@ -46,7 +46,7 @@ public:
 	void SetZoom(real_t zoom);
 	void SetImageType(MeshImageType image_type);
 	void SetMeshOverlay(bool mesh_overlay);
-	void SetMode(index_t mode);
+	void SetMode(size_t mode);
 
 	virtual QSize minimumSizeHint() const override;
 	virtual QSize sizeHint() const override;

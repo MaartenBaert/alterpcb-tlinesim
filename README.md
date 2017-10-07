@@ -3,6 +3,8 @@ AlterPCB Transmission Line Simulator
 
 This program is a part of AlterPCB, an open-source, cross-platform PCB design program. AlterPCB is still a work in progress, but since this tool is quite useful by itself, I decided to release it as a stand-alone program.
 
+![Screenshot](data/screenshots/screenshot1-small.png)
+
 Features
 --------
 
@@ -13,6 +15,7 @@ Features
 - Supports single frequency analysis as well as frequency and parameter sweeps.
 - Supports automatic parameter tuning (e.g. to determine the track width that will result in an impedance of 50 ohm).
 - Straightforward graphical user interface (Qt-based).
+- Open-source and cross-platform.
 
 License
 -------

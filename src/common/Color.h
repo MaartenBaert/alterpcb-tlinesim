@@ -31,10 +31,10 @@ struct Color {
 	//inline operator QColor() const { return QColor::fromRgbF(clamp(r, 0.0f, 1.0f), clamp(g, 0.0f, 1.0f), clamp(b, 0.0f, 1.0f), clamp(a, 0.0f, 1.0f)); }
 	inline operator float*() { return &r; }
 	inline uint32_t ToUint32() {
-		uint32_t rr = lrint(clamp<float>(r * 255.0f, 0.0f, 255.0f));
-		uint32_t gg = lrint(clamp<float>(g * 255.0f, 0.0f, 255.0f));
-		uint32_t bb = lrint(clamp<float>(b * 255.0f, 0.0f, 255.0f));
-		uint32_t aa = lrint(clamp<float>(a * 255.0f, 0.0f, 255.0f));
+		uint32_t rr = rint32(clamp<float>(r * 255.0f, 0.0f, 255.0f));
+		uint32_t gg = rint32(clamp<float>(g * 255.0f, 0.0f, 255.0f));
+		uint32_t bb = rint32(clamp<float>(b * 255.0f, 0.0f, 255.0f));
+		uint32_t aa = rint32(clamp<float>(a * 255.0f, 0.0f, 255.0f));
 		return (aa << 24) | (rr << 16) | (gg << 8) | bb;
 	}
 };
@@ -45,7 +45,7 @@ inline Color ColorPremultiply(const Color &color) {
 	return Color(color.r * color.a, color.g * color.a, color.b * color.a, color.a);
 }
 
-inline Color ColorMix(const Color &col1, const Color &col2, real_t frac) {
+inline Color ColorMix(const Color &col1, const Color &col2, float frac) {
 	return Color(
 		col1.r + (col2.r - col1.r) * frac,
 		col1.g + (col2.g - col1.g) * frac,

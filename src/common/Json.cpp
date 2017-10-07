@@ -659,7 +659,7 @@ void WriteVData(WriteContext &context, const VData &data) {
 				WriteString(context, StringRegistry::GetString(ref[0].Key()));
 				WriteData(context, ": ", 2);
 				WriteVData(context, ref[0].Value());
-				for(index_t i = 1; i < ref.GetSize(); ++i) {
+				for(size_t i = 1; i < ref.GetSize(); ++i) {
 					WriteChar(context, ',');
 					WriteLine(context, true);
 					WriteString(context, StringRegistry::GetString(ref[i].Key()));

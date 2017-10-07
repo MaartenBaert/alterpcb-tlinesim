@@ -60,7 +60,7 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 	VDataPath root(data);
 
 	VDataPath conductors = root.GetMember("conductors");
-	for(index_t i = 0; i < conductors.GetElementCount(); ++i) {
+	for(size_t i = 0; i < conductors.GetElementCount(); ++i) {
 		VDataPath conductor = conductors.GetElement(i);
 		m_conductors.push_back(MaterialConductor{
 			conductor.GetMember("name").AsString(),
@@ -71,7 +71,7 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 	}
 
 	VDataPath dielectrics = root.GetMember("dielectrics");
-	for(index_t i = 0; i < dielectrics.GetElementCount(); ++i) {
+	for(size_t i = 0; i < dielectrics.GetElementCount(); ++i) {
 		VDataPath dielectric = dielectrics.GetElement(i);
 		m_dielectrics.push_back(MaterialDielectric{
 			dielectric.GetMember("name").AsString(),

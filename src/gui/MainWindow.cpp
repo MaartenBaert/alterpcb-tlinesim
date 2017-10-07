@@ -48,10 +48,10 @@ static real_t FloatFromString(const std::string &str) {
 }
 
 static void MakeSweep(std::vector<real_t> &results, real_t min, real_t max, real_t step) {
-	index_t num = std::max<index_t>(lrint(fmax(0.0, max - min) / step + 0.5 + 1e-12), 1);
+	size_t num = std::max<ptrdiff_t>(rints(fmax(0.0, max - min) / step + 0.5 + 1e-12), 1);
 	results.clear();
 	results.resize(num);
-	for(index_t i = 0; i < num; ++i) {
+	for(size_t i = 0; i < num; ++i) {
 		results[i] = min + step * (real_t) i;
 	}
 }
@@ -345,7 +345,7 @@ void MainWindow::GetParameterValues(VData::Dict &result) {
 
 void MainWindow::OnUpdateTLineType() {
 
-	m_tline_type = clamp<index_t>(m_combobox_tline_types->currentIndex(), 0, g_tline_types.size() - 1);
+	m_tline_type = clamp<size_t>(m_combobox_tline_types->currentIndex(), 0, g_tline_types.size() - 1);
 	const TLineType &tline_type = g_tline_types[m_tline_type];
 	const std::vector<MaterialConductor> &conductors = m_material_database->GetConductors();
 	const std::vector<MaterialDielectric> &dielectrics = m_material_database->GetDielectrics();
@@ -368,7 +368,7 @@ void MainWindow::OnUpdateTLineType() {
 		QWidget *widget = new QWidget(m_scrollarea_parameters), *widget_focus = m_scrollarea_parameters;
 		QGridLayout *layout = new QGridLayout(widget);
 		size_t row = 0;
-		for(index_t i = 0; i < tline_type.m_parameters.size(); ++i) {
+		for(size_t i = 0; i < tline_type.m_parameters.size(); ++i) {
 			const TLineParameter &parameter = tline_type.m_parameters[i];
 			QLabel *label_name = new QLabel(QString::fromStdString(parameter.m_name) + ":", widget);
 			QWidget *widget_value = NULL;
@@ -392,7 +392,7 @@ void MainWindow::OnUpdateTLineType() {
 					for(size_t j = 0; j < conductors.size(); ++j) {
 						combobox_value->addItem(QString::fromStdString(conductors[j].m_name));
 						if(parameter.m_default_value.AsString() == conductors[j].m_name) {
-							combobox_value->setCurrentIndex(j);
+							combobox_value->setCurrentIndex((int) j);
 						}
 					}
 					widget_value = combobox_value;
@@ -403,7 +403,7 @@ void MainWindow::OnUpdateTLineType() {
 					for(size_t j = 0; j < dielectrics.size(); ++j) {
 						combobox_value->addItem(QString::fromStdString(dielectrics[j].m_name));
 						if(parameter.m_default_value.AsString() == dielectrics[j].m_name) {
-							combobox_value->setCurrentIndex(j);
+							combobox_value->setCurrentIndex((int) j);
 						}
 					}
 					widget_value = combobox_value;
@@ -417,30 +417,27 @@ void MainWindow::OnUpdateTLineType() {
 			QWidget::setTabOrder(widget_focus, widget_value);
 			widget_focus = widget_value;
 			m_widget_parameters.push_back(widget_value);
-			layout->addWidget(label_name, row, 0);
+			layout->addWidget(label_name, (int) row, 0);
 			if(label_unit == NULL) {
-				layout->addWidget(widget_value, row, 1, 1, 2);
+				layout->addWidget(widget_value, (int) row, 1, 1, 2);
 			} else {
-				layout->addWidget(widget_value, row, 1);
-				layout->addWidget(label_unit, row, 2);
+				layout->addWidget(widget_value, (int) row, 1);
+				layout->addWidget(label_unit, (int) row, 2);
 			}
 			++row;
 			if(parameter.m_separator) {
 				QFrame *line = new QFrame(widget);
 				line->setFrameShape(QFrame::HLine);
 				line->setFrameShadow(QFrame::Sunken);
-				layout->addWidget(line, row, 0, 1, 3);
+				layout->addWidget(line, (int) row, 0, 1, 3);
 				++row;
 			}
 			if(parameter.m_type == TLINE_PARAMETERTYPE_REAL) {
-				m_combobox_parameter_sweep_parameter->addItem(QString::fromStdString(parameter.m_name), i);
-				m_combobox_parameter_tune_parameter->addItem(QString::fromStdString(parameter.m_name), i);
+				m_combobox_parameter_sweep_parameter->addItem(QString::fromStdString(parameter.m_name), (int) i);
+				m_combobox_parameter_tune_parameter->addItem(QString::fromStdString(parameter.m_name), (int) i);
 			}
 		}
-		layout->setRowStretch(row, 1);
-		//layout->setColumnMinimumWidth(0, 200);
-		//layout->setColumnMinimumWidth(1, 100);
-		//layout->setColumnMinimumWidth(2, 60);
+		layout->setRowStretch((int) row, 1);
 		m_scrollarea_parameters->setWidget(widget);
 	}
 
@@ -461,9 +458,9 @@ void MainWindow::OnUpdateTLineType() {
 				QWidget::setTabOrder(widget_focus, lineedit_value);
 				widget_focus = lineedit_value;
 				m_lineedit_results.push_back(lineedit_value);
-				layout->addWidget(label_name, row, 0);
-				layout->addWidget(lineedit_value, row, 1);
-				layout->addWidget(label_unit, row, 2);
+				layout->addWidget(label_name, (int) row, 0);
+				layout->addWidget(lineedit_value, (int) row, 1);
+				layout->addWidget(label_unit, (int) row, 2);
 				++row;
 				m_combobox_parameter_tune_target_result->addItem(QString::fromStdString(tline_type.m_modes[i]) + " " + TLINERESULT_NAMES[j]);
 			}
@@ -471,19 +468,16 @@ void MainWindow::OnUpdateTLineType() {
 				QFrame *line = new QFrame(widget);
 				line->setFrameShape(QFrame::HLine);
 				line->setFrameShadow(QFrame::Sunken);
-				layout->addWidget(line, row, 0, 1, 3);
+				layout->addWidget(line, (int) row, 0, 1, 3);
 				++row;
 			}
 		}
-		layout->setRowStretch(row, 1);
-		//layout->setColumnMinimumWidth(0, 200);
-		//layout->setColumnMinimumWidth(1, 100);
-		//layout->setColumnMinimumWidth(2, 60);
+		layout->setRowStretch((int) row, 1);
 		m_scrollarea_results->setWidget(widget);
 	}
 
 	// update modes
-	//index_t current_index = m_combobox_modes->currentIndex();
+	//size_t current_index = m_combobox_modes->currentIndex();
 	m_combobox_modes->clear();
 	for(const std::string &mode : tline_type.m_modes) {
 		m_combobox_modes->addItem(QString::fromStdString(mode));
@@ -590,7 +584,7 @@ void MainWindow::OnSimulate() {
 				f << std::endl;
 
 				// write body
-				for(index_t i = 0; i < context.m_frequencies.size(); ++i) {
+				for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
 					f << context.m_frequencies[i];
 					real_t *results = context.m_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i;
 					for(size_t j = 0; j < TLINERESULT_COUNT * tline_type.m_modes.size(); ++j) {
@@ -614,7 +608,7 @@ void MainWindow::OnSimulate() {
 				MakeSweep(sweep_values, value_min, value_max, value_step);
 
 				// simulate
-				index_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toUInt();
+				size_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
 				std::vector<real_t> combined_results;
 				combined_results.resize(TLINERESULT_COUNT * tline_type.m_modes.size() * sweep_values.size());
 				for(size_t i = 0; i < sweep_values.size(); ++i) {
@@ -657,12 +651,10 @@ void MainWindow::OnSimulate() {
 				context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
 
 				// get parameter
-				index_t param_index = m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toUInt();
-				const TLineParameter &parameter = tline_type.m_parameters[param_index];
-				assert(parameter.m_type == TLINE_PARAMETERTYPE_REAL);
+				size_t param_index = m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toInt();
 
 				// get target result
-				index_t result_index = clamp<index_t>(m_combobox_parameter_tune_target_result->currentIndex(), 0, TLINERESULT_COUNT * tline_type.m_modes.size() - 1);
+				size_t result_index = clamp<size_t>(m_combobox_parameter_tune_target_result->currentIndex(), 0, TLINERESULT_COUNT * tline_type.m_modes.size() - 1);
 				real_t target_value = FloatFromString(m_lineedit_parameter_tune_target_value->text().toStdString());
 
 				// simulate
@@ -719,5 +711,5 @@ void MainWindow::OnMeshOverlayChange() {
 }
 
 void MainWindow::OnModeChange() {
-	m_meshviewer->SetMode(clamp<index_t>(m_combobox_modes->currentIndex(), 0, g_tline_types[m_tline_type].m_modes.size() - 1));
+	m_meshviewer->SetMode(clamp<size_t>(m_combobox_modes->currentIndex(), 0, g_tline_types[m_tline_type].m_modes.size() - 1));
 }

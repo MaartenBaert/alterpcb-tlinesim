@@ -8,8 +8,9 @@ LIBS += -lcholmod
 INCLUDEPATH += common gui simulation
 DEPENDPATH += common gui simulation
 
-QMAKE_CXXFLAGS += -std=c++11 #-Wconversion
+QMAKE_CXXFLAGS += -std=c++11 -Wconversion
 QMAKE_CXXFLAGS_RELEASE += -DNDEBUG
+QMAKE_CXXFLAGS_RELEASE -= -g
 
 ########## Warning: Everything below this line is auto-generated and will be overwritten! ##########
 
@@ -24,13 +25,17 @@ HEADERS += \
 	common/Json.h \
 	common/MiscMath.h \
 	common/MurmurHash.h \
+	common/NaturalSort.h \
 	common/StringHelper.h \
 	common/StringRegistry.h \
 	common/VData.h \
 	common/VDataPath.h \
 	common/Vector.h \
+	gui/ApplicationDirs.h \
+	gui/GlobalDirs.h \
 	gui/Icons.h \
 	gui/LayoutHelper.h \
+	gui/MainWindow.h \
 	gui/MeshViewer.h \
 	gui/QLineEditSmall.h \
 	gui/Qt.h \
@@ -40,10 +45,7 @@ HEADERS += \
 	simulation/GridMesh2D.h \
 	simulation/MaterialDatabase.h \
 	simulation/SparseMatrix.h \
-	simulation/TLineTypes.h \
-    gui/ApplicationDirs.h \
-    gui/MainWindow.h \
-    common/NaturalSort.h
+	simulation/TLineTypes.h
 
 SOURCES += \
 	Main.cpp \
@@ -51,9 +53,12 @@ SOURCES += \
 	common/ColorMap.cpp \
 	common/Decimal.cpp \
 	common/Json.cpp \
+	common/NaturalSort.cpp \
 	common/StringRegistry.cpp \
 	common/VData.cpp \
+	gui/ApplicationDirs.cpp \
 	gui/Icons.cpp \
+	gui/MainWindow.cpp \
 	gui/MeshViewer.cpp \
 	gui/QLineEditSmall.cpp \
 	simulation/CholmodSolver.cpp \
@@ -63,7 +68,4 @@ SOURCES += \
 	simulation/SparseMatrix.cpp \
 	simulation/TLineTypes.cpp \
 	simulation/TLine_CoplanarWaveguide.cpp \
-	simulation/TLine_Microstrip.cpp \
-    gui/ApplicationDirs.cpp \
-    gui/MainWindow.cpp \
-    common/NaturalSort.cpp
+	simulation/TLine_Microstrip.cpp

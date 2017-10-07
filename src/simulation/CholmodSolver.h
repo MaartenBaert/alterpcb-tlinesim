@@ -80,15 +80,15 @@ public:
 	void Reset();
 	//void Reset(cholmod_dense *dense);
 	void Reset(size_t rows, size_t cols, size_t stride, int xtype);
-	void ResetReal(index_t rows, index_t cols);
-	void ResetComplex(index_t rows, index_t cols);
+	void ResetReal(size_t rows, size_t cols);
+	void ResetComplex(size_t rows, size_t cols);
 
 public:
 	inline cholmod_dense*& GetDense() { return m_dense; }
 	inline bool IsValid() const { return m_dense != NULL; }
-	inline index_t GetRows() const { assert(m_dense != NULL); return m_dense->nrow; }
-	inline index_t GetCols() const { assert(m_dense != NULL); return m_dense->ncol; }
-	inline index_t GetStride() const { assert(m_dense != NULL); return m_dense->d; }
+	inline size_t GetRows() const { assert(m_dense != NULL); return m_dense->nrow; }
+	inline size_t GetCols() const { assert(m_dense != NULL); return m_dense->ncol; }
+	inline size_t GetStride() const { assert(m_dense != NULL); return m_dense->d; }
 	inline       real_t* GetRealData()       { assert(m_dense != NULL); assert(m_dense->xtype == CHOLMOD_REAL); return (real_t*) m_dense->x; }
 	inline const real_t* GetRealData() const { assert(m_dense != NULL); assert(m_dense->xtype == CHOLMOD_REAL); return (real_t*) m_dense->x; }
 	inline       complex_t* GetComplexData()       { assert(m_dense != NULL); assert(m_dense->xtype == CHOLMOD_COMPLEX); return (complex_t*) m_dense->x; }

@@ -63,10 +63,10 @@ void TLine_Microstrip_Single(TLineContext &context) {
 
 	real_t step0 = REAL_MAX, step1 = substrate_thickness * 0.02;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.0015, substrate_thickness * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
 
-	index_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	index_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
@@ -116,9 +116,9 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
 
-	index_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	index_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	index_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);

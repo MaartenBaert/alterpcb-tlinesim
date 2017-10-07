@@ -96,11 +96,11 @@ void CholmodDenseMatrix::Reset(size_t rows, size_t cols, size_t stride, int xtyp
 	}
 }
 
-void CholmodDenseMatrix::ResetReal(index_t rows, index_t cols) {
+void CholmodDenseMatrix::ResetReal(size_t rows, size_t cols) {
 	Reset(rows, cols, rows, CHOLMOD_REAL);
 }
 
-void CholmodDenseMatrix::ResetComplex(index_t rows, index_t cols) {
+void CholmodDenseMatrix::ResetComplex(size_t rows, size_t cols) {
 	Reset(rows, cols, rows, CHOLMOD_COMPLEX);
 }
 

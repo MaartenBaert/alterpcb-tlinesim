@@ -46,6 +46,23 @@ inline F sqr(F x) {
 }
 
 template<typename F>
+inline int32_t rint32(F x) {
+	return (sizeof(long int) >= sizeof(int32_t))? (int32_t) lrint(x) : (int32_t) llrint(x);
+}
+template<typename F>
+inline int64_t rint64(F x) {
+	return (sizeof(long int) >= sizeof(int64_t))? (int64_t) lrint(x) : (int64_t) llrint(x);
+}
+template<typename F>
+inline int rinti(F x) {
+	return (sizeof(long int) >= sizeof(int))? (int) lrint(x) : (int) llrint(x);
+}
+template<typename F>
+inline ptrdiff_t rints(F x) {
+	return (sizeof(long int) >= sizeof(ptrdiff_t))? (ptrdiff_t) lrint(x) : (ptrdiff_t) llrint(x);
+}
+
+template<typename F>
 inline bool FinitePositive(F x) {
 	return std::isfinite(x) && x > 0.0;
 }

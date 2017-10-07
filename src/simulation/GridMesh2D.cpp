@@ -51,18 +51,18 @@ GridMesh2D::~GridMesh2D() {
 	// nothing
 }
 
-index_t GridMesh2D::AddPort(GridMesh2D::PortType type) {
+size_t GridMesh2D::AddPort(GridMesh2D::PortType type) {
 	if(m_initialized)
 		throw std::runtime_error("GridMesh2D error: Can't add port after initialization.");
 	m_ports.emplace_back(type);
 	return m_ports.size() - 1;
 }
 
-void GridMesh2D::AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, index_t port) {
+void GridMesh2D::AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, size_t port) {
 	AddConductor(box, step, step, step, step, material, port);
 }
 
-void GridMesh2D::AddConductor(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialConductor *material, index_t port) {
+void GridMesh2D::AddConductor(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialConductor *material, size_t port) {
 	if(m_initialized)
 		throw std::runtime_error("GridMesh2D error: Can't add conductor after initialization.");
 	if(!std::isfinite(box.x1) || !std::isfinite(box.y1) || !std::isfinite(box.x2) || !std::isfinite(box.y2))
@@ -114,7 +114,7 @@ void GridMesh2D::Initialize() {
 
 }
 
-void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, const std::vector<real_t> &modes, index_t mode_count, real_t frequency) {
+void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) {
 	if(!m_initialized)
 		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
 	if(modes.size() != m_vars_fixed * mode_count)
@@ -164,13 +164,13 @@ Box2D GridMesh2D::GetWorldFocus2D() {
 	return m_world_focus;
 }
 
-index_t GridMesh2D::GetModeCount() {
+size_t GridMesh2D::GetModeCount() {
 	if(!m_initialized || !m_solved)
 		return 0;
 	return m_mode_count;
 }
 
-bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, index_t mode) {
+bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
 	if(!m_initialized)
 		return false;
 	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H) {
@@ -187,7 +187,7 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 	}
 
 	// prepare grid
-	std::vector<index_t> index_x, index_y;
+	std::vector<size_t> index_x, index_y;
 	std::vector<real_t> frac_x, frac_y;
 	if(type == MESHIMAGETYPE_MESH) {
 		PrepareCellImage(index_x, frac_x, m_grid_x, m_midpoints_x, view.x1, view.x2, width);
@@ -205,7 +205,7 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			for(size_t j = 0; j < height; ++j) {
 				real_t *row_value = image_value.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
-					index_t ix = index_x[i], iy = index_y[j];
+					size_t ix = index_x[i], iy = index_y[j];
 					real_t v00 = cell_values[GetCellIndex(ix    , iy    )];
 					real_t v01 = cell_values[GetCellIndex(ix + 1, iy    )];
 					real_t v10 = cell_values[GetCellIndex(ix    , iy + 1)];
@@ -225,7 +225,7 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 				real_t *row_value = image_value.data() + j * width;
 				Vector2D *row_gradient = image_gradient.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
-					index_t ix = index_x[i], iy = index_y[j];
+					size_t ix = index_x[i], iy = index_y[j];
 					real_t v00 = node_values[GetNodeIndex(ix    , iy    )];
 					real_t v01 = node_values[GetNodeIndex(ix + 1, iy    )];
 					real_t v10 = node_values[GetNodeIndex(ix    , iy + 1)];
@@ -293,14 +293,14 @@ void GridMesh2D::InitCells() {
 	m_cells.resize((m_grid_x.size() - 1) * (m_grid_y.size() - 1));
 
 	// apply conductors
-	for(index_t conductor_index = 0; conductor_index < m_conductors.size(); ++conductor_index) {
+	for(size_t conductor_index = 0; conductor_index < m_conductors.size(); ++conductor_index) {
 		Conductor &conductor = m_conductors[conductor_index];
-		index_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x1) - m_midpoints_x.begin();
-		index_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x2) - m_midpoints_x.begin();
-		index_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y1) - m_midpoints_y.begin();
-		index_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y2) - m_midpoints_y.begin();
-		for(index_t iy = iy1; iy <= iy2; ++iy) {
-			for(index_t ix = ix1; ix <= ix2; ++ix) {
+		size_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x1) - m_midpoints_x.begin();
+		size_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x2) - m_midpoints_x.begin();
+		size_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y1) - m_midpoints_y.begin();
+		size_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y2) - m_midpoints_y.begin();
+		for(size_t iy = iy1; iy <= iy2; ++iy) {
+			for(size_t ix = ix1; ix <= ix2; ++ix) {
 				Node &node = GetNode(ix, iy);
 				if(node.m_port != INDEX_NONE && node.m_port != conductor.m_port) {
 					throw std::runtime_error(MakeString("Port ", conductor.m_port, " makes contact with port ", node.m_port, "."));
@@ -308,8 +308,8 @@ void GridMesh2D::InitCells() {
 				node.m_port = conductor.m_port;
 			}
 		}
-		for(index_t iy = iy1; iy < iy2; ++iy) {
-			for(index_t ix = ix1; ix < ix2; ++ix) {
+		for(size_t iy = iy1; iy < iy2; ++iy) {
+			for(size_t ix = ix1; ix < ix2; ++ix) {
 				Cell &cell = GetCell(ix, iy);
 				cell.m_conductor = conductor_index;
 			}
@@ -317,14 +317,14 @@ void GridMesh2D::InitCells() {
 	}
 
 	// apply dielectrics
-	for(index_t dielectric_index = 0; dielectric_index < m_dielectrics.size(); ++dielectric_index) {
+	for(size_t dielectric_index = 0; dielectric_index < m_dielectrics.size(); ++dielectric_index) {
 		Dielectric &dielectric = m_dielectrics[dielectric_index];
-		index_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x1) - m_midpoints_x.begin();
-		index_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x2) - m_midpoints_x.begin();
-		index_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y1) - m_midpoints_y.begin();
-		index_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y2) - m_midpoints_y.begin();
-		for(index_t iy = iy1; iy < iy2; ++iy) {
-			for(index_t ix = ix1; ix < ix2; ++ix) {
+		size_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x1) - m_midpoints_x.begin();
+		size_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x2) - m_midpoints_x.begin();
+		size_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y1) - m_midpoints_y.begin();
+		size_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y2) - m_midpoints_y.begin();
+		for(size_t iy = iy1; iy < iy2; ++iy) {
+			for(size_t ix = ix1; ix < ix2; ++ix) {
 				Cell &cell = GetCell(ix, iy);
 				cell.m_dielectric = dielectric_index;
 			}
@@ -337,7 +337,7 @@ void GridMesh2D::InitVariables() {
 	assert(!m_initialized);
 
 	// assign variables to ports
-	for(index_t i = 0; i < m_ports.size(); ++i) {
+	for(size_t i = 0; i < m_ports.size(); ++i) {
 		Port &port = m_ports[i];
 		switch(port.m_type) {
 			case PORTTYPE_FIXED: {
@@ -352,8 +352,8 @@ void GridMesh2D::InitVariables() {
 	}
 
 	// assign variables to nodes
-	for(index_t iy = 0; iy < m_grid_y.size(); ++iy) {
-		for(index_t ix = 0; ix < m_grid_x.size(); ++ix) {
+	for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
+		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 			Node &node = GetNode(ix, iy);
 			if(node.m_port == INDEX_NONE) {
 				node.m_var = m_vars_real++;
@@ -375,21 +375,21 @@ void GridMesh2D::GenerateMatrices() {
 
 	// load conductor properties
 	std::vector<MaterialConductorProperties> conductor_properties(m_conductors.size());
-	for(index_t i = 0; i < m_conductors.size(); ++i) {
+	for(size_t i = 0; i < m_conductors.size(); ++i) {
 		GetConductorProperties(conductor_properties[i], m_conductors[i].m_material, m_solution_frequency);
 	}
 
 	// load dielectric properties
 	std::vector<MaterialDielectricProperties> dielectric_properties(m_dielectrics.size());
-	for(index_t i = 0; i < m_dielectrics.size(); ++i) {
+	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
 		GetDielectricProperties(dielectric_properties[i], m_dielectrics[i].m_material, m_solution_frequency);
 	}
 
 	// generate matrices
 	m_matrix_e.Reset(m_vars_real, m_vars_fixed, 5);
 	m_matrix_h.Reset(m_vars_real, m_vars_fixed, 5);
-	for(index_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-		for(index_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
 			// get cell, skip cells that are inside conductors
 			Cell &cell = GetCell(ix, iy);
@@ -471,7 +471,7 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 
 	// solve E matrix
 	std::fill_n(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride() * m_mode_count, 0.0);
-	for(index_t i = 0; i < m_mode_count; ++i) {
+	for(size_t i = 0; i < m_mode_count; ++i) {
 		real_t *rhs = m_cholmod_rhs.GetRealData() + m_cholmod_rhs.GetStride() * i;
 		const real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
 		m_matrix_e.SubtractFromRhs(rhs, fixed_values);
@@ -484,14 +484,14 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 
 	// solve H matrix
 	std::fill_n(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride() * m_mode_count, 0.0);
-	for(index_t i = 0; i < m_mode_count; ++i) {
+	for(size_t i = 0; i < m_mode_count; ++i) {
 		m_matrix_h.SubtractFromRhs(m_cholmod_rhs.GetRealData() + m_cholmod_rhs.GetStride() * i, m_modes.data() + m_vars_fixed * i);
 	}
 	m_cholmod_factor.Solve(m_cholmod_solution_h, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
 
 	// calculate the residual charges
 	charges.resize(m_vars_fixed * m_mode_count);
-	for(index_t i = 0; i < m_mode_count; ++i) {
+	for(size_t i = 0; i < m_mode_count; ++i) {
 		real_t *residual = charges.data() + m_vars_fixed * i;
 		real_t *solution = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
 		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
@@ -500,7 +500,7 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 
 	// calculate the residual currents
 	currents.resize(m_vars_fixed * m_mode_count);
-	for(index_t i = 0; i < m_mode_count; ++i) {
+	for(size_t i = 0; i < m_mode_count; ++i) {
 		real_t *residual = currents.data() + m_vars_fixed * i;
 		real_t *solution = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * i;
 		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
@@ -509,16 +509,16 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 
 }
 
-void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, index_t mode, MeshImageType type) {
+void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type) {
 	assert(m_initialized);
 	assert(mode < m_mode_count);
 	assert(type == MESHIMAGETYPE_MESH);
 	UNUSED(mode);
 	UNUSED(type);
 	cell_values.resize(m_cells.size());
-	for(index_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-		for(index_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-			index_t cell_index = GetCellIndex(ix, iy);
+	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+			size_t cell_index = GetCellIndex(ix, iy);
 			Cell &cell = m_cells[cell_index];
 			real_t val = (cell.m_conductor != INDEX_NONE)? 0.0 : (cell.m_dielectric != INDEX_NONE)? 0.45 : 0.9;
 			if((ix & 1) == (iy & 1))
@@ -528,7 +528,7 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, index_t mode, M
 	}
 }
 
-void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, index_t mode, MeshImageType type) {
+void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type) {
 	assert(m_initialized && m_solved);
 	assert(mode < m_mode_count);
 	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H);
@@ -536,8 +536,8 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, index_t mode, M
 	CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
 	real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
 	real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
-	for(index_t i = 0; i < m_nodes.size(); ++i) {
-		index_t var = m_nodes[i].m_var;
+	for(size_t i = 0; i < m_nodes.size(); ++i) {
+		size_t var = m_nodes[i].m_var;
 		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
 	}
 }
@@ -562,8 +562,8 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 	real_t avg_sum = grid[0].m_value;
 	real_t avg_prev = grid[0].m_value;
 	real_t avg_step = grid[0].m_step;
-	index_t avg_count = 1;
-	for(index_t i = 1; i < grid.size(); ++i) {
+	size_t avg_count = 1;
+	for(size_t i = 1; i < grid.size(); ++i) {
 		const GridLine &gridline = grid[i];
 		if(gridline.m_value - avg_prev <= epsilon) {
 			avg_sum += gridline.m_value;
@@ -634,9 +634,9 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 	// first half
 	if(delta1 != 0.0) {
 		real_t st1 = step1 / delta1;
-		index_t n1 = std::max<int32_t>(1, lrint(log2(st1 / (1.0 + (st1 - 1.0) * frac)) / log2frac + 1.5));
+		size_t n1 = std::max<ptrdiff_t>(1, rints(log2(st1 / (1.0 + (st1 - 1.0) * frac)) / log2frac + 1.5));
 		real_t vmin1 = exp2(log2frac * (real_t) n1);
-		for(index_t i = n1 - 1; i > 0; --i) {
+		for(size_t i = n1 - 1; i > 0; --i) {
 			result.push_back(x1 + delta1 * (exp2(log2frac * (real_t) i) - vmin1) / (1.0 - vmin1));
 		}
 		result.push_back(x1 + delta1);
@@ -645,9 +645,9 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 	// second half
 	if(delta2 != 0.0) {
 		real_t st2 = step2 / delta2;
-		index_t n2 = std::max<int32_t>(1, lrint(log2(st2 / (1.0 + (st2 - 1.0) * frac)) / log2frac + 1.5));
+		size_t n2 = std::max<ptrdiff_t>(1, rints(log2(st2 / (1.0 + (st2 - 1.0) * frac)) / log2frac + 1.5));
 		real_t vmin2 = exp2(log2frac * (real_t) n2);
-		for(index_t i = 1; i < n2; ++i) {
+		for(size_t i = 1; i < n2; ++i) {
 			result.push_back(x2 - delta2 * (exp2(log2frac * (real_t) i) - vmin2) / (1.0 - vmin2));
 		}
 		result.push_back(x2);
@@ -659,31 +659,31 @@ void GridMesh2D::GridMidpoints(std::vector<real_t> &result, const std::vector<re
 	assert(grid.size() >= 2);
 	result.clear();
 	result.resize(grid.size() - 1);
-	for(index_t i = 0; i < result.size(); ++i) {
+	for(size_t i = 0; i < result.size(); ++i) {
 		result[i] = (grid[i] + grid[i + 1]) * 0.5;
 	}
 }
 
-void GridMesh2D::PrepareNodeImage(std::vector<index_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, real_t value1, real_t value2, index_t size) {
+void GridMesh2D::PrepareNodeImage(std::vector<size_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, real_t value1, real_t value2, size_t size) {
 	index.resize(size);
 	frac.resize(size);
 	auto range_begin = grid.begin() + 1, range_end = grid.end() - 1;
-	for(index_t i = 0; i < size; ++i) {
+	for(size_t i = 0; i < size; ++i) {
 		real_t value = value1 + (value2 - value1) * ((real_t) i + 0.5) / (real_t) size;
-		index_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
+		size_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
 		index[i] = j;
 		frac[i] = (value - grid[j]) / (grid[j + 1] - grid[j]);
 	}
 }
 
-void GridMesh2D::PrepareCellImage(std::vector<index_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, const std::vector<real_t> &midpoints, real_t value1, real_t value2, index_t size) {
+void GridMesh2D::PrepareCellImage(std::vector<size_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, const std::vector<real_t> &midpoints, real_t value1, real_t value2, size_t size) {
 	index.resize(size);
 	frac.resize(size);
 	real_t scale = (real_t) size / fabs(value2 - value1);
 	auto range_begin = midpoints.begin() + 1, range_end = midpoints.end() - 1;
-	for(index_t i = 0; i < size; ++i) {
+	for(size_t i = 0; i < size; ++i) {
 		real_t value = value1 + (value2 - value1) * ((real_t) i + 0.5) / (real_t) size;
-		index_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
+		size_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
 		index[i] = j;
 		frac[i] = clamp((value - grid[j + 1]) * scale + 0.5, 0.0, 1.0);
 	}
