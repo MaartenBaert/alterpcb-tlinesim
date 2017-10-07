@@ -27,8 +27,12 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 
+#define SIMULATION_VERBOSE 1
+
+#if SIMULATION_VERBOSE
 #include <chrono> // TODO: remove
 #include <iostream> // TODO: remove
+#endif
 
 GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon) {
 	if(!FinitePositive(grid_inc))
@@ -90,15 +94,24 @@ void GridMesh2D::Initialize() {
 	if(m_initialized)
 		throw std::runtime_error("GridMesh2D error: The mesh has already been initialized.");
 
-	//auto t1 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t1 = std::chrono::high_resolution_clock::now();
+#endif
 	InitGrid();
-	//auto t2 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t2 = std::chrono::high_resolution_clock::now();
+#endif
 	InitCells();
-	//auto t3 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t3 = std::chrono::high_resolution_clock::now();
+#endif
 	InitVariables();
-	//auto t4 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t4 = std::chrono::high_resolution_clock::now();
+#endif
 
-	/*std::cerr << "GridMesh2D stats:"
+#if SIMULATION_VERBOSE
+	std::cerr << "GridMesh2D stats:"
 			  << " grid=" << m_grid_x.size() << "x" << m_grid_y.size()
 			  << " nodes=" << m_nodes.size()
 			  << " cells=" << m_cells.size()
@@ -108,7 +121,8 @@ void GridMesh2D::Initialize() {
 			  << " grid=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
 			  << " cells=" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us"
 			  << " vars=" << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us"
-			  << std::endl;*/
+			  << std::endl;
+#endif
 
 	m_initialized = true;
 
@@ -125,16 +139,24 @@ void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &curren
 	m_mode_count = mode_count;
 	m_modes = modes;
 
-	//auto t1 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t1 = std::chrono::high_resolution_clock::now();
+#endif
 	GenerateMatrices();
-	//auto t2 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t2 = std::chrono::high_resolution_clock::now();
+#endif
 	SolveModes(charges, currents);
-	//auto t3 = std::chrono::high_resolution_clock::now();
+#if SIMULATION_VERBOSE
+	auto t3 = std::chrono::high_resolution_clock::now();
+#endif
 
-	/*std::cerr << "GridMesh2D solve time:"
+#if SIMULATION_VERBOSE
+	std::cerr << "GridMesh2D solve time:"
 			  << " build=" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "ms"
 			  << " solve=" << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << "ms"
-			  << std::endl;*/
+			  << std::endl;
+#endif
 
 	m_solved = true;
 
