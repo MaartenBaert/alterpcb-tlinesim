@@ -224,10 +224,10 @@ MainWindow::MainWindow() {
 		m_meshviewer = new MeshViewer(groupbox_viewer);
 		QLabel *label_zoom = new QLabel("Zoom:", groupbox_viewer);
 		m_slider_zoom = new QSlider(Qt::Horizontal, groupbox_viewer);
-		m_slider_zoom->setRange(0, 2000000);
-		m_slider_zoom->setValue(1500000);
-		m_slider_zoom->setSingleStep(10000);
-		m_slider_zoom->setPageStep(100000);
+		m_slider_zoom->setRange(0, 200000);
+		m_slider_zoom->setValue(150000);
+		m_slider_zoom->setSingleStep(1000);
+		m_slider_zoom->setPageStep(10000);
 		QLabel *label_imagetype = new QLabel("View type:", groupbox_viewer);
 		m_buttongroup_image_type = new QButtonGroup(groupbox_viewer);
 		QRadioButton *radio_imagetype_mesh = new QRadioButton("Mesh", groupbox_viewer);
@@ -314,8 +314,13 @@ void MainWindow::LoadMaterials() {
 	}
 }
 
-void MainWindow::GetParameterValues(VData::Dict &result) {
+void MainWindow::SimulationInit(TLineContext &context) {
 	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// initialize material database
+	context.m_material_database = m_material_database.get();
+
+	// initialize parameters
 	for(size_t i = 0; i < tline_type.m_parameters.size(); ++i) {
 		const TLineParameter &parameter = tline_type.m_parameters[i];
 		stringtag_t key = StringRegistry::NewTag(CanonicalName(parameter.m_name));
@@ -342,8 +347,203 @@ void MainWindow::GetParameterValues(VData::Dict &result) {
 				break;
 			}
 		}
-		result.EmplaceBack(VDataDictEntry(key, std::move(value)));
+		context.m_parameters.EmplaceBack(VDataDictEntry(key, std::move(value)));
 	}
+
+}
+
+void MainWindow::SimulationShowResult(TLineContext &context) {
+	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// show results
+	assert(context.m_frequencies.size() == 1);
+	assert(context.m_results.size() == TLINERESULT_COUNT * tline_type.m_modes.size() * context.m_frequencies.size());
+	real_t *result_values = context.m_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * (context.m_frequencies.size() - 1);
+	for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
+		for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
+			m_lineedit_results[TLINERESULT_COUNT * i + j]->setText(QString::number(result_values[TLINERESULT_COUNT * i + j]));
+		}
+	}
+
+	// transfer mesh to viewer
+	m_meshviewer->SetMesh(std::move(context.m_output_mesh));
+
+}
+
+void MainWindow::SimulateSingleFrequency() {
+	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// initialize context
+	TLineContext context;
+	SimulationInit(context);
+
+	// set frequency
+	context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
+
+	// simulate
+	tline_type.m_simulate(context);
+
+	// show result
+	SimulationShowResult(context);
+
+}
+
+void MainWindow::SimulateFrequencySweep() {
+	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// initialize context
+	TLineContext context;
+	SimulationInit(context);
+
+	// generate sweep
+	real_t freq_min = FloatFromString(m_lineedit_frequency_sweep_min->text().toStdString()) * 1e9;
+	real_t freq_max = FloatFromString(m_lineedit_frequency_sweep_max->text().toStdString()) * 1e9;
+	real_t freq_step = FloatFromString(m_lineedit_frequency_sweep_step->text().toStdString()) * 1e9;
+	MakeSweep(context.m_frequencies, freq_min, freq_max, freq_step);
+
+	// simulate
+	QProgressDialogThreaded dialog("Frequency sweep ...", "Cancel", 0, (int) context.m_frequencies.size(), this);
+	dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
+	dialog.setMinimumDuration(0);
+	dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
+		context.m_progress_callback = [&](size_t progress) {
+			task_progress = (int) progress;
+			if(task_canceled) {
+				throw std::runtime_error("Frequency sweep canceled by user.");
+			}
+		};
+		tline_type.m_simulate(context);
+	});
+
+	// open output file
+	std::string filename = m_lineedit_frequency_sweep_file->text().toLocal8Bit().constData();
+	std::ofstream f;
+	f.open(filename, std::ios_base::out | std::ios_base::trunc);
+	if(f.fail())
+		throw std::runtime_error("Could not open file '" + filename + "' for writing.");
+
+	// write header
+	f << "Frequency";
+	for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
+		for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
+			f << '\t' << tline_type.m_modes[i] << ' ' << TLINERESULT_NAMES[j];
+		}
+	}
+	f << std::endl;
+
+	// write body
+	for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
+		f << context.m_frequencies[i];
+		real_t *results = context.m_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i;
+		for(size_t j = 0; j < TLINERESULT_COUNT * tline_type.m_modes.size(); ++j) {
+			f << '\t' << results[j];
+		}
+		f << std::endl;
+	}
+
+}
+
+void MainWindow::SimulateParameterSweep() {
+	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// initialize context
+	TLineContext context;
+	SimulationInit(context);
+
+	// set frequency
+	context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
+
+	// generate sweep
+	real_t value_min = FloatFromString(m_lineedit_parameter_sweep_min->text().toStdString());
+	real_t value_max = FloatFromString(m_lineedit_parameter_sweep_max->text().toStdString());
+	real_t value_step = FloatFromString(m_lineedit_parameter_sweep_step->text().toStdString());
+	std::vector<real_t> sweep_values;
+	MakeSweep(sweep_values, value_min, value_max, value_step);
+
+	// prepare input and output
+	size_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
+	std::vector<real_t> combined_results;
+	combined_results.resize(TLINERESULT_COUNT * tline_type.m_modes.size() * sweep_values.size());
+
+	// simulate
+	QProgressDialogThreaded dialog("Parameter sweep ...", "Cancel", 0, (int) sweep_values.size(), this);
+	dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
+	dialog.setMinimumDuration(0);
+	dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
+		for(size_t i = 0; i < sweep_values.size(); ++i) {
+			context.m_parameters[param_index].Value() = FloatScale(sweep_values[i]);
+			tline_type.m_simulate(context);
+			std::copy(context.m_results.begin(), context.m_results.end(), combined_results.begin() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
+			task_progress = (int) i + 1;
+			if(task_canceled) {
+				throw std::runtime_error("Parameter sweep canceled by user.");
+			}
+		}
+	});
+
+	// open output file
+	std::string filename = m_lineedit_parameter_sweep_file->text().toLocal8Bit().constData();
+	std::ofstream f;
+	f.open(filename, std::ios_base::out | std::ios_base::trunc);
+	if(f.fail())
+		throw std::runtime_error("Could not open file '" + filename + "' for writing.");
+
+	// write header
+	f << tline_type.m_parameters[param_index].m_name;
+	for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
+		for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
+			f << '\t' << tline_type.m_modes[i] << ' ' << TLINERESULT_NAMES[j];
+		}
+	}
+	f << std::endl;
+
+	// write body
+	for(size_t i = 0; i < sweep_values.size(); ++i) {
+		f << sweep_values[i];
+		real_t *results = combined_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i;
+		for(size_t j = 0; j < TLINERESULT_COUNT * tline_type.m_modes.size(); ++j) {
+			f << '\t' << results[j];
+		}
+		f << std::endl;
+	}
+
+}
+
+void MainWindow::SimulateParameterTune() {
+	const TLineType &tline_type = g_tline_types[m_tline_type];
+
+	// initialize context
+	TLineContext context;
+	SimulationInit(context);
+
+	// set frequency
+	context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
+
+	// get parameter
+	size_t param_index = m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toInt();
+
+	// get target result
+	size_t result_index = clamp<size_t>(m_combobox_parameter_tune_target_result->currentIndex(), 0, TLINERESULT_COUNT * tline_type.m_modes.size() - 1);
+	real_t target_value = FloatFromString(m_lineedit_parameter_tune_target_value->text().toStdString());
+
+	// simulate
+	real_t initial_value = FloatFromVData(context.m_parameters[param_index].Value());
+	if(!FinitePositive(initial_value)) {
+		initial_value = FloatFromVData(tline_type.m_parameters[param_index].m_default_value);
+	}
+	real_t root_value = FindRootRelative([&context, &tline_type, param_index, result_index, target_value](real_t x) {
+		context.m_parameters[param_index].Value() = FloatScale(x);
+		tline_type.m_simulate(context);
+		return context.m_results[result_index] - target_value;
+	}, initial_value, 1e-8, target_value * 1e-8, 1e6);
+
+	// write the result back
+	QLineEdit *lineedit_value = static_cast<QLineEdit*>(m_widget_parameters[param_index]);
+	lineedit_value->setText(QString::number(root_value));
+
+	// show result
+	SimulationShowResult(context);
+
 }
 
 void MainWindow::ProcessSlowEvents(int msec) {
@@ -491,14 +691,10 @@ void MainWindow::OnUpdateTLineType() {
 	}
 
 	// update modes
-	//size_t current_index = m_combobox_modes->currentIndex();
 	m_combobox_modes->clear();
 	for(const std::string &mode : tline_type.m_modes) {
 		m_combobox_modes->addItem(QString::fromStdString(mode));
 	}
-	/*if(current_index < mode_count) {
-		m_combobox_modes->setCurrentIndex(current_index);
-	}*/
 
 	// clear mesh viewer
 	m_meshviewer->SetMesh(NULL);
@@ -551,187 +747,16 @@ void MainWindow::OnParameterSweepBrowse() {
 
 void MainWindow::OnSimulate() {
 
-	if(m_tline_type == INDEX_NONE)
-		return;
-	const TLineType &tline_type = g_tline_types[m_tline_type];
-
 	statusBar()->showMessage("Simulating ...");
 
 	try {
-
-		// initialize context
-		TLineContext context;
-		context.m_material_database = m_material_database.get();
-		GetParameterValues(context.m_parameters);
-
-		// check simulation type
 		switch(GetSimulationType()) {
-			case SIMULATION_SINGLE_FREQUENCY: {
-
-				// set frequency
-				context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
-
-				// simulate
-				tline_type.m_simulate(context);
-
-				break;
-			}
-			case SIMULATION_FREQUENCY_SWEEP: {
-
-				// generate sweep
-				real_t freq_min = FloatFromString(m_lineedit_frequency_sweep_min->text().toStdString()) * 1e9;
-				real_t freq_max = FloatFromString(m_lineedit_frequency_sweep_max->text().toStdString()) * 1e9;
-				real_t freq_step = FloatFromString(m_lineedit_frequency_sweep_step->text().toStdString()) * 1e9;
-				MakeSweep(context.m_frequencies, freq_min, freq_max, freq_step);
-
-				// simulate
-				QProgressDialogThreaded dialog("Frequency sweep ...", "Cancel", 0, (int) context.m_frequencies.size(), this);
-				dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
-				dialog.setMinimumDuration(0);
-				dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
-					context.m_progress_callback = [&](size_t progress) {
-						task_progress = (int) progress;
-						if(task_canceled) {
-							throw std::runtime_error("Frequency sweep canceled by user.");
-						}
-					};
-					tline_type.m_simulate(context);
-				});
-
-				// open output file
-				std::string filename = m_lineedit_frequency_sweep_file->text().toLocal8Bit().constData();
-				std::ofstream f;
-				f.open(filename, std::ios_base::out | std::ios_base::trunc);
-				if(f.fail())
-					throw std::runtime_error("Could not open file '" + filename + "' for writing.");
-
-				// write header
-				f << "Frequency";
-				for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
-					for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
-						f << '\t' << tline_type.m_modes[i] << ' ' << TLINERESULT_NAMES[j];
-					}
-				}
-				f << std::endl;
-
-				// write body
-				for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
-					f << context.m_frequencies[i];
-					real_t *results = context.m_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i;
-					for(size_t j = 0; j < TLINERESULT_COUNT * tline_type.m_modes.size(); ++j) {
-						f << '\t' << results[j];
-					}
-					f << std::endl;
-				}
-
-				break;
-			}
-			case SIMULATION_PARAMETER_SWEEP: {
-
-				// set frequency
-				context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
-
-				// generate sweep
-				real_t value_min = FloatFromString(m_lineedit_parameter_sweep_min->text().toStdString());
-				real_t value_max = FloatFromString(m_lineedit_parameter_sweep_max->text().toStdString());
-				real_t value_step = FloatFromString(m_lineedit_parameter_sweep_step->text().toStdString());
-				std::vector<real_t> sweep_values;
-				MakeSweep(sweep_values, value_min, value_max, value_step);
-
-				// prepare input and output
-				size_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
-				std::vector<real_t> combined_results;
-				combined_results.resize(TLINERESULT_COUNT * tline_type.m_modes.size() * sweep_values.size());
-
-				// simulate
-				QProgressDialogThreaded dialog("Parameter sweep ...", "Cancel", 0, (int) sweep_values.size(), this);
-				dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
-				dialog.setMinimumDuration(0);
-				dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
-					for(size_t i = 0; i < sweep_values.size(); ++i) {
-						context.m_parameters[param_index].Value() = FloatScale(sweep_values[i]);
-						tline_type.m_simulate(context);
-						std::copy(context.m_results.begin(), context.m_results.end(), combined_results.begin() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
-						task_progress = (int) i + 1;
-						if(task_canceled) {
-							throw std::runtime_error("Parameter sweep canceled by user.");
-						}
-					}
-				});
-
-				// open output file
-				std::string filename = m_lineedit_parameter_sweep_file->text().toLocal8Bit().constData();
-				std::ofstream f;
-				f.open(filename, std::ios_base::out | std::ios_base::trunc);
-				if(f.fail())
-					throw std::runtime_error("Could not open file '" + filename + "' for writing.");
-
-				// write header
-				f << tline_type.m_parameters[param_index].m_name;
-				for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
-					for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
-						f << '\t' << tline_type.m_modes[i] << ' ' << TLINERESULT_NAMES[j];
-					}
-				}
-				f << std::endl;
-
-				// write body
-				for(size_t i = 0; i < sweep_values.size(); ++i) {
-					f << sweep_values[i];
-					real_t *results = combined_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i;
-					for(size_t j = 0; j < TLINERESULT_COUNT * tline_type.m_modes.size(); ++j) {
-						f << '\t' << results[j];
-					}
-					f << std::endl;
-				}
-
-				break;
-			}
-			case SIMULATION_PARAMETER_TUNE: {
-
-				// set frequency
-				context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
-
-				// get parameter
-				size_t param_index = m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toInt();
-
-				// get target result
-				size_t result_index = clamp<size_t>(m_combobox_parameter_tune_target_result->currentIndex(), 0, TLINERESULT_COUNT * tline_type.m_modes.size() - 1);
-				real_t target_value = FloatFromString(m_lineedit_parameter_tune_target_value->text().toStdString());
-
-				// simulate
-				real_t initial_value = FloatFromVData(context.m_parameters[param_index].Value());
-				if(!FinitePositive(initial_value)) {
-					initial_value = FloatFromVData(tline_type.m_parameters[param_index].m_default_value);
-				}
-				real_t root_value = FindRootRelative([&context, &tline_type, param_index, result_index, target_value](real_t x) {
-					context.m_parameters[param_index].Value() = FloatScale(x);
-					tline_type.m_simulate(context);
-					return context.m_results[result_index] - target_value;
-				}, initial_value, 1e-8, target_value * 1e-8, 1e6);
-
-				// write the result back
-				QLineEdit *lineedit_value = static_cast<QLineEdit*>(m_widget_parameters[param_index]);
-				lineedit_value->setText(QString::number(root_value));
-
-				break;
-			}
+			case SIMULATION_SINGLE_FREQUENCY: SimulateSingleFrequency(); break;
+			case SIMULATION_FREQUENCY_SWEEP: SimulateFrequencySweep(); break;
+			case SIMULATION_PARAMETER_SWEEP: SimulateParameterSweep(); break;
+			case SIMULATION_PARAMETER_TUNE: SimulateParameterTune(); break;
 			case SIMULATION_COUNT: assert(false); break;
 		}
-
-		// show last result
-		assert(context.m_frequencies.size() > 0);
-		assert(context.m_results.size() == TLINERESULT_COUNT * tline_type.m_modes.size() * context.m_frequencies.size());
-		real_t *last_results = context.m_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * (context.m_frequencies.size() - 1);
-		for(size_t i = 0; i < tline_type.m_modes.size(); ++i) {
-			for(size_t j = 0; j < TLINERESULT_COUNT; ++j) {
-				m_lineedit_results[TLINERESULT_COUNT * i + j]->setText(QString::number(last_results[TLINERESULT_COUNT * i + j]));
-			}
-		}
-
-		// transfer mesh to viewer
-		m_meshviewer->SetMesh(std::move(context.m_output_mesh));
-
 	}
 	catch(const std::runtime_error &e) {
 		statusBar()->showMessage(QString("Simulation failed: ") + e.what());
@@ -743,7 +768,7 @@ void MainWindow::OnSimulate() {
 }
 
 void MainWindow::OnZoomChange() {
-	m_meshviewer->SetZoom((real_t) m_slider_zoom->value() * 0.000001);
+	m_meshviewer->SetZoom((real_t) m_slider_zoom->value() * 0.00001);
 }
 
 void MainWindow::OnImageTypeChange() {

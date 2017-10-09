@@ -26,6 +26,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 class MaterialDatabase;
 class MeshViewer;
+class TLineContext;
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
@@ -90,7 +91,13 @@ public:
 
 private:
 	void LoadMaterials();
-	void GetParameterValues(VData::Dict &result);
+	void SimulationInit(TLineContext &context);
+	void SimulationShowResult(TLineContext &context);
+	void SimulateSingleFrequency();
+	void SimulateFrequencySweep();
+	void SimulateParameterSweep();
+	void SimulateParameterTune();
+
 	void ProcessSlowEvents(int msec = 10);
 
 private slots:
