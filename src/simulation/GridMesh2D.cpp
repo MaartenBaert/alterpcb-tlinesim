@@ -27,11 +27,11 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 
-#define SIMULATION_VERBOSE 1
+#define SIMULATION_VERBOSE 0
 
 #if SIMULATION_VERBOSE
-#include <chrono> // TODO: remove
-#include <iostream> // TODO: remove
+#include <chrono>
+#include <iostream>
 #endif
 
 GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon) {

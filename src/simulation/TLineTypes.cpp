@@ -128,6 +128,11 @@ void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, co
 
 		}
 
+		// update progress
+		if(context.m_progress_callback) {
+			context.m_progress_callback(i + 1);
+		}
+
 	}
 
 	// cleanup

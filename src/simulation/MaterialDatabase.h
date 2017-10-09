@@ -22,10 +22,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
-#include <complex>
-#include <string>
-#include <vector>
-
 constexpr real_t VACUUM_PERMITTIVITY = 8.854187817620389e-12;
 constexpr real_t VACUUM_PERMEABILITY = 1.2566370614359173e-6;
 

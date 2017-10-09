@@ -24,11 +24,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Cow.h"
 #include "HashTable.h"
 
-#include <cstdint>
-
 #include <ostream>
-#include <string>
-#include <vector>
 
 // The internal representation of floating point numbers is scaled up by a factor of 1000000. This allows us to store
 // common values such as 0.1 and 0.254 exactly, which avoids a lot of problems with rounding errors. The JSON parser is

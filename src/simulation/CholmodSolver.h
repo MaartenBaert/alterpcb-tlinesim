@@ -23,8 +23,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "SparseMatrix.h"
 
-#include <complex>
-
 #include <cholmod.h>
 
 // Wrapper for cholmod_common.

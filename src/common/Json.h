@@ -24,7 +24,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "VData.h"
 
 #include <streambuf>
-#include <string>
 
 namespace Json {
 

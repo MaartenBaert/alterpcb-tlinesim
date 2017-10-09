@@ -25,10 +25,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "VData.h"
 #include "VDataPath.h"
 
-#include <memory>
-#include <string>
-#include <vector>
-
 class MaterialDatabase;
 class MaterialConductor;
 class MaterialDielectric;
@@ -67,6 +63,7 @@ struct TLineContext {
 	VData::Dict m_parameters;
 	std::vector<real_t> m_results;
 	std::unique_ptr<GenericMesh> m_output_mesh;
+	std::function<void(size_t)> m_progress_callback;
 };
 
 typedef void (*TLineSimulate)(TLineContext&);

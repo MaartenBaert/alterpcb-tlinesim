@@ -20,11 +20,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <cassert>
-
 #include <algorithm>
-#include <string>
-#include <vector>
 
 template<typename A, typename B>
 class EnumTranslator {

@@ -23,8 +23,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "MiscMath.h"
 
-#include <limits>
-
 // TODO: remove
 //#include <iostream>
 //#include <iomanip>

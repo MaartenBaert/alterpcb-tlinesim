@@ -22,8 +22,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
-#include <string>
-
 namespace MurmurHash {
 
 inline hash_t RotateLeft(hash_t x, uint32_t r) {

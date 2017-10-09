@@ -24,8 +24,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "VData.h"
 #include "Qt.h"
 
-#include <memory>
-
 class MaterialDatabase;
 class MeshViewer;
 
@@ -93,6 +91,7 @@ public:
 private:
 	void LoadMaterials();
 	void GetParameterValues(VData::Dict &result);
+	void ProcessSlowEvents(int msec = 10);
 
 private slots:
 	void OnUpdateTLineType();

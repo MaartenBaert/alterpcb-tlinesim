@@ -21,38 +21,27 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Basics.h"
-#include "GenericMesh.h"
 #include "Qt.h"
 
-class GenericMesh;
+#include <atomic>
 
-class MeshViewer : public QWidget {
+class QProgressDialogThreaded : public QProgressDialog {
 	Q_OBJECT
 
 private:
-	std::unique_ptr<GenericMesh> m_mesh;
-	real_t m_zoom;
-	MeshImageType m_image_type;
-	bool m_mesh_overlay;
-	size_t m_mode;
+	QTimer m_update_timer;
+	std::atomic<int> m_task_progress;
+	std::atomic<bool> m_task_canceled, m_task_stopped;
 
 public:
-	MeshViewer(QWidget* parent);
-	~MeshViewer();
+	QProgressDialogThreaded(QWidget *parent = 0, Qt::WindowFlags f = 0);
+	QProgressDialogThreaded(const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent = 0, Qt::WindowFlags f = 0);
+	~QProgressDialogThreaded();
 
-	void SetMesh(std::unique_ptr<GenericMesh> mesh);
-	void SetZoom(real_t zoom);
-	void SetImageType(MeshImageType image_type);
-	void SetMeshOverlay(bool mesh_overlay);
-	void SetMode(size_t mode);
+	void execThreaded(std::function<void(std::atomic<int>&, std::atomic<bool>&)> task);
 
-	virtual QSize minimumSizeHint() const override;
-	virtual QSize sizeHint() const override;
-
-public:
-	inline GenericMesh* GetMesh() { return m_mesh.get(); }
-
-protected:
-	virtual void paintEvent(QPaintEvent* event) override;
+private slots:
+	void OnUpdateTimer();
+	void OnCancel();
 
 };

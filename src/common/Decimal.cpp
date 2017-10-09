@@ -22,8 +22,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "MiscMath.h"
 
-#include <limits>
-
 /*
 This file implements the hard mathematical part of float-to-string and string-to-float conversions. The remaining work
 is just basic string processing. Some implementations (e.g. the standard library) try to produce results that are

@@ -42,6 +42,7 @@ HEADERS += \
 	gui/MainWindow.h \
 	gui/MeshViewer.h \
 	gui/QLineEditSmall.h \
+	gui/QProgressDialogThreaded.h \
 	gui/Qt.h \
 	simulation/CholmodSolver.h \
 	simulation/FindRoot.h \
@@ -65,6 +66,7 @@ SOURCES += \
 	gui/MainWindow.cpp \
 	gui/MeshViewer.cpp \
 	gui/QLineEditSmall.cpp \
+	gui/QProgressDialogThreaded.cpp \
 	simulation/CholmodSolver.cpp \
 	simulation/GenericMesh.cpp \
 	simulation/GridMesh2D.cpp \

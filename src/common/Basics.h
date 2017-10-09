@@ -27,8 +27,11 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 
 #include <complex>
+#include <functional>
 #include <limits>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 typedef double real_t;

@@ -24,7 +24,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "StringRegistry.h"
 
 #include <fstream>
-#include <limits>
 #include <sstream>
 #include <streambuf>
 

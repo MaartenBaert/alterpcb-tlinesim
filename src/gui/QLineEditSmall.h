@@ -24,6 +24,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Qt.h"
 
 class QLineEditSmall : public QLineEdit {
+	Q_OBJECT
 
 private:
 	int m_size_factor;

@@ -28,6 +28,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "MaterialDatabase.h"
 #include "MeshViewer.h"
 #include "QLineEditSmall.h"
+#include "QProgressDialogThreaded.h"
 #include "TLineTypes.h"
 
 #include <fstream>
@@ -279,6 +280,8 @@ MainWindow::MainWindow() {
 		layout2->addWidget(groupbox_results, 1);
 	}
 
+	setStatusBar(new QStatusBar(this));
+
 	LoadMaterials();
 	OnUpdateTLineType();
 	OnUpdateSimulationType();
@@ -298,7 +301,7 @@ MainWindow::~MainWindow() {
 
 void MainWindow::LoadMaterials() {
 	if(g_application_data_dir.isEmpty()) {
-		std::cerr << "Error: Could not load materials, data directory is missing." << std::endl;
+		statusBar()->showMessage("Error: Could not load materials, data directory is missing.");
 		return;
 	}
 	try {
@@ -306,8 +309,8 @@ void MainWindow::LoadMaterials() {
 		m_material_database->Finish();
 	}
 	catch(const std::runtime_error &e) {
-		std::cerr << "Error: Could not load material database:" << std::endl;
-		std::cerr << "    " << e.what() << std::endl;
+		statusBar()->showMessage(QString("Error: Could not load material database: ") + e.what());
+		return;
 	}
 }
 
@@ -343,12 +346,23 @@ void MainWindow::GetParameterValues(VData::Dict &result) {
 	}
 }
 
+void MainWindow::ProcessSlowEvents(int msec) {
+	QTimer timer;
+	timer.setSingleShot(true);
+	timer.start(msec);
+	while(timer.isActive()) {
+		QApplication::processEvents(QEventLoop::WaitForMoreEvents);
+	}
+}
+
 void MainWindow::OnUpdateTLineType() {
 
 	m_tline_type = clamp<size_t>(m_combobox_tline_types->currentIndex(), 0, g_tline_types.size() - 1);
 	const TLineType &tline_type = g_tline_types[m_tline_type];
 	const std::vector<MaterialConductor> &conductors = m_material_database->GetConductors();
 	const std::vector<MaterialDielectric> &dielectrics = m_material_database->GetDielectrics();
+
+	statusBar()->clearMessage();
 
 	// update description
 	m_textedit_description->setPlainText(QString::fromStdString(tline_type.m_description));
@@ -541,6 +555,8 @@ void MainWindow::OnSimulate() {
 		return;
 	const TLineType &tline_type = g_tline_types[m_tline_type];
 
+	statusBar()->showMessage("Simulating ...");
+
 	try {
 
 		// initialize context
@@ -569,7 +585,18 @@ void MainWindow::OnSimulate() {
 				MakeSweep(context.m_frequencies, freq_min, freq_max, freq_step);
 
 				// simulate
-				tline_type.m_simulate(context);
+				QProgressDialogThreaded dialog("Frequency sweep ...", "Cancel", 0, (int) context.m_frequencies.size(), this);
+				dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
+				dialog.setMinimumDuration(0);
+				dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
+					context.m_progress_callback = [&](size_t progress) {
+						task_progress = (int) progress;
+						if(task_canceled) {
+							throw std::runtime_error("Frequency sweep canceled by user.");
+						}
+					};
+					tline_type.m_simulate(context);
+				});
 
 				// open output file
 				std::string filename = m_lineedit_frequency_sweep_file->text().toLocal8Bit().constData();
@@ -611,15 +638,26 @@ void MainWindow::OnSimulate() {
 				std::vector<real_t> sweep_values;
 				MakeSweep(sweep_values, value_min, value_max, value_step);
 
-				// simulate
+				// prepare input and output
 				size_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
 				std::vector<real_t> combined_results;
 				combined_results.resize(TLINERESULT_COUNT * tline_type.m_modes.size() * sweep_values.size());
-				for(size_t i = 0; i < sweep_values.size(); ++i) {
-					context.m_parameters[param_index].Value() = FloatScale(sweep_values[i]);
-					tline_type.m_simulate(context);
-					std::copy(context.m_results.begin(), context.m_results.end(), combined_results.begin() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
-				}
+
+				// simulate
+				QProgressDialogThreaded dialog("Parameter sweep ...", "Cancel", 0, (int) sweep_values.size(), this);
+				dialog.setWindowTitle(MainWindow::WINDOW_CAPTION);
+				dialog.setMinimumDuration(0);
+				dialog.execThreaded([&](std::atomic<int> &task_progress, std::atomic<bool> &task_canceled) {
+					for(size_t i = 0; i < sweep_values.size(); ++i) {
+						context.m_parameters[param_index].Value() = FloatScale(sweep_values[i]);
+						tline_type.m_simulate(context);
+						std::copy(context.m_results.begin(), context.m_results.end(), combined_results.begin() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
+						task_progress = (int) i + 1;
+						if(task_canceled) {
+							throw std::runtime_error("Parameter sweep canceled by user.");
+						}
+					}
+				});
 
 				// open output file
 				std::string filename = m_lineedit_parameter_sweep_file->text().toLocal8Bit().constData();
@@ -696,9 +734,11 @@ void MainWindow::OnSimulate() {
 
 	}
 	catch(const std::runtime_error &e) {
-		std::cerr << "Error: Could not simulate transmission line:" << std::endl;
-		std::cerr << "    " << e.what() << std::endl;
+		statusBar()->showMessage(QString("Simulation failed: ") + e.what());
+		return;
 	}
+
+	statusBar()->showMessage("Simulation complete.");
 
 }
 

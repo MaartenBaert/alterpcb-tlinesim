@@ -22,8 +22,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "HashTable.h"
 
-#include <string>
-
 /*
 AlterPCB uses short strings in lots of places, most importantly for parameters. String lookup is slow, so instead all
 these strings are replaced with a string tag (stringtag_t). This is really just a number that identifies, nothing more.
