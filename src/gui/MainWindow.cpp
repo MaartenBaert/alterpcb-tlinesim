@@ -515,6 +515,8 @@ void MainWindow::OnUpdateSimulationType() {
 
 void MainWindow::OnFrequencySweepBrowse() {
 	QString selected_file = QFileDialog::getSaveFileName(this, "Save results as", m_lineedit_frequency_sweep_file->text(), "Text Files (*.txt);;All Files (*)");
+	if(selected_file.isEmpty())
+		return;
 	QFileInfo fi(selected_file);
 	if(fi.suffix().isEmpty()) {
 		selected_file += ".txt";
@@ -524,6 +526,8 @@ void MainWindow::OnFrequencySweepBrowse() {
 
 void MainWindow::OnParameterSweepBrowse() {
 	QString selected_file = QFileDialog::getSaveFileName(this, "Save results as", m_lineedit_parameter_sweep_file->text(), "Text Files (*.txt);;All Files (*)");
+	if(selected_file.isEmpty())
+		return;
 	QFileInfo fi(selected_file);
 	if(fi.suffix().isEmpty()) {
 		selected_file += ".txt";

@@ -22,11 +22,7 @@ libtool
 stamp-h1
 
 build/
-build-debug/
-build-release/
-build-tests/
-build-alterpcb-tlinesim-Desktop-Debug/
-build-alterpcb-tlinesim-Desktop-Release/
+build-*/
 src/alterpcb-tlinesim
 
 private-*

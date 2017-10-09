@@ -30,6 +30,31 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 //#include <GL/glew.h>
 
 #include <QtGui>
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+
+#include <QAction>
+#include <QApplication>
+#include <QFileDialog>
+#include <QMainWindow>
+
+#include <QButtonGroup>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QGroupBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QScrollArea>
+
+#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
+#endif
+
 //#include <QtOpenGL/QGLFormat>
 //#include <QtOpenGL/QGLWidget>
 

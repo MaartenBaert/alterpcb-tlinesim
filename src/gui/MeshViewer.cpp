@@ -157,7 +157,7 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 						if(m_mesh_overlay) {
 							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
 						}
-						Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmax(0.0f, 1.0f - (float) fabs(temp2))};
+						Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
 						row[i] = ColorBlend(plot_color, contour_color).ToUint32();
 					}
 				}
