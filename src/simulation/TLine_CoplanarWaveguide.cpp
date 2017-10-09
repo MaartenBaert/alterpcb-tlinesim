@@ -99,8 +99,8 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	real_t substrate_thickness = FloatUnscale(root.GetMember("substrate_thickness").AsFloat());
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
 
-	real_t space_x = (track_width + track_thickness + substrate_thickness) * 15.0;
-	real_t space_y = (track_width + track_thickness + substrate_thickness) * 25.0;
+	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness) * 15.0;
+	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness) * 25.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
 		substrate_thickness,

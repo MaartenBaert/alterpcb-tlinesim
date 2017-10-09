@@ -74,4 +74,5 @@ SOURCES += \
 	simulation/SparseMatrix.cpp \
 	simulation/TLineTypes.cpp \
 	simulation/TLine_CoplanarWaveguide.cpp \
-	simulation/TLine_Microstrip.cpp
+	simulation/TLine_Microstrip.cpp \
+	simulation/TLine_Stripline.cpp

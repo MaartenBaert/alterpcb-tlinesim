@@ -27,16 +27,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "VDataPath.h"
 
 template<typename T>
-struct NameCompare {
-	inline bool operator()(const T &a, const T &b) const {
-		return a.m_name < b.m_name;
-	}
-	inline bool operator()(const T &a, const std::string &b) const {
-		return a.m_name < b;
-	}
-};
-
-template<typename T>
 struct NaturalNameCompare {
 	inline bool operator()(const T &a, const T &b) const {
 		return NaturalStringLess(a.m_name, b.m_name);
@@ -91,14 +81,14 @@ void MaterialDatabase::Finish() {
 }
 
 const MaterialConductor *MaterialDatabase::FindConductor(const std::string &name) {
-	auto it = std::lower_bound(m_conductors.begin(), m_conductors.end(), name, NameCompare<MaterialConductor>());
+	auto it = std::lower_bound(m_conductors.begin(), m_conductors.end(), name, NaturalNameCompare<MaterialConductor>());
 	if(it == m_conductors.end() || it->m_name != name)
 		return NULL;
 	return &(*it);
 }
 
 const MaterialDielectric *MaterialDatabase::FindDielectric(const std::string &name) {
-	auto it = std::lower_bound(m_dielectrics.begin(), m_dielectrics.end(), name, NameCompare<MaterialDielectric>());
+	auto it = std::lower_bound(m_dielectrics.begin(), m_dielectrics.end(), name, NaturalNameCompare<MaterialDielectric>());
 	if(it == m_dielectrics.end() || it->m_name != name)
 		return NULL;
 	return &(*it);

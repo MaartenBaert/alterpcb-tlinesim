@@ -47,10 +47,12 @@ const char *const TLINERESULT_UNITS[TLINERESULT_COUNT] = {
 std::vector<TLineType> g_tline_types;
 
 void RegisterTLine_Microstrip();
+void RegisterTLine_Stripline();
 void RegisterTLine_CoplanarWaveguide();
 
 void RegisterTLineTypes() {
 	RegisterTLine_Microstrip();
+	RegisterTLine_Stripline();
 	RegisterTLine_CoplanarWaveguide();
 }
 

@@ -236,8 +236,9 @@ MainWindow::MainWindow() {
 		m_buttongroup_image_type->addButton(radio_imagetype_mesh, MESHIMAGETYPE_MESH);
 		m_buttongroup_image_type->addButton(radio_imagetype_field_e, MESHIMAGETYPE_FIELD_E);
 		m_buttongroup_image_type->addButton(radio_imagetype_field_h, MESHIMAGETYPE_FIELD_H);
-		radio_imagetype_mesh->setChecked(true);
+		radio_imagetype_field_e->setChecked(true);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
+		m_checkbox_mesh_overlay->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
 		m_combobox_modes = new QComboBox(groupbox_viewer);
 		m_combobox_modes->setMinimumWidth(120);
