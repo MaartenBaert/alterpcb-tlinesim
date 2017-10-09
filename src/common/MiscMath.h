@@ -62,6 +62,13 @@ inline ptrdiff_t rints(F x) {
 	return (sizeof(long int) >= sizeof(ptrdiff_t))? (ptrdiff_t) lrint(x) : (ptrdiff_t) llrint(x);
 }
 
+#ifdef _WIN32
+template<typename F>
+inline F exp10(F x) {
+	return exp(x * (F) M_LN10);
+}
+#endif
+
 template<typename F>
 inline bool FinitePositive(F x) {
 	return std::isfinite(x) && x > 0.0;
