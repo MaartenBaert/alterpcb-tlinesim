@@ -24,7 +24,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Json.h"
 #include "NaturalSort.h"
 #include "StringRegistry.h"
-#include "VDataPath.h"
+#include "VDataReader.h"
 
 template<typename T>
 struct NaturalNameCompare {
@@ -47,11 +47,11 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 
 	VData data;
 	Json::FromFile(data, filename);
-	VDataPath root(data);
+	VDataReader root(data);
 
-	VDataPath conductors = root.GetMember("conductors");
+	VDataReader conductors = root.GetMember("conductors");
 	for(size_t i = 0; i < conductors.GetElementCount(); ++i) {
-		VDataPath conductor = conductors.GetElement(i);
+		VDataReader conductor = conductors.GetElement(i);
 		m_conductors.push_back(MaterialConductor{
 			conductor.GetMember("name").AsString(),
 			conductor.GetMember("conductivity").AsFloat(),
@@ -60,9 +60,9 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 		});
 	}
 
-	VDataPath dielectrics = root.GetMember("dielectrics");
+	VDataReader dielectrics = root.GetMember("dielectrics");
 	for(size_t i = 0; i < dielectrics.GetElementCount(); ++i) {
-		VDataPath dielectric = dielectrics.GetElement(i);
+		VDataReader dielectric = dielectrics.GetElement(i);
 		m_dielectrics.push_back(MaterialDielectric{
 			dielectric.GetMember("name").AsString(),
 			dielectric.GetMember("permittivity_x").AsFloat(),

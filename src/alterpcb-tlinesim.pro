@@ -33,7 +33,7 @@ HEADERS += \
 	common/StringHelper.h \
 	common/StringRegistry.h \
 	common/VData.h \
-	common/VDataPath.h \
+	common/VDataReader.h \
 	common/Vector.h \
 	gui/ApplicationDirs.h \
 	gui/GlobalDirs.h \

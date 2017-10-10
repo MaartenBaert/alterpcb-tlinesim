@@ -56,7 +56,7 @@ void RegisterTLineTypes() {
 	RegisterTLine_CoplanarWaveguide();
 }
 
-const MaterialConductor* FindConductor(VDataPathDict &root, const char *key, MaterialDatabase *material_database) {
+const MaterialConductor* FindConductor(VDataDictReader &root, const char *key, MaterialDatabase *material_database) {
 	std::string name = root.GetMember(key).AsString();
 	const MaterialConductor *res = material_database->FindConductor(name);
 	if(res == NULL)
@@ -64,7 +64,7 @@ const MaterialConductor* FindConductor(VDataPathDict &root, const char *key, Mat
 	return res;
 }
 
-const MaterialDielectric* FindDielectric(VDataPathDict &root, const char *key, MaterialDatabase *material_database) {
+const MaterialDielectric* FindDielectric(VDataDictReader &root, const char *key, MaterialDatabase *material_database) {
 	std::string name = root.GetMember(key).AsString();
 	const MaterialDielectric *res = material_database->FindDielectric(name);
 	if(res == NULL)

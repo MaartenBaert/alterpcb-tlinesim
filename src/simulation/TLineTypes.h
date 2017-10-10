@@ -23,7 +23,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "GenericMesh.h"
 #include "VData.h"
-#include "VDataPath.h"
+#include "VDataReader.h"
 
 class MaterialDatabase;
 class MaterialConductor;
@@ -83,6 +83,6 @@ extern std::vector<TLineType> g_tline_types;
 void RegisterTLineTypes();
 
 std::string CanonicalName(const std::string& name);
-const MaterialConductor* FindConductor(VDataPathDict &root, const char *key, MaterialDatabase *material_database);
-const MaterialDielectric* FindDielectric(VDataPathDict &root, const char *key, MaterialDatabase *material_database);
+const MaterialConductor* FindConductor(VDataDictReader &root, const char *key, MaterialDatabase *material_database);
+const MaterialDielectric* FindDielectric(VDataDictReader &root, const char *key, MaterialDatabase *material_database);
 void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, const std::vector<real_t> &mode_scale);

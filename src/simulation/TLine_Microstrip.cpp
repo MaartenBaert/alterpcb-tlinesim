@@ -30,7 +30,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 void TLine_Microstrip_Single(TLineContext &context) {
 
-	VDataPathDict root(context.m_parameters);
+	VDataDictReader root(context.m_parameters);
 
 	real_t track_width = root.GetMember("track_width").AsFloat();
 	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
@@ -79,7 +79,7 @@ void TLine_Microstrip_Single(TLineContext &context) {
 
 void TLine_Microstrip_Differential(TLineContext &context) {
 
-	VDataPathDict root(context.m_parameters);
+	VDataDictReader root(context.m_parameters);
 
 	real_t track_width = root.GetMember("track_width").AsFloat();
 	real_t track_spacing = root.GetMember("track_spacing").AsFloat();

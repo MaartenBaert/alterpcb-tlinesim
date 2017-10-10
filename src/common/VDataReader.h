@@ -26,16 +26,16 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "StringRegistry.h"
 #include "VData.h"
 
-class VDataPath {
+class VDataReader {
 
 private:
 	const VData &m_data;
-	VDataPath *m_parent;
+	VDataReader *m_parent;
 	stringtag_t m_key;
 	size_t m_index;
 
 public:
-	inline VDataPath(const VData &data, VDataPath *parent = NULL, stringtag_t key = INDEX_NONE, size_t index = INDEX_NONE)
+	inline VDataReader(const VData &data, VDataReader *parent = NULL, stringtag_t key = INDEX_NONE, size_t index = INDEX_NONE)
 		: m_data(data), m_parent(parent), m_key(key), m_index(index) {}
 
 	inline bool AsBool() {
@@ -71,38 +71,38 @@ public:
 		return list.size();
 	}
 
-	inline VDataPath GetElement(size_t index) {
+	inline VDataReader GetElement(size_t index) {
 		if(m_data.GetType() != VDATA_LIST)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be list, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::List &list = m_data.AsList();
 		if(index >= list.size())
 			throw std::runtime_error(MakeString("Index '", index, "' not found in '", *this, "'."));
-		return VDataPath(list[index], this, INDEX_NONE, index);
+		return VDataReader(list[index], this, INDEX_NONE, index);
 	}
 
-	inline VDataPath GetMember(stringtag_t key) {
+	inline VDataReader GetMember(stringtag_t key) {
 		if(m_data.GetType() != VDATA_DICT)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be dict, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::Dict &dict = m_data.AsDict();
 		size_t index = dict.Find(key);
 		if(index == INDEX_NONE)
 			throw std::runtime_error(MakeString("Key '", StringRegistry::GetString(key), "' not found in '", *this, "'."));
-		return VDataPath(dict[index].Value(), this, key, INDEX_NONE);
+		return VDataReader(dict[index].Value(), this, key, INDEX_NONE);
 	}
-	inline VDataPath GetMember(const char *key) {
+	inline VDataReader GetMember(const char *key) {
 		return GetMember(StringRegistry::NewTag(key));
 	}
 
-	inline VDataPath GetMemberDefault(stringtag_t key, const VData &default_value) {
+	inline VDataReader GetMemberDefault(stringtag_t key, const VData &default_value) {
 		if(m_data.GetType() != VDATA_DICT)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be dict, got ", EnumToString(m_data.GetType()), " instead."));
 		const VData::Dict &dict = m_data.AsDict();
 		size_t index = dict.Find(key);
 		if(index == INDEX_NONE)
-			return VDataPath(default_value, this, key, INDEX_NONE);
-		return VDataPath(dict[index].Value(), this, key, INDEX_NONE);
+			return VDataReader(default_value, this, key, INDEX_NONE);
+		return VDataReader(dict[index].Value(), this, key, INDEX_NONE);
 	}
-	inline VDataPath GetMemberDefault(const char *key, const VData &default_value) {
+	inline VDataReader GetMemberDefault(const char *key, const VData &default_value) {
 		return GetMemberDefault(StringRegistry::NewTag(key), default_value);
 	}
 
@@ -111,7 +111,7 @@ public:
 	//inline VDataPath* GetParent() { return m_parent; }
 
 public:
-	inline friend std::ostream& operator<<(std::ostream &stream, const VDataPath &path) {
+	inline friend std::ostream& operator<<(std::ostream &stream, const VDataReader &path) {
 		if(path.m_parent != NULL)
 			stream << *path.m_parent;
 		if(path.m_key != INDEX_NONE) {
@@ -128,31 +128,31 @@ public:
 
 };
 
-class VDataPathDict {
+class VDataDictReader {
 
 private:
 	const VData::Dict &m_dict;
 
 public:
-	inline VDataPathDict(const VData::Dict &dict) : m_dict(dict) {}
+	inline VDataDictReader(const VData::Dict &dict) : m_dict(dict) {}
 
-	inline VDataPath GetMember(stringtag_t key) {
+	inline VDataReader GetMember(stringtag_t key) {
 		size_t index = m_dict.Find(key);
 		if(index == INDEX_NONE)
 			throw std::runtime_error(MakeString("Key '", StringRegistry::GetString(key), "' not found."));
-		return VDataPath(m_dict[index].Value(), NULL, key, INDEX_NONE);
+		return VDataReader(m_dict[index].Value(), NULL, key, INDEX_NONE);
 	}
-	inline VDataPath GetMember(const char *key) {
+	inline VDataReader GetMember(const char *key) {
 		return GetMember(StringRegistry::NewTag(key));
 	}
 
-	inline VDataPath GetMemberDefault(stringtag_t key, const VData &default_value) {
+	inline VDataReader GetMemberDefault(stringtag_t key, const VData &default_value) {
 		size_t index = m_dict.Find(key);
 		if(index == INDEX_NONE)
-			return VDataPath(default_value, NULL, key, INDEX_NONE);
-		return VDataPath(m_dict[index].Value(), NULL, key, INDEX_NONE);
+			return VDataReader(default_value, NULL, key, INDEX_NONE);
+		return VDataReader(m_dict[index].Value(), NULL, key, INDEX_NONE);
 	}
-	inline VDataPath GetMemberDefault(const char *key, const VData &default_value) {
+	inline VDataReader GetMemberDefault(const char *key, const VData &default_value) {
 		return GetMemberDefault(StringRegistry::NewTag(key), default_value);
 	}
 
