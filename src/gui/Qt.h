@@ -49,6 +49,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QStatusBar>
 
 #include <QGridLayout>
 #include <QHBoxLayout>
