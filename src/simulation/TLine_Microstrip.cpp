@@ -32,10 +32,10 @@ void TLine_Microstrip_Single(TLineContext &context) {
 
 	VDataPathDict root(context.m_parameters);
 
-	real_t track_width = FloatUnscale(root.GetMember("track_width").AsFloat());
-	real_t track_thickness = FloatUnscale(root.GetMember("track_thickness").AsFloat());
+	real_t track_width = root.GetMember("track_width").AsFloat();
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_thickness = FloatUnscale(root.GetMember("substrate_thickness").AsFloat());
+	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
 
 	real_t space_x = (track_width + track_thickness + substrate_thickness) * 15.0;
@@ -81,11 +81,11 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 
 	VDataPathDict root(context.m_parameters);
 
-	real_t track_width = FloatUnscale(root.GetMember("track_width").AsFloat());
-	real_t track_spacing = FloatUnscale(root.GetMember("track_spacing").AsFloat());
-	real_t track_thickness = FloatUnscale(root.GetMember("track_thickness").AsFloat());
+	real_t track_width = root.GetMember("track_width").AsFloat();
+	real_t track_spacing = root.GetMember("track_spacing").AsFloat();
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_thickness = FloatUnscale(root.GetMember("substrate_thickness").AsFloat());
+	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
 
 	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness) * 15.0;

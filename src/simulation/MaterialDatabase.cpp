@@ -54,9 +54,9 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 		VDataPath conductor = conductors.GetElement(i);
 		m_conductors.push_back(MaterialConductor{
 			conductor.GetMember("name").AsString(),
-			FloatUnscale(conductor.GetMember("conductivity").AsFloat()),
-			FloatUnscale(conductor.GetMemberDefault("permeability", default_permeability).AsFloat()),
-			FloatUnscale(conductor.GetMemberDefault("permeability_unity_frequency", default_permeability_unity_frequency).AsFloat()),
+			conductor.GetMember("conductivity").AsFloat(),
+			conductor.GetMemberDefault("permeability", default_permeability).AsFloat(),
+			conductor.GetMemberDefault("permeability_unity_frequency", default_permeability_unity_frequency).AsFloat(),
 		});
 	}
 
@@ -65,11 +65,11 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 		VDataPath dielectric = dielectrics.GetElement(i);
 		m_dielectrics.push_back(MaterialDielectric{
 			dielectric.GetMember("name").AsString(),
-			FloatUnscale(dielectric.GetMember("permittivity_x").AsFloat()),
-			FloatUnscale(dielectric.GetMember("permittivity_y").AsFloat()),
-			FloatUnscale(dielectric.GetMember("loss_tangent_x").AsFloat()),
-			FloatUnscale(dielectric.GetMember("loss_tangent_y").AsFloat()),
-			FloatUnscale(dielectric.GetMember("test_frequency").AsFloat()),
+			dielectric.GetMember("permittivity_x").AsFloat(),
+			dielectric.GetMember("permittivity_y").AsFloat(),
+			dielectric.GetMember("loss_tangent_x").AsFloat(),
+			dielectric.GetMember("loss_tangent_y").AsFloat(),
+			dielectric.GetMember("test_frequency").AsFloat(),
 		});
 	}
 

@@ -52,9 +52,9 @@ public:
 
 	inline real_t AsFloat() {
 		if(m_data.GetType() == VDATA_INT)
-			return FloatScale((real_t) m_data.AsInt()); // implicit int to float conversion
+			return (real_t) m_data.AsInt(); // implicit int to float conversion
 		if(m_data.GetType() == VDATA_FLOAT)
-			return m_data.AsFloat();
+			return FloatUnscale(m_data.AsFloat());
 		throw std::runtime_error(MakeString("Expected '", *this, "' to be float, got ", EnumToString(m_data.GetType()), " instead."));
 	}
 
