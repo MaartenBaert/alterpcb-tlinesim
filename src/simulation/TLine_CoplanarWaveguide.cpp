@@ -38,9 +38,12 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
 	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
+	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat();
+	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat();
+	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
 
-	real_t space_x = (track_width + track_thickness + substrate_thickness) * 15.0;
-	real_t space_y = (track_width + track_thickness + substrate_thickness) * 25.0;
+	real_t space_x = (track_width + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	real_t space_y = (track_width + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track_box = {
 		-0.5 * track_width,
 		substrate_thickness,
@@ -68,6 +71,10 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	};
 	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
 	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
+	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
+	Box2D solder_mask_box2 = {track_box.x1 - solder_mask_thickness_1, track_box.y1, track_box.x2 + solder_mask_thickness_1, track_box.y2 + solder_mask_thickness_1};
+	Box2D solder_mask_box3 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
+	Box2D solder_mask_box4 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
 
 	real_t step0 = REAL_MAX, step1 = fmin(ground_spacing, substrate_thickness) * 0.02;
 
@@ -81,6 +88,10 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	mesh->AddConductor(ground1_box, step0, step1, step1, step1, track_material, port_ground);
 	mesh->AddConductor(ground2_box, step1, step0, step1, step1, track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
+	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box4, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
 	TLineSolveModes(context, {0.0, 1.0}, {1.0});
@@ -98,9 +109,12 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
 	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
+	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat();
+	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat();
+	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
 
-	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness) * 15.0;
-	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness) * 25.0;
+	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
 		substrate_thickness,
@@ -129,6 +143,11 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	};
 	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
 	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
+	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
+	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
+	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
+	Box2D solder_mask_box4 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
+	Box2D solder_mask_box5 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
 
 	real_t step0 = REAL_MAX, step1 = fmin(fmin(track_spacing, ground_spacing), substrate_thickness) * 0.02;
 
@@ -144,6 +163,11 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	mesh->AddConductor(ground1_box, step0, step1, step1, step1, track_material, port_ground);
 	mesh->AddConductor(ground2_box, step1, step0, step1, step1, track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
+	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box4, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box5, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
 	TLineSolveModes(context, {0.0, 1.0, -1.0, 0.0, 1.0, 1.0}, {2.0, 1.0});
@@ -157,8 +181,11 @@ void RegisterTLine_CoplanarWaveguide() {
 	VData default_ground_spacing = Json::FromString("1.0");
 	VData default_track_thickness = Json::FromString("0.035");
 	VData default_substrate_thickness = Json::FromString("1.6");
+	VData default_solder_mask_thickness_1 = Json::FromString("0.015");
+	VData default_solder_mask_thickness_2 = Json::FromString("0.025");
 	VData default_track_material = "Copper";
 	VData default_substrate_material = "Isola DE104";
+	VData default_solder_mask_material = "Solder Mask";
 
 	g_tline_types.push_back(TLineType{
 		"Coplanar Waveguide (single)",
@@ -167,12 +194,15 @@ void RegisterTLine_CoplanarWaveguide() {
 		"Ground vias should be placed on both sides of the track at regular intervals (less than 1/10th of the wavelength) to ensure correct behavior. "
 		"Isolation can be improved by adding more vias.",
 		{
-			{"Track Width"        , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
-			{"Ground Spacing"     , TLINE_PARAMETERTYPE_REAL               , default_ground_spacing     , true , 0},
-			{"Track Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
-			{"Track Material"     , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
-			{"Substrate Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
+			{"Track Width"            , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
+			{"Ground Spacing"         , TLINE_PARAMETERTYPE_REAL               , default_ground_spacing         , true , 0},
+			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , default_track_thickness        , true , 0},
+			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material         , false, 1},
+			{"Substrate Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material"     , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Solder Mask Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_1, true , 0},
+			{"Solder Mask Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_2, true , 0},
+			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_solder_mask_material   , false, 0},
 		},
 		{"Single-ended"},
 		&TLine_CoplanarWaveguide_Single,
@@ -185,13 +215,16 @@ void RegisterTLine_CoplanarWaveguide() {
 		"Ground vias should be placed on both sides of the tracks at regular intervals (less than 1/10th of the wavelength) to ensure correct behavior. "
 		"Isolation can be improved by adding more vias.",
 		{
-			{"Track Width"        , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
-			{"Track Spacing"      , TLINE_PARAMETERTYPE_REAL               , default_track_spacing      , true , 0},
-			{"Ground Spacing"     , TLINE_PARAMETERTYPE_REAL               , default_ground_spacing     , true , 0},
-			{"Track Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
-			{"Track Material"     , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
-			{"Substrate Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
+			{"Track Width"            , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
+			{"Track Spacing"          , TLINE_PARAMETERTYPE_REAL               , default_track_spacing          , true , 0},
+			{"Ground Spacing"         , TLINE_PARAMETERTYPE_REAL               , default_ground_spacing         , true , 0},
+			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , default_track_thickness        , true , 0},
+			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material         , false, 1},
+			{"Substrate Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material"     , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Solder Mask Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_1, true , 0},
+			{"Solder Mask Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_2, true , 0},
+			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_solder_mask_material   , false, 0},
 		},
 		{"Differential", "Common-mode"},
 		&TLine_CoplanarWaveguide_Differential,

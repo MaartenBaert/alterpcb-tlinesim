@@ -965,6 +965,14 @@
 			"test_frequency": 10.0e9
 		},
 		{
+			"name": "Solder Mask",
+			"permittivity_x": 3.5,
+			"permittivity_y": 3.5,
+			"loss_tangent_x": 0.025,
+			"loss_tangent_y": 0.025,
+			"test_frequency": 1.0e9
+		},
+		{
 			"name": "Taconic RF-35",
 			"permittivity_x": 3.9,
 			"permittivity_y": 3.45,
