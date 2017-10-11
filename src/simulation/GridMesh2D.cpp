@@ -537,12 +537,25 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, Me
 	assert(type == MESHIMAGETYPE_MESH);
 	UNUSED(mode);
 	UNUSED(type);
+	size_t num_materials = 0;
+	const MaterialDielectric *last_material = NULL;
+	std::vector<real_t> dielectric_values(m_dielectrics.size());
+	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
+		if(m_dielectrics[i].m_material != last_material) {
+			++num_materials;
+			last_material = m_dielectrics[i].m_material;
+		}
+		dielectric_values[i] = (real_t) num_materials;
+	}
+	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
+		dielectric_values[i] *= 0.9 / (real_t) (num_materials + 1);
+	}
 	cell_values.resize(m_cells.size());
 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 			size_t cell_index = GetCellIndex(ix, iy);
 			Cell &cell = m_cells[cell_index];
-			real_t val = (cell.m_conductor != INDEX_NONE)? 0.0 : (cell.m_dielectric != INDEX_NONE)? 0.45 : 0.9;
+			real_t val = (cell.m_conductor != INDEX_NONE)? 0.0 : (cell.m_dielectric != INDEX_NONE)? dielectric_values[cell.m_dielectric] : 0.9;
 			if((ix & 1) == (iy & 1))
 				val += 0.1;
 			cell_values[cell_index] = val;
@@ -577,6 +590,22 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 
 	// sort the list
 	std::sort(grid.begin(), grid.end());
+
+	// propagate minimum step size
+	real_t min_step = grid[0].m_step;
+	for(size_t i = 1; i < grid.size(); ++i) {
+		if(min_step != REAL_MAX)
+			min_step += (grid[i].m_value - grid[i - 1].m_value) * inc;
+		min_step = fmin(min_step, grid[i].m_step);
+		grid[i].m_step = min_step;
+	}
+	for(size_t i = grid.size() - 1; i > 0; ) {
+		--i;
+		if(min_step != REAL_MAX)
+			min_step += (grid[i + 1].m_value - grid[i].m_value) * inc;
+		min_step = fmin(min_step, grid[i].m_step);
+		grid[i].m_step = min_step;
+	}
 
 	// combine lines that are closer than 'epsilon'
 	result.clear();
