@@ -32,17 +32,17 @@ void TLine_Microstrip_Single(TLineContext &context) {
 
 	VDataDictReader root(context.m_parameters);
 
-	real_t track_width = root.GetMember("track_width").AsFloat();
-	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
+	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
-	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat();
-	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat();
+	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat() * 1e-3;
+	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat() * 1e-3;
 	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
 
-	real_t space_x = (track_width + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
-	real_t space_y = (track_width + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
+	real_t space_x = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	real_t space_y = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track_box = {
 		-0.5 * track_width,
 		substrate_thickness,
@@ -88,18 +88,18 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 
 	VDataDictReader root(context.m_parameters);
 
-	real_t track_width = root.GetMember("track_width").AsFloat();
-	real_t track_spacing = root.GetMember("track_spacing").AsFloat();
-	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_spacing = root.GetMember("track_spacing").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat();
+	real_t substrate_thickness = root.GetMember("substrate_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_material = FindDielectric(root, "substrate_material", context.m_material_database);
-	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat();
-	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat();
+	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat() * 1e-3;
+	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat() * 1e-3;
 	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
 
-	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
-	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + fmax(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
+	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
 		substrate_thickness,
@@ -125,7 +125,7 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
 	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
 
-	real_t step0 = REAL_MAX, step1 = fmin(track_spacing, substrate_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * 0.02;
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
 

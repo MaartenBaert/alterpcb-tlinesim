@@ -42,6 +42,7 @@ struct MaterialDielectric {
 struct MaterialConductorProperties {
 	real_t m_conductivity;
 	real_t m_permeability;
+	real_t m_surface_resistivity;
 };
 
 struct MaterialDielectricProperties {

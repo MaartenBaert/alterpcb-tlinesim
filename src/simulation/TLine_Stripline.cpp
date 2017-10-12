@@ -32,12 +32,12 @@ void TLine_Stripline_Single(TLineContext &context) {
 
 	VDataDictReader root(context.m_parameters);
 
-	real_t track_width = root.GetMember("track_width").AsFloat();
-	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat();
+	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_1_material = FindDielectric(root, "substrate_1_material", context.m_material_database);
-	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat();
+	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_2_material = FindDielectric(root, "substrate_2_material", context.m_material_database);
 
 	real_t space_x = (track_width + track_thickness + substrate_1_thickness + substrate_2_thickness) * 10.0;
@@ -64,9 +64,9 @@ void TLine_Stripline_Single(TLineContext &context) {
 	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
 	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = fmin(substrate_1_thickness, substrate_2_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(substrate_1_thickness, substrate_2_thickness) * 0.02;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, fmin(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -86,13 +86,13 @@ void TLine_Stripline_Differential(TLineContext &context) {
 
 	VDataDictReader root(context.m_parameters);
 
-	real_t track_width = root.GetMember("track_width").AsFloat();
-	real_t track_spacing = root.GetMember("track_spacing").AsFloat();
-	real_t track_thickness = root.GetMember("track_thickness").AsFloat();
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_spacing = root.GetMember("track_spacing").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat();
+	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_1_material = FindDielectric(root, "substrate_1_material", context.m_material_database);
-	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat();
+	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_2_material = FindDielectric(root, "substrate_2_material", context.m_material_database);
 
 	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_1_thickness + substrate_2_thickness) * 10.0;
@@ -120,9 +120,9 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
 	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = fmin(track_spacing, fmin(substrate_1_thickness, substrate_2_thickness)) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_1_thickness, substrate_2_thickness)) * 0.02;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, fmin(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);

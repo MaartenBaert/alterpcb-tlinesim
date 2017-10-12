@@ -27,19 +27,23 @@ const char *const TLINERESULT_NAMES[TLINERESULT_COUNT] = {
 	"Velocity",
 	"Wavelength",
 	"Loss",
-	"Capacitance",
 	"Inductance",
+	"Capacitance",
+	"Resistance",
+	"Conductance",
 	"Alpha",
 	"Beta",
 };
 
 const char *const TLINERESULT_UNITS[TLINERESULT_COUNT] = {
-	"Ohm",
+	"Ω",
 	"m/s",
 	"mm",
 	"dB/mm",
-	"pF/mm",
 	"nH/mm",
+	"pF/mm",
+	"Ω/mm",
+	"S/mm",
 	"Np/m",
 	"rad/m",
 };
@@ -100,33 +104,41 @@ void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, co
 	for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
 
 		// solve
-		std::vector<real_t> charges, currents;
-		real_t freq = context.m_frequencies[i];
-		context.m_output_mesh->Solve(charges, currents, modes, mode_scale.size(), freq);
+		std::vector<real_t> charges, currents, dielectric_losses, resistive_losses;
+		real_t freq = context.m_frequencies[i], omega = 2.0 * M_PI * freq;
+		context.m_output_mesh->Solve(charges, currents, dielectric_losses, resistive_losses, modes, mode_scale.size(), freq);
 		assert(charges.size() == modes.size());
 		assert(currents.size() == modes.size());
+		assert(dielectric_losses.size() == mode_scale.size());
+		assert(resistive_losses.size() == mode_scale.size());
 
 		for(size_t j = 0; j < mode_scale.size(); ++j) {
 
 			// process results
 			real_t total_charge = 0.0, total_current = 0.0;
 			for(size_t k = 0; k < ports; ++k) {
-				total_charge += charges[ports * j + k] * modes[ports * j + k] / sqr(mode_scale[j]);
-				total_current += currents[ports * j + k] * modes[ports * j + k] / sqr(mode_scale[j]);
+				total_charge += charges[ports * j + k] * modes[ports * j + k] / mode_scale[j];
+				total_current += currents[ports * j + k] * modes[ports * j + k] / mode_scale[j];
 			}
-			real_t cap = VACUUM_PERMITTIVITY * total_charge;
-			real_t ind = VACUUM_PERMEABILITY / total_current;
+			real_t ind = mode_scale[j] / total_current;
+			real_t cap = total_charge / mode_scale[j];
+			real_t res = resistive_losses[j] / sqr(total_current);
+			real_t cond = dielectric_losses[j] / sqr(mode_scale[j]);
+			complex_t z0 = sqrt(complex_t(res, omega * ind) / complex_t(cond, omega * cap));
+			complex_t gamma = sqrt(complex_t(res, omega * ind) * complex_t(cond, omega * cap));
 
 			// generate outputs
 			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * (mode_scale.size() * i + j);
-			output_values[TLINERESULT_IMPEDANCE] = sqrt(ind / cap);
-			output_values[TLINERESULT_VELOCITY] = 1.0 / sqrt(ind * cap);
-			output_values[TLINERESULT_WAVELENGTH] = 1.0 / (sqrt(ind * cap) * freq) * 1e3;
-			output_values[TLINERESULT_LOSS] = 0.0;
-			output_values[TLINERESULT_CAPACITANCE] = cap * 1e9;
+			output_values[TLINERESULT_IMPEDANCE] = z0.real();
+			output_values[TLINERESULT_VELOCITY] = omega / gamma.imag();
+			output_values[TLINERESULT_WAVELENGTH] = 2.0 * M_PI / gamma.imag() * 1e3;
+			output_values[TLINERESULT_LOSS] = gamma.real() * 20.0 / M_LN10 * 1e-3;
 			output_values[TLINERESULT_INDUCTANCE] = ind * 1e6;
-			output_values[TLINERESULT_ALPHA] = 0.0;
-			output_values[TLINERESULT_BETA] = 2.0 * M_PI * freq * sqrt(ind * cap);
+			output_values[TLINERESULT_CAPACITANCE] = cap * 1e9;
+			output_values[TLINERESULT_RESISTANCE] = res * 1e-3;
+			output_values[TLINERESULT_CONDUCTANCE] = cond * 1e-3;
+			output_values[TLINERESULT_ALPHA] = gamma.real();
+			output_values[TLINERESULT_BETA] = gamma.imag();
 
 		}
 

@@ -109,10 +109,12 @@ complex_t DjordjevicSarkar(real_t permittivity, real_t loss_tangent, real_t refe
 
 void GetConductorProperties(MaterialConductorProperties &result, const MaterialConductor *source, real_t target_frequency) {
 	result.m_conductivity = source->m_conductivity;
-	result.m_permeability = fmin(source->m_permeability, fmax(1.0, source->m_permeability_unity_frequency / target_frequency));
+	result.m_permeability = VACUUM_PERMEABILITY * std::min(source->m_permeability, std::max(1.0, source->m_permeability_unity_frequency / target_frequency));
+	real_t skin_depth = sqrt(1.0 / (M_PI * target_frequency * result.m_conductivity * result.m_permeability));
+	result.m_surface_resistivity = 1.0 / (result.m_conductivity * skin_depth);
 }
 
 void GetDielectricProperties(MaterialDielectricProperties &result, const MaterialDielectric *source, real_t target_frequency) {
-	result.m_permittivity_x = DjordjevicSarkar(source->m_permittivity_x, source->m_loss_tangent_x, source->m_test_frequency, target_frequency);
-	result.m_permittivity_y = DjordjevicSarkar(source->m_permittivity_y, source->m_loss_tangent_y, source->m_test_frequency, target_frequency);
+	result.m_permittivity_x = VACUUM_PERMITTIVITY * DjordjevicSarkar(source->m_permittivity_x, source->m_loss_tangent_x, source->m_test_frequency, target_frequency);
+	result.m_permittivity_y = VACUUM_PERMITTIVITY * DjordjevicSarkar(source->m_permittivity_y, source->m_loss_tangent_y, source->m_test_frequency, target_frequency);
 }

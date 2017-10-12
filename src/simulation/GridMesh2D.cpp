@@ -46,6 +46,7 @@ GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t 
 	m_initialized = false;
 	m_vars_real = 0;
 	m_vars_fixed = 0;
+	m_vars_surf = 0;
 	m_solved = false;
 	m_solution_frequency = 0.0;
 	m_mode_count = 0;
@@ -73,6 +74,10 @@ void GridMesh2D::AddConductor(const Box2D &box, real_t step_left, real_t step_ri
 		throw std::runtime_error("GridMesh2D error: Conductor box must be finite.");
 	if(!FinitePositive(step_left) || !FinitePositive(step_right) || !FinitePositive(step_top) || !FinitePositive(step_bottom))
 		throw std::runtime_error("GridMesh2D error: Conductor step must be positive.");
+	if(material == NULL)
+		throw std::runtime_error("GridMesh2D error: Material can't be NULL.");
+	if(port >= m_ports.size())
+		throw std::runtime_error("GridMesh2D error: Invalid port index.");
 	m_conductors.emplace_back(box.Normalized(), step_left, step_right, step_top, step_bottom, material, port);
 }
 
@@ -87,6 +92,8 @@ void GridMesh2D::AddDielectric(const Box2D &box, real_t step_left, real_t step_r
 		throw std::runtime_error("GridMesh2D error: Dielectric box must be finite.");
 	if(!FinitePositive(step_left) || !FinitePositive(step_right) || !FinitePositive(step_top) || !FinitePositive(step_bottom))
 		throw std::runtime_error("GridMesh2D error: Dielectric step must be positive.");
+	if(material == NULL)
+		throw std::runtime_error("GridMesh2D error: Material can't be NULL.");
 	m_dielectrics.emplace_back(box.Normalized(), step_left, step_right, step_top, step_bottom, material);
 }
 
@@ -109,6 +116,10 @@ void GridMesh2D::Initialize() {
 #if SIMULATION_VERBOSE
 	auto t4 = std::chrono::high_resolution_clock::now();
 #endif
+	InitSurfaceMatrix();
+#if SIMULATION_VERBOSE
+	auto t5 = std::chrono::high_resolution_clock::now();
+#endif
 
 #if SIMULATION_VERBOSE
 	std::cerr << "GridMesh2D stats:"
@@ -121,6 +132,7 @@ void GridMesh2D::Initialize() {
 			  << " grid=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
 			  << " cells=" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us"
 			  << " vars=" << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us"
+			  << " surf=" << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << "us"
 			  << std::endl;
 #endif
 
@@ -128,7 +140,8 @@ void GridMesh2D::Initialize() {
 
 }
 
-void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) {
+void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses,
+					   std::vector<real_t> &resistive_losses, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) {
 	if(!m_initialized)
 		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
 	if(modes.size() != m_vars_fixed * mode_count)
@@ -146,15 +159,15 @@ void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &curren
 #if SIMULATION_VERBOSE
 	auto t2 = std::chrono::high_resolution_clock::now();
 #endif
-	SolveModes(charges, currents);
+	SolveModes(charges, currents, dielectric_losses, resistive_losses);
 #if SIMULATION_VERBOSE
 	auto t3 = std::chrono::high_resolution_clock::now();
 #endif
 
 #if SIMULATION_VERBOSE
 	std::cerr << "GridMesh2D solve time:"
-			  << " build=" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << "ms"
-			  << " solve=" << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count() << "ms"
+			  << " build=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
+			  << " solve=" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us"
 			  << std::endl;
 #endif
 
@@ -164,10 +177,15 @@ void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &curren
 
 void GridMesh2D::Cleanup() {
 	m_cholmod_sparse.Reset();
+	m_cholmod_sparse_surf.Reset();
 	m_cholmod_factor.Reset();
+	m_cholmod_factor_surf.Reset();
 	m_cholmod_rhs.Reset();
+	m_cholmod_rhs_surf.Reset();
 	m_cholmod_ws1.Reset();
+	m_cholmod_ws1_surf.Reset();
 	m_cholmod_ws2.Reset();
+	m_cholmod_ws2_surf.Reset();
 }
 
 Box2D GridMesh2D::GetWorldBox2D() {
@@ -195,7 +213,7 @@ size_t GridMesh2D::GetModeCount() {
 bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
 	if(!m_initialized)
 		return false;
-	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H) {
+	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H || type == MESHIMAGETYPE_CURRENT) {
 		if(!m_solved || mode >= m_mode_count)
 			return false;
 	}
@@ -263,6 +281,24 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			}
 			break;
 		}
+		case MESHIMAGETYPE_CURRENT: {
+			std::vector<real_t> node_values;
+			GetNodeValues(node_values, mode, type);
+			for(size_t j = 0; j < height; ++j) {
+				real_t *row_value = image_value.data() + j * width;
+				for(size_t i = 0; i < width; ++i) {
+					size_t ix = index_x[i], iy = index_y[j];
+					real_t v00 = node_values[GetNodeIndex(ix    , iy    )];
+					real_t v01 = node_values[GetNodeIndex(ix + 1, iy    )];
+					real_t v10 = node_values[GetNodeIndex(ix    , iy + 1)];
+					real_t v11 = node_values[GetNodeIndex(ix + 1, iy + 1)];
+					real_t v0 = v00 + (v01 - v00) * frac_x[i];
+					real_t v1 = v10 + (v11 - v10) * frac_x[i];
+					row_value[i] = v0 + (v1 - v0) * frac_y[j];
+				}
+			}
+			break;
+		}
 	}
 
 	return true;
@@ -309,9 +345,9 @@ void GridMesh2D::InitCells() {
 	assert(!m_initialized);
 
 	// generate nodes and cells
-	m_nodes.clear();
 	m_nodes.resize(m_grid_x.size() * m_grid_y.size());
-	m_cells.clear();
+	m_edges_h.resize((m_grid_x.size() - 1) * m_grid_y.size());
+	m_edges_v.resize(m_grid_x.size() * (m_grid_y.size() - 1));
 	m_cells.resize((m_grid_x.size() - 1) * (m_grid_y.size() - 1));
 
 	// apply conductors
@@ -328,6 +364,18 @@ void GridMesh2D::InitCells() {
 					throw std::runtime_error(MakeString("Port ", conductor.m_port, " makes contact with port ", node.m_port, "."));
 				}
 				node.m_port = conductor.m_port;
+			}
+		}
+		for(size_t iy = iy1; iy <= iy2; ++iy) {
+			for(size_t ix = ix1; ix < ix2; ++ix) {
+				Edge &edge = GetEdgeH(ix, iy);
+				edge.m_conductor = conductor_index;
+			}
+		}
+		for(size_t iy = iy1; iy < iy2; ++iy) {
+			for(size_t ix = ix1; ix <= ix2; ++ix) {
+				Edge &edge = GetEdgeV(ix, iy);
+				edge.m_conductor = conductor_index;
 			}
 		}
 		for(size_t iy = iy1; iy < iy2; ++iy) {
@@ -385,10 +433,108 @@ void GridMesh2D::InitVariables() {
 		}
 	}
 
+	// assign variables to surface nodes
+	// TODO: this is incorrect for planar conductors that are not located on the edge of the world box
+	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+			Cell &cell = GetCell(ix, iy);
+			if(cell.m_conductor != INDEX_NONE)
+				continue;
+			Node &node00 = GetNode(ix    , iy    );
+			Node &node01 = GetNode(ix + 1, iy    );
+			Node &node10 = GetNode(ix    , iy + 1);
+			Node &node11 = GetNode(ix + 1, iy + 1);
+			if(node00.m_port != INDEX_NONE && node00.m_var_surf == INDEX_NONE) {
+				node00.m_var_surf = m_vars_surf++;
+			}
+			if(node01.m_port != INDEX_NONE && node01.m_var_surf == INDEX_NONE) {
+				node01.m_var_surf = m_vars_surf++;
+			}
+			if(node10.m_port != INDEX_NONE && node10.m_var_surf == INDEX_NONE) {
+				node10.m_var_surf = m_vars_surf++;
+			}
+			if(node11.m_port != INDEX_NONE && node11.m_var_surf == INDEX_NONE) {
+				node11.m_var_surf = m_vars_surf++;
+			}
+		}
+	}
+
+	// avoid problems later
 	if(m_vars_real == 0)
 		throw std::runtime_error("GridMesh2D error: The mesh has no free variables.");
 	if(m_vars_fixed == 0)
 		throw std::runtime_error("GridMesh2D error: The mesh has no fixed variables.");
+	if(m_vars_surf == 0)
+		throw std::runtime_error("GridMesh2D error: The mesh has no surface variables.");
+
+}
+
+void GridMesh2D::InitSurfaceMatrix() {
+
+	// generate matrix
+	m_matrix_surf.Reset(m_vars_surf, 0, 2);
+	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+
+			// get cell, skip cells that are inside conductors
+			Cell &cell = GetCell(ix, iy);
+			if(cell.m_conductor != INDEX_NONE)
+				continue;
+
+			// get neighboring nodes
+			Node &node00 = GetNode(ix    , iy    );
+			Node &node01 = GetNode(ix + 1, iy    );
+			Node &node10 = GetNode(ix    , iy + 1);
+			Node &node11 = GetNode(ix + 1, iy + 1);
+
+			// get cell size
+			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+
+			// process conductor surfaces
+			Edge &edgeh0 = GetEdgeH(ix, iy);
+			Edge &edgeh1 = GetEdgeH(ix, iy + 1);
+			Edge &edgev0 = GetEdgeV(ix, iy);
+			Edge &edgev1 = GetEdgeV(ix + 1, iy);
+			if(edgeh0.m_conductor != INDEX_NONE) {
+				assert(node00.m_var_surf != INDEX_NONE);
+				assert(node01.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_x;
+				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
+				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
+				m_matrix_surf.Add(node00.m_var_surf, node01.m_var_surf, coef);
+			}
+			if(edgeh1.m_conductor != INDEX_NONE) {
+				assert(node10.m_var_surf != INDEX_NONE);
+				assert(node11.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_x;
+				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
+				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf.Add(node10.m_var_surf, node11.m_var_surf, coef);
+			}
+			if(edgev0.m_conductor != INDEX_NONE) {
+				assert(node00.m_var_surf != INDEX_NONE);
+				assert(node10.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_y;
+				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
+				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
+				m_matrix_surf.Add(node00.m_var_surf, node10.m_var_surf, coef);
+			}
+			if(edgev1.m_conductor != INDEX_NONE) {
+				assert(node01.m_var_surf != INDEX_NONE);
+				assert(node11.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_y;
+				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
+				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf.Add(node01.m_var_surf, node11.m_var_surf, coef);
+			}
+
+		}
+	}
+
+	// factorize surface matrix
+	m_cholmod_sparse_surf.Reset(m_matrix_surf);
+	m_cholmod_factor_surf.Factorize(m_cholmod_sparse_surf);
 
 }
 
@@ -396,15 +542,17 @@ void GridMesh2D::GenerateMatrices() {
 	assert(m_initialized && !m_solved);
 
 	// load conductor properties
-	std::vector<MaterialConductorProperties> conductor_properties(m_conductors.size());
+	m_conductor_properties.clear();
+	m_conductor_properties.resize(m_conductors.size());
 	for(size_t i = 0; i < m_conductors.size(); ++i) {
-		GetConductorProperties(conductor_properties[i], m_conductors[i].m_material, m_solution_frequency);
+		GetConductorProperties(m_conductor_properties[i], m_conductors[i].m_material, m_solution_frequency);
 	}
 
 	// load dielectric properties
-	std::vector<MaterialDielectricProperties> dielectric_properties(m_dielectrics.size());
+	m_dielectric_properties.clear();
+	m_dielectric_properties.resize(m_dielectrics.size());
 	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
-		GetDielectricProperties(dielectric_properties[i], m_dielectrics[i].m_material, m_solution_frequency);
+		GetDielectricProperties(m_dielectric_properties[i], m_dielectrics[i].m_material, m_solution_frequency);
 	}
 
 	// generate matrices
@@ -424,64 +572,65 @@ void GridMesh2D::GenerateMatrices() {
 			Node &node10 = GetNode(ix    , iy + 1);
 			Node &node11 = GetNode(ix + 1, iy + 1);
 
+			// get cell size
+			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+
 			// get dielectric properties
-			std::complex<real_t> permittivity_x(1.0, 0.0), permittivity_y(1.0, 0.0);
+			std::complex<real_t> permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
 			if(cell.m_dielectric != INDEX_NONE) {
-				permittivity_x = dielectric_properties[cell.m_dielectric].m_permittivity_x;
-				permittivity_y = dielectric_properties[cell.m_dielectric].m_permittivity_y;
+				permittivity_x = m_dielectric_properties[cell.m_dielectric].m_permittivity_x;
+				permittivity_y = m_dielectric_properties[cell.m_dielectric].m_permittivity_y;
 			}
 
 			// calculate scale factors
-			// TODO: use complex permittivity
-			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
 			real_t scale_x_e = 1.0 / 6.0 * permittivity_x.real() * delta_y / delta_x;
 			real_t scale_y_e = 1.0 / 6.0 * permittivity_y.real() * delta_x / delta_y;
-			real_t scale_x_h = 1.0 / 6.0 * delta_y / delta_x;
-			real_t scale_y_h = 1.0 / 6.0 * delta_x / delta_y;
+			real_t scale_x_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_y / delta_x;
+			real_t scale_y_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_x / delta_y;
 
 			// calculate E coefficients
+			real_t coef_s_e = scale_x_e + scale_y_e;
 			real_t coef_x_e = -2.0 * scale_x_e + scale_y_e;
 			real_t coef_y_e = -2.0 * scale_y_e + scale_x_e;
 			real_t coef_d_e = -scale_x_e - scale_y_e;
-			real_t coef_s_e = scale_x_e + scale_y_e;
 
 			// calculate H coefficients
+			real_t coef_s_h = scale_x_h + scale_y_h;
 			real_t coef_x_h = -2.0 * scale_x_h + scale_y_h;
 			real_t coef_y_h = -2.0 * scale_y_h + scale_x_h;
 			real_t coef_d_h = -scale_x_h - scale_y_h;
-			real_t coef_s_h = scale_x_h + scale_y_h;
 
 			// add to E matrix
+			m_matrix_e.Add(node00.m_var, node00.m_var, coef_s_e);
+			m_matrix_e.Add(node01.m_var, node01.m_var, coef_s_e);
+			m_matrix_e.Add(node10.m_var, node10.m_var, coef_s_e);
+			m_matrix_e.Add(node11.m_var, node11.m_var, coef_s_e);
 			m_matrix_e.Add(node00.m_var, node01.m_var, coef_x_e);
 			m_matrix_e.Add(node10.m_var, node11.m_var, coef_x_e);
 			m_matrix_e.Add(node00.m_var, node10.m_var, coef_y_e);
 			m_matrix_e.Add(node01.m_var, node11.m_var, coef_y_e);
 			m_matrix_e.Add(node00.m_var, node11.m_var, coef_d_e);
 			m_matrix_e.Add(node01.m_var, node10.m_var, coef_d_e);
-			m_matrix_e.Add(node00.m_var, node00.m_var, coef_s_e);
-			m_matrix_e.Add(node01.m_var, node01.m_var, coef_s_e);
-			m_matrix_e.Add(node10.m_var, node10.m_var, coef_s_e);
-			m_matrix_e.Add(node11.m_var, node11.m_var, coef_s_e);
 
 			// add to H matrix
+			m_matrix_h.Add(node00.m_var, node00.m_var, coef_s_h);
+			m_matrix_h.Add(node01.m_var, node01.m_var, coef_s_h);
+			m_matrix_h.Add(node10.m_var, node10.m_var, coef_s_h);
+			m_matrix_h.Add(node11.m_var, node11.m_var, coef_s_h);
 			m_matrix_h.Add(node00.m_var, node01.m_var, coef_x_h);
 			m_matrix_h.Add(node10.m_var, node11.m_var, coef_x_h);
 			m_matrix_h.Add(node00.m_var, node10.m_var, coef_y_h);
 			m_matrix_h.Add(node01.m_var, node11.m_var, coef_y_h);
 			m_matrix_h.Add(node00.m_var, node11.m_var, coef_d_h);
 			m_matrix_h.Add(node01.m_var, node10.m_var, coef_d_h);
-			m_matrix_h.Add(node00.m_var, node00.m_var, coef_s_h);
-			m_matrix_h.Add(node01.m_var, node01.m_var, coef_s_h);
-			m_matrix_h.Add(node10.m_var, node10.m_var, coef_s_h);
-			m_matrix_h.Add(node11.m_var, node11.m_var, coef_s_h);
 
 		}
 	}
 
 }
 
-void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &currents) {
+void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses, std::vector<real_t> &resistive_losses) {
 	assert(m_initialized && !m_solved);
 
 	// preallocate matrix for right-hand-side
@@ -500,6 +649,16 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 	}
 	m_cholmod_factor.Solve(m_cholmod_solution_e, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
 
+	// calculate the surface charges
+	charges.clear();
+	charges.resize(m_vars_fixed * m_mode_count);
+	for(size_t i = 0; i < m_mode_count; ++i) {
+		real_t *residual = charges.data() + m_vars_fixed * i;
+		real_t *solution = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
+		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
+		m_matrix_e.CalculateResidual(residual, solution, fixed_values);
+	}
+
 	// factorize H matrix
 	m_cholmod_sparse.Reset(m_matrix_h);
 	m_cholmod_factor.Factorize(m_cholmod_sparse);
@@ -511,22 +670,151 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 	}
 	m_cholmod_factor.Solve(m_cholmod_solution_h, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
 
-	// calculate the residual charges
-	charges.resize(m_vars_fixed * m_mode_count);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *residual = charges.data() + m_vars_fixed * i;
-		real_t *solution = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
-		m_matrix_e.CalculateResidual(residual, solution, fixed_values);
-	}
-
-	// calculate the residual currents
+	// calculate the surface currents
+	currents.clear();
 	currents.resize(m_vars_fixed * m_mode_count);
 	for(size_t i = 0; i < m_mode_count; ++i) {
 		real_t *residual = currents.data() + m_vars_fixed * i;
 		real_t *solution = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * i;
 		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
 		m_matrix_h.CalculateResidual(residual, solution, fixed_values);
+	}
+
+	// calculate surface residuals and dielectric losses
+	real_t solution_omega = 2.0 * M_PI * m_solution_frequency;
+	dielectric_losses.clear();
+	dielectric_losses.resize(m_mode_count);
+	m_cholmod_rhs_surf.ResetReal(m_vars_surf, m_mode_count);
+	std::fill_n(m_cholmod_rhs_surf.GetRealData(), m_cholmod_rhs_surf.GetStride() * m_mode_count, 0.0);
+	for(size_t i = 0; i < m_mode_count; ++i) {
+		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
+		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * i;
+		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
+		real_t *surf_resid_h = m_cholmod_rhs_surf.GetRealData() + m_cholmod_rhs_surf.GetStride() * i;
+		real_t total_dielectric_loss = 0.0;
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+
+				// get cell, skip cells that are inside conductors
+				Cell &cell = GetCell(ix, iy);
+				if(cell.m_conductor != INDEX_NONE)
+					continue;
+
+				// get neighboring nodes
+				Node &node00 = GetNode(ix    , iy    );
+				Node &node01 = GetNode(ix + 1, iy    );
+				Node &node10 = GetNode(ix    , iy + 1);
+				Node &node11 = GetNode(ix + 1, iy + 1);
+
+				// get node values
+				real_t node00_value_e = (node00.m_var < INDEX_OFFSET)? solution_e[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_e = (node01.m_var < INDEX_OFFSET)? solution_e[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_e = (node10.m_var < INDEX_OFFSET)? solution_e[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_e = (node11.m_var < INDEX_OFFSET)? solution_e[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+				real_t node00_value_h = (node00.m_var < INDEX_OFFSET)? solution_h[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_h = (node01.m_var < INDEX_OFFSET)? solution_h[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_h = (node10.m_var < INDEX_OFFSET)? solution_h[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_h = (node11.m_var < INDEX_OFFSET)? solution_h[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+
+				// get cell size
+				real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+				real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+
+				// get dielectric properties
+				std::complex<real_t> permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
+				if(cell.m_dielectric != INDEX_NONE) {
+					permittivity_x = m_dielectric_properties[cell.m_dielectric].m_permittivity_x;
+					permittivity_y = m_dielectric_properties[cell.m_dielectric].m_permittivity_y;
+				}
+
+				// calculate scale factors
+				real_t scale_x_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_y / delta_x;
+				real_t scale_y_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_x / delta_y;
+
+				// calculate H coefficients
+				real_t coef_s_h = scale_x_h + scale_y_h;
+				real_t coef_x_h = -2.0 * scale_x_h + scale_y_h;
+				real_t coef_y_h = -2.0 * scale_y_h + scale_x_h;
+				real_t coef_d_h = -scale_x_h - scale_y_h;
+
+				// calculate residual
+				if(node00.m_var_surf != INDEX_NONE)
+					surf_resid_h[node00.m_var_surf] += node00_value_h * coef_s_h * 2.0 + node01_value_h * coef_x_h + node10_value_h * coef_y_h + node11_value_h * coef_d_h;
+				if(node01.m_var_surf != INDEX_NONE)
+					surf_resid_h[node01.m_var_surf] += node01_value_h * coef_s_h * 2.0 + node00_value_h * coef_x_h + node11_value_h * coef_y_h + node10_value_h * coef_d_h;
+				if(node10.m_var_surf != INDEX_NONE)
+					surf_resid_h[node10.m_var_surf] += node10_value_h * coef_s_h * 2.0 + node11_value_h * coef_x_h + node00_value_h * coef_y_h + node01_value_h * coef_d_h;
+				if(node11.m_var_surf != INDEX_NONE)
+					surf_resid_h[node11.m_var_surf] += node11_value_h * coef_s_h * 2.0 + node10_value_h * coef_x_h + node01_value_h * coef_y_h + node00_value_h * coef_d_h;
+
+				// calculate dielectric loss
+				real_t loss_x = -1.0 / 3.0 * permittivity_x.imag() * solution_omega * delta_y / delta_x;
+				real_t loss_y = -1.0 / 3.0 * permittivity_y.imag() * solution_omega * delta_x / delta_y;
+				real_t dx0 = node01_value_e - node00_value_e, dx1 = node11_value_e - node10_value_e;
+				real_t dy0 = node10_value_e - node00_value_e, dy1 = node11_value_e - node01_value_e;
+				total_dielectric_loss += (sqr(dx0 + dx1) - dx0 * dx1) * loss_x + (sqr(dy0 + dy1) - dy0 * dy1) * loss_y;
+
+			}
+		}
+		dielectric_losses[i] = total_dielectric_loss;
+	}
+
+	// solve surface matrix
+	m_cholmod_factor_surf.Solve(m_cholmod_solution_surf, m_cholmod_rhs_surf, m_cholmod_ws1_surf, m_cholmod_ws2_surf);
+
+	// calculate resistive losses
+	resistive_losses.clear();
+	resistive_losses.resize(m_mode_count);
+	for(size_t i = 0; i < m_mode_count; ++i) {
+		real_t *solution_surf = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * i;
+		real_t total_resistive_loss = 0.0;
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+
+				// get cell, skip cells that are inside conductors
+				Cell &cell = GetCell(ix, iy);
+				if(cell.m_conductor != INDEX_NONE)
+					continue;
+
+				// get neighboring nodes
+				Node &node00 = GetNode(ix    , iy    );
+				Node &node01 = GetNode(ix + 1, iy    );
+				Node &node10 = GetNode(ix    , iy + 1);
+				Node &node11 = GetNode(ix + 1, iy + 1);
+
+				// get cell size
+				real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+				real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+
+				// process conductor surfaces
+				Edge &edgeh0 = GetEdgeH(ix, iy);
+				Edge &edgeh1 = GetEdgeH(ix, iy + 1);
+				Edge &edgev0 = GetEdgeV(ix, iy);
+				Edge &edgev1 = GetEdgeV(ix + 1, iy);
+				if(edgeh0.m_conductor != INDEX_NONE) {
+					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
+					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node01.m_var_surf];
+					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
+				}
+				if(edgeh1.m_conductor != INDEX_NONE) {
+					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
+					real_t curr0 = solution_surf[node10.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
+					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
+				}
+				if(edgev0.m_conductor != INDEX_NONE) {
+					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
+					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node10.m_var_surf];
+					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
+				}
+				if(edgev1.m_conductor != INDEX_NONE) {
+					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
+					real_t curr0 = solution_surf[node01.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
+					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
+				}
+
+			}
+		}
+		resistive_losses[i] = total_resistive_loss;
 	}
 
 }
@@ -566,14 +854,27 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, Me
 void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type) {
 	assert(m_initialized && m_solved);
 	assert(mode < m_mode_count);
-	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H);
+	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H || type == MESHIMAGETYPE_CURRENT);
 	node_values.resize(m_nodes.size());
-	CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
-	real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
-	real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
-	for(size_t i = 0; i < m_nodes.size(); ++i) {
-		size_t var = m_nodes[i].m_var;
-		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
+	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H) {
+		CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
+		real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
+		real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+		for(size_t i = 0; i < m_nodes.size(); ++i) {
+			size_t var = m_nodes[i].m_var;
+			node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
+		}
+	} else {
+		real_t *solution_values = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * mode;
+		real_t max_value = 0.0;
+		for(size_t i = 0; i < m_vars_surf; ++i) {
+			max_value = std::max(max_value, fabs(solution_values[i]));
+		}
+		real_t scale = 1.0 / max_value;
+		for(size_t i = 0; i < m_nodes.size(); ++i) {
+			size_t var = m_nodes[i].m_var_surf;
+			node_values[i] = (var == INDEX_NONE)? 0.0 : solution_values[var] * scale;
+		}
 	}
 }
 
@@ -596,14 +897,14 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 	for(size_t i = 1; i < grid.size(); ++i) {
 		if(min_step != REAL_MAX)
 			min_step += (grid[i].m_value - grid[i - 1].m_value) * inc;
-		min_step = fmin(min_step, grid[i].m_step);
+		min_step = std::min(min_step, grid[i].m_step);
 		grid[i].m_step = min_step;
 	}
 	for(size_t i = grid.size() - 1; i > 0; ) {
 		--i;
 		if(min_step != REAL_MAX)
 			min_step += (grid[i + 1].m_value - grid[i].m_value) * inc;
-		min_step = fmin(min_step, grid[i].m_step);
+		min_step = std::min(min_step, grid[i].m_step);
 		grid[i].m_step = min_step;
 	}
 
@@ -619,7 +920,7 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 		if(gridline.m_value - avg_prev <= epsilon) {
 			avg_sum += gridline.m_value;
 			avg_prev = gridline.m_value;
-			avg_step = fmin(avg_step, gridline.m_step);
+			avg_step = std::min(avg_step, gridline.m_step);
 			++avg_count;
 		} else if(result.empty()) {
 			result.push_back(avg_sum / (real_t) avg_count);
@@ -661,7 +962,7 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 	// frac**(n-1) = st / (1 + (st - 1) * frac)
 	// n = log2(st / (1 + (st - 1) * frac)) / log2(frac) + 1
 
-	if(x2 - x1 < fmin(step1, step2)) {
+	if(x2 - x1 < std::min(step1, step2)) {
 		result.push_back(x2);
 		return;
 	}

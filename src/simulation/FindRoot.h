@@ -51,7 +51,7 @@ real_t FindRootBracketed(Func &&func, real_t a, real_t b, real_t fa, real_t fb, 
 		std::swap(fa, fb);
 	}
 	//std::cerr.precision(12);
-	real_t c = a, fc = fa, d = 0.0, delta = 4.0 * std::numeric_limits<real_t>::epsilon() * fmax(fabs(a), fabs(b));
+	real_t c = a, fc = fa, d = 0.0, delta = 4.0 * std::numeric_limits<real_t>::epsilon() * std::max(fabs(a), fabs(b));
 	bool mflag = true;
 	while(fabs(a - b) > xtol && fabs(fb) > ftol) {
 		real_t ab = a * 0.75 + b * 0.25; // overflow-safe
@@ -64,8 +64,8 @@ real_t FindRootBracketed(Func &&func, real_t a, real_t b, real_t fa, real_t fb, 
 			// use secant method
 			s = b - fb * (b - a) / (fb - fa);
 		}
-		//std::cerr << "mflag " << (s <= fmin(ab, b)) << (s >= fmax(ab, b)) << (fabs(s - b) >= bcd * 0.5) << (bcd < delta) << "   ";
-		mflag = (!std::isfinite(s) || s <= fmin(ab, b) || s >= fmax(ab, b) || fabs(s - b) >= bcd * 0.5 || bcd < delta);
+		//std::cerr << "mflag " << (s <= std::min(ab, b)) << (s >= std::max(ab, b)) << (fabs(s - b) >= bcd * 0.5) << (bcd < delta) << "   ";
+		mflag = (!std::isfinite(s) || s <= std::min(ab, b) || s >= std::max(ab, b) || fabs(s - b) >= bcd * 0.5 || bcd < delta);
 		if(mflag) {
 			// use bisection method
 			s = a * 0.5 + b * 0.5; // overflow-safe
@@ -132,7 +132,7 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 		}
 		//std::cerr << "lower       " << std::setw(15) << a << " " << std::setw(15) << x << std::endl;
 		if((fx > 0.0) != (fa > 0.0)) {
-			return FindRootBracketed(std::forward<Func>(func), a, x, fa, fx, fmax(fabs(a), fabs(x)) * xreltol, ftol);
+			return FindRootBracketed(std::forward<Func>(func), a, x, fa, fx, std::max(fabs(a), fabs(x)) * xreltol, ftol);
 		}
 		a = x;
 		fa = fx;
@@ -145,7 +145,7 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 		}
 		//std::cerr << "higher      " << std::setw(15) << b << " " << std::setw(15) << x << std::endl;
 		if((fx > 0.0) != (fb > 0.0)) {
-			return FindRootBracketed(std::forward<Func>(func), b, x, fb, fx, fmax(fabs(b), fabs(x)) * xreltol, ftol);
+			return FindRootBracketed(std::forward<Func>(func), b, x, fb, fx, std::max(fabs(b), fabs(x)) * xreltol, ftol);
 		}
 		b = x;
 		fb = fx;

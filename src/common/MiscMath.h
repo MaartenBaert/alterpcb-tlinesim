@@ -32,12 +32,12 @@ inline T clamp(T v, T lo, T hi) {
 	return v;
 }
 template<> inline float clamp<float>(float v, float lo, float hi) {
-	assert(lo <= hi);
-	return fminf(fmaxf(v, lo), hi);
+	assert(!(lo > hi)); // nan ok
+	return std::min(std::max(v, lo), hi);
 }
 template<> inline double clamp<double>(double v, double lo, double hi) {
-	assert(lo <= hi);
-	return fmin(fmax(v, lo), hi);
+	assert(!(lo > hi)); // nan ok
+	return std::min(std::max(v, lo), hi);
 }
 
 template<typename F>
