@@ -64,9 +64,9 @@ void TLine_Stripline_Single(TLineContext &context) {
 	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
 	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = std::min(substrate_1_thickness, substrate_2_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(substrate_1_thickness, substrate_2_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -120,9 +120,9 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
 	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_1_thickness, substrate_2_thickness)) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_1_thickness, substrate_2_thickness)) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);

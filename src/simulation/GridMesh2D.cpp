@@ -27,7 +27,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
 
-#define SIMULATION_VERBOSE 0
+#define SIMULATION_VERBOSE 1
 
 #if SIMULATION_VERBOSE
 #include <chrono>
@@ -78,7 +78,7 @@ void GridMesh2D::AddConductor(const Box2D &box, real_t step_left, real_t step_ri
 		throw std::runtime_error("GridMesh2D error: Material can't be NULL.");
 	if(port >= m_ports.size())
 		throw std::runtime_error("GridMesh2D error: Invalid port index.");
-	m_conductors.emplace_back(box.Normalized(), step_left, step_right, step_top, step_bottom, material, port);
+	m_conductors.emplace_back(box.Clipped(m_world_box).Normalized(), step_left, step_right, step_top, step_bottom, material, port);
 }
 
 void GridMesh2D::AddDielectric(const Box2D &box, real_t step, const MaterialDielectric *material) {
@@ -94,7 +94,7 @@ void GridMesh2D::AddDielectric(const Box2D &box, real_t step_left, real_t step_r
 		throw std::runtime_error("GridMesh2D error: Dielectric step must be positive.");
 	if(material == NULL)
 		throw std::runtime_error("GridMesh2D error: Material can't be NULL.");
-	m_dielectrics.emplace_back(box.Normalized(), step_left, step_right, step_top, step_bottom, material);
+	m_dielectrics.emplace_back(box.Clipped(m_world_box).Normalized(), step_left, step_right, step_top, step_bottom, material);
 }
 
 void GridMesh2D::Initialize() {
@@ -499,6 +499,7 @@ void GridMesh2D::InitSurfaceMatrix() {
 			if(edgeh0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node01.m_var_surf != INDEX_NONE);
+				//real_t coef = 0.25 * delta_x;
 				real_t coef = 1.0 / 6.0 * delta_x;
 				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
 				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
@@ -507,6 +508,7 @@ void GridMesh2D::InitSurfaceMatrix() {
 			if(edgeh1.m_conductor != INDEX_NONE) {
 				assert(node10.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
+				//real_t coef = 0.25 * delta_x;
 				real_t coef = 1.0 / 6.0 * delta_x;
 				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
 				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
@@ -515,6 +517,7 @@ void GridMesh2D::InitSurfaceMatrix() {
 			if(edgev0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node10.m_var_surf != INDEX_NONE);
+				//real_t coef = 0.25 * delta_y;
 				real_t coef = 1.0 / 6.0 * delta_y;
 				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
 				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
@@ -523,6 +526,7 @@ void GridMesh2D::InitSurfaceMatrix() {
 			if(edgev1.m_conductor != INDEX_NONE) {
 				assert(node01.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
+				//real_t coef = 0.25 * delta_y;
 				real_t coef = 1.0 / 6.0 * delta_y;
 				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
 				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
@@ -768,6 +772,8 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 	for(size_t i = 0; i < m_mode_count; ++i) {
 		real_t *solution_surf = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * i;
 		real_t total_resistive_loss = 0.0;
+		// TODO: remove
+		//std::vector<real_t> debug_total_current(m_vars_fixed, 0.0);
 		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
@@ -795,26 +801,38 @@ void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &c
 					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
 					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node01.m_var_surf];
 					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
+					//if(m_ports[m_conductors[edgeh0.m_conductor].m_port].m_var >= INDEX_OFFSET)
+					//	debug_total_current[m_ports[m_conductors[edgeh0.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_x;
 				}
 				if(edgeh1.m_conductor != INDEX_NONE) {
 					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
 					real_t curr0 = solution_surf[node10.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
 					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
+					//if(m_ports[m_conductors[edgeh1.m_conductor].m_port].m_var >= INDEX_OFFSET)
+					//	debug_total_current[m_ports[m_conductors[edgeh1.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_x;
 				}
 				if(edgev0.m_conductor != INDEX_NONE) {
 					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
 					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node10.m_var_surf];
 					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
+					//if(m_ports[m_conductors[edgev0.m_conductor].m_port].m_var >= INDEX_OFFSET)
+					//	debug_total_current[m_ports[m_conductors[edgev0.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_y;
 				}
 				if(edgev1.m_conductor != INDEX_NONE) {
 					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
 					real_t curr0 = solution_surf[node01.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
 					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
+					//if(m_ports[m_conductors[edgev1.m_conductor].m_port].m_var >= INDEX_OFFSET)
+					//	debug_total_current[m_ports[m_conductors[edgev1.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_y;
 				}
 
 			}
 		}
 		resistive_losses[i] = total_resistive_loss;
+
+		//real_t *debug_resid_current = currents.data() + m_vars_fixed * i;
+		//std::cerr << "debug_resid_current ="; for(size_t i = 0; i < m_vars_fixed; ++i) { std::cerr << " " << debug_resid_current[i]; } std::cerr << std::endl;
+		//std::cerr << "debug_total_current ="; for(size_t i = 0; i < m_vars_fixed; ++i) { std::cerr << " " << debug_total_current[i]; } std::cerr << std::endl;
 	}
 
 }

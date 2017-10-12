@@ -76,9 +76,9 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	Box2D solder_mask_box3 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
 	Box2D solder_mask_box4 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
 
-	real_t step0 = REAL_MAX, step1 = std::min(ground_spacing, substrate_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(ground_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -149,9 +149,9 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	Box2D solder_mask_box4 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
 	Box2D solder_mask_box5 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
 
-	real_t step0 = REAL_MAX, step1 = std::min(std::min(track_spacing, ground_spacing), substrate_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(std::min(track_spacing, ground_spacing), substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);

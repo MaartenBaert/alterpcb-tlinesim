@@ -35,6 +35,9 @@ public:
 		PORTTYPE_FLOATING,
 	};
 
+	static constexpr real_t DEFAULT_GRID_INC = 0.15;
+	static constexpr real_t DEFAULT_GRID_STEP = 0.005;
+
 private:
 	struct Port {
 		PortType m_type;

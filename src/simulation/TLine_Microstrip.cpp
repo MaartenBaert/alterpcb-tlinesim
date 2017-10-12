@@ -66,9 +66,9 @@ void TLine_Microstrip_Single(TLineContext &context) {
 	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
 	Box2D solder_mask_box2 = {track_box.x1 - solder_mask_thickness_1, track_box.y1, track_box.x2 + solder_mask_thickness_1, track_box.y2 + solder_mask_thickness_1};
 
-	real_t step0 = REAL_MAX, step1 = substrate_thickness * 0.02;
+	real_t step0 = REAL_MAX, step1 = substrate_thickness * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -125,9 +125,9 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
 	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
 
-	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * 0.02;
+	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, 0.15, substrate_thickness * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
