@@ -50,6 +50,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QStatusBar>
+#include <QTextBrowser>
 
 #include <QGridLayout>
 #include <QHBoxLayout>
