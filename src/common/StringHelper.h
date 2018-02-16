@@ -21,6 +21,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <sstream>
+#include <vector>
 
 inline void ExtendString(std::ostringstream&) {}
 
@@ -35,4 +36,17 @@ inline std::string MakeString(Args&&... args) {
 	std::ostringstream ss;
 	ExtendString(ss, std::forward<Args>(args)...);
 	return ss.str();
+}
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream &stream, const std::vector<T> &data) {
+	stream << '{';
+	if(!data.empty()) {
+		stream << data[0];
+		for(size_t i = 1; i < data.size(); ++i) {
+			stream << ',' << ' ' << data[i];
+		}
+	}
+	stream << '}';
+	return stream;
 }

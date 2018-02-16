@@ -59,7 +59,7 @@ std::ostream& operator<<(std::ostream &stream, const VData &data) {
 			break;
 		}
 		case VDATA_LIST: {
-			stream << "[";
+			stream << '[';
 			const VData::List &ref = data.AsList();
 			if(ref.size() != 0) {
 				stream << ref[0];
@@ -67,11 +67,11 @@ std::ostream& operator<<(std::ostream &stream, const VData &data) {
 					stream << ", " << ref[i];
 				}
 			}
-			stream << "]";
+			stream << ']';
 			break;
 		}
 		case VDATA_DICT: {
-			stream << "{";
+			stream << '{';
 			const VData::Dict &ref = data.AsDict();
 			if(ref.GetSize() != 0) {
 				stream << '"' << StringRegistry::GetString(ref[0].Key()) << "\": " << ref[0].Value();
@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream &stream, const VData &data) {
 					stream << ", \"" << StringRegistry::GetString(ref[i].Key()) << "\": " << ref[i].Value();
 				}
 			}
-			stream << "}";
+			stream << '}';
 			break;
 		}
 	}
