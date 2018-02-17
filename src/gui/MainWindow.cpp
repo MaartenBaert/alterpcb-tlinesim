@@ -233,10 +233,12 @@ MainWindow::MainWindow() {
 		QRadioButton *radio_imagetype_mesh = new QRadioButton("Mesh", groupbox_viewer);
 		QRadioButton *radio_imagetype_field_e = new QRadioButton("E-field", groupbox_viewer);
 		QRadioButton *radio_imagetype_field_h = new QRadioButton("H-field", groupbox_viewer);
+		QRadioButton *radio_imagetype_energy = new QRadioButton("Energy", groupbox_viewer);
 		QRadioButton *radio_imagetype_current = new QRadioButton("Current", groupbox_viewer);
 		m_buttongroup_image_type->addButton(radio_imagetype_mesh, MESHIMAGETYPE_MESH);
 		m_buttongroup_image_type->addButton(radio_imagetype_field_e, MESHIMAGETYPE_FIELD_E);
 		m_buttongroup_image_type->addButton(radio_imagetype_field_h, MESHIMAGETYPE_FIELD_H);
+		m_buttongroup_image_type->addButton(radio_imagetype_energy, MESHIMAGETYPE_ENERGY);
 		m_buttongroup_image_type->addButton(radio_imagetype_current, MESHIMAGETYPE_CURRENT);
 		radio_imagetype_field_e->setChecked(true);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
@@ -265,6 +267,7 @@ MainWindow::MainWindow() {
 			layout2->addWidget(radio_imagetype_mesh);
 			layout2->addWidget(radio_imagetype_field_e);
 			layout2->addWidget(radio_imagetype_field_h);
+			layout2->addWidget(radio_imagetype_energy);
 			layout2->addWidget(radio_imagetype_current);
 			layout2->addStretch();
 			layout2->addWidget(m_checkbox_mesh_overlay);

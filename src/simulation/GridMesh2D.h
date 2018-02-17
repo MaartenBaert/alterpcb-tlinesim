@@ -144,6 +144,7 @@ private:
 
 	void GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type);
 	void GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type);
+	void GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type);
 
 private:
 	inline size_t GetNodeIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size()); assert(iy < m_grid_y.size()); return ix + iy * m_grid_x.size(); }

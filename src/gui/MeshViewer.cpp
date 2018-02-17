@@ -162,7 +162,7 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 					}
 				}
 
-			} else {
+			} else if(m_image_type == MESHIMAGETYPE_ENERGY) {
 
 				// get mesh data
 				std::vector<real_t> image_mesh_value;
@@ -172,6 +172,39 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 				}
 
 				// color + contour plot
+				real_t log_scale = 1.0 / log(1e4);
+				real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
+				const ColorMap &cmap = COLORMAP_MAGMA;
+				for(size_t j = 0; j < (size_t) h; ++j) {
+					uint32_t *row = (uint32_t*) image.scanLine((int) j);
+					real_t *row_value = image_value.data() + j * w;
+					Vector2D *row_gradient = image_gradient.data() + j * w;
+					real_t *row_mesh_value = image_mesh_value.data() + j * w;
+					for(size_t i = 0; i < (size_t) w; ++i) {
+						real_t value = log(fabs(row_value[i])) * log_scale + 1.0;
+						real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
+						real_t temp = value * contours + 0.5;
+						real_t temp2 = (temp - nearbyint(temp)) / contour_range;
+						Color plot_color = cmap(value);
+						if(m_mesh_overlay) {
+							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+						}
+						Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
+						row[i] = ColorBlend(plot_color, contour_color).ToUint32();
+					}
+				}
+
+			} else {
+
+				// get mesh data
+				std::vector<real_t> image_mesh_value;
+				std::vector<Vector2D> image_mesh_gradient;
+				if(m_mesh_overlay) {
+					m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
+				}
+
+				// color plot
+				real_t log_scale = 1.0 / log(1e4);
 				const ColorMap &cmap = COLORMAP_MAGMA;
 				for(size_t j = 0; j < (size_t) h; ++j) {
 					uint32_t *row = (uint32_t*) image.scanLine((int) j);
@@ -179,7 +212,7 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 					real_t *row_mesh_value = image_mesh_value.data() + j * w;
 					for(size_t i = 0; i < (size_t) w; ++i) {
 						real_t value = row_value[i];
-						Color plot_color = cmap(fabs(value));
+						Color plot_color = cmap(log(fabs(value)) * log_scale + 1.0);
 						if(m_mesh_overlay) {
 							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
 						}

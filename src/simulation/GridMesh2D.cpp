@@ -213,7 +213,7 @@ size_t GridMesh2D::GetModeCount() {
 bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
 	if(!m_initialized)
 		return false;
-	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H || type == MESHIMAGETYPE_CURRENT) {
+	if(type != MESHIMAGETYPE_MESH) {
 		if(!m_solved || mode >= m_mode_count)
 			return false;
 	}
@@ -221,7 +221,7 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 	// clear image data
 	image_value.clear();
 	image_value.resize(width * height);
-	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H) {
+	if(type != MESHIMAGETYPE_MESH) {
 		image_gradient.clear();
 		image_gradient.resize(width * height);
 	}
@@ -281,7 +281,32 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			}
 			break;
 		}
+		case MESHIMAGETYPE_ENERGY:
 		case MESHIMAGETYPE_CURRENT: {
+			std::vector<std::array<real_t, 4>> cellnode_values;
+			GetCellNodeValues(cellnode_values, mode, type);
+			for(size_t j = 0; j < height; ++j) {
+				real_t *row_value = image_value.data() + j * width;
+				Vector2D *row_gradient = image_gradient.data() + j * width;
+				for(size_t i = 0; i < width; ++i) {
+					size_t ix = index_x[i], iy = index_y[j];
+					size_t cell_index = GetCellIndex(ix, iy);
+					real_t v00 = cellnode_values[cell_index][0];
+					real_t v01 = cellnode_values[cell_index][1];
+					real_t v10 = cellnode_values[cell_index][2];
+					real_t v11 = cellnode_values[cell_index][3];
+					real_t v0 = v00 + (v01 - v00) * frac_x[i];
+					real_t v1 = v10 + (v11 - v10) * frac_x[i];
+					row_value[i] = v0 + (v1 - v0) * frac_y[j];
+					real_t gx0 = v01 - v00, gx1 = v11 - v10;
+					real_t gy0 = v10 - v00, gy1 = v11 - v01;
+					row_gradient[i].x = (gx0 + (gx1 - gx0) * frac_y[j]) / (m_grid_x[ix + 1] - m_grid_x[ix]);
+					row_gradient[i].y = (gy0 + (gy1 - gy0) * frac_x[i]) / (m_grid_y[iy + 1] - m_grid_y[iy]);
+				}
+			}
+			break;
+		}
+		/*case MESHIMAGETYPE_CURRENT: {
 			std::vector<real_t> node_values;
 			GetNodeValues(node_values, mode, type);
 			for(size_t j = 0; j < height; ++j) {
@@ -298,7 +323,7 @@ bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 				}
 			}
 			break;
-		}
+		}*/
 	}
 
 	return true;
@@ -323,17 +348,6 @@ void GridMesh2D::InitGrid() {
 
 	if(m_grid_x.size() < 2 || m_grid_y.size() < 2)
 		throw std::runtime_error("GridMesh2D error: The mesh must have at least 2 grid lines.");
-
-	/*std::cerr << "m_grid_x =";
-	for(real_t val : m_grid_x) {
-		std::cerr << " " << val;
-	}
-	std::cerr << std::endl;
-	std::cerr << "m_grid_y =";
-	for(real_t val : m_grid_y) {
-		std::cerr << " " << val;
-	}
-	std::cerr << std::endl;*/
 
 	// calculate midpoints
 	GridMidpoints(m_midpoints_x, m_grid_x);
@@ -872,15 +886,69 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, Me
 void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type) {
 	assert(m_initialized && m_solved);
 	assert(mode < m_mode_count);
-	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H || type == MESHIMAGETYPE_CURRENT);
-	node_values.resize(m_nodes.size());
-	if(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H) {
-		CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
-		real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
+	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H);
+	node_values.clear();
+	node_values.resize(m_nodes.size(), 0.0);
+	CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
+	real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
+	real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+	for(size_t i = 0; i < m_nodes.size(); ++i) {
+		size_t var = m_nodes[i].m_var;
+		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
+	}
+	/*} else if(type == MESHIMAGETYPE_ENERGY) {
+		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * mode;
+		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * mode;
 		real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
-		for(size_t i = 0; i < m_nodes.size(); ++i) {
-			size_t var = m_nodes[i].m_var;
-			node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+				Cell &cell = GetCell(ix, iy);
+				if(cell.m_conductor != INDEX_NONE)
+					continue;
+
+				// get neighboring nodes
+				size_t node00_index = GetNodeIndex(ix    , iy    );
+				size_t node01_index = GetNodeIndex(ix + 1, iy    );
+				size_t node10_index = GetNodeIndex(ix    , iy + 1);
+				size_t node11_index = GetNodeIndex(ix + 1, iy + 1);
+				Node &node00 = m_nodes[node00_index];
+				Node &node01 = m_nodes[node01_index];
+				Node &node10 = m_nodes[node10_index];
+				Node &node11 = m_nodes[node11_index];
+
+				// get node values
+				real_t node00_value_e = (node00.m_var < INDEX_OFFSET)? solution_e[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_e = (node01.m_var < INDEX_OFFSET)? solution_e[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_e = (node10.m_var < INDEX_OFFSET)? solution_e[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_e = (node11.m_var < INDEX_OFFSET)? solution_e[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+				real_t node00_value_h = (node00.m_var < INDEX_OFFSET)? solution_h[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_h = (node01.m_var < INDEX_OFFSET)? solution_h[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_h = (node10.m_var < INDEX_OFFSET)? solution_h[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_h = (node11.m_var < INDEX_OFFSET)? solution_h[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+
+				// calculate field strength
+				real_t ex0 = node01_value_e - node00_value_e, ex1 = node11_value_e - node10_value_e;
+				real_t ey0 = node10_value_e - node00_value_e, ey1 = node11_value_e - node01_value_e;
+				real_t hx0 = node01_value_h - node00_value_h, hx1 = node11_value_h - node10_value_h;
+				real_t hy0 = node10_value_h - node00_value_h, hy1 = node11_value_h - node01_value_h;
+				real_t scale_x = 1.0 / sqr(m_grid_x[ix + 1] - m_grid_x[ix]);
+				real_t scale_y = 1.0 / sqr(m_grid_y[iy + 1] - m_grid_y[iy]);
+
+				// calculate Poynting vector
+				node_values[node00_index] += ex0 * hx0 * scale_x + ey0 * hy0 * scale_y;
+				node_values[node01_index] += ex0 * hx0 * scale_x + ey1 * hy1 * scale_y;
+				node_values[node10_index] += ex1 * hx1 * scale_x + ey0 * hy0 * scale_y;
+				node_values[node11_index] += ex1 * hx1 * scale_x + ey1 * hy1 * scale_y;
+
+			}
+		}
+		real_t max_value = 0.0;
+		for(size_t i = 0; i < node_values.size(); ++i) {
+			max_value = std::max(max_value, fabs(node_values[i]));
+		}
+		real_t scale = 1.0 / max_value;
+		for(size_t i = 0; i < node_values.size(); ++i) {
+			node_values[i] = node_values[i] * scale;
 		}
 	} else {
 		real_t *solution_values = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * mode;
@@ -892,6 +960,122 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, Me
 		for(size_t i = 0; i < m_nodes.size(); ++i) {
 			size_t var = m_nodes[i].m_var_surf;
 			node_values[i] = (var == INDEX_NONE)? 0.0 : solution_values[var] * scale;
+		}
+	}*/
+}
+
+void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type) {
+	assert(m_initialized && m_solved);
+	assert(mode < m_mode_count);
+	assert(type == MESHIMAGETYPE_ENERGY || type == MESHIMAGETYPE_CURRENT);
+	cellnode_values.clear();
+	cellnode_values.resize(m_cells.size());
+	if(type == MESHIMAGETYPE_ENERGY) {
+		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * mode;
+		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * mode;
+		real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+		std::vector<std::vector<real_t>> dielectric_values(m_dielectrics.size() + 1);
+		std::vector<std::vector<int32_t>> dielectric_count(m_dielectrics.size() + 1);
+		for(size_t i = 0; i < dielectric_values.size(); ++i) {
+			dielectric_values[i].resize(m_nodes.size(), 0.0);
+			dielectric_count[i].resize(m_nodes.size(), 0);
+		}
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+				Cell &cell = GetCell(ix, iy);
+				if(cell.m_conductor != INDEX_NONE)
+					continue;
+				size_t node00_index = GetNodeIndex(ix    , iy    );
+				size_t node01_index = GetNodeIndex(ix + 1, iy    );
+				size_t node10_index = GetNodeIndex(ix    , iy + 1);
+				size_t node11_index = GetNodeIndex(ix + 1, iy + 1);
+				Node &node00 = m_nodes[node00_index];
+				Node &node01 = m_nodes[node01_index];
+				Node &node10 = m_nodes[node10_index];
+				Node &node11 = m_nodes[node11_index];
+				//Node &node00 = GetNode(ix    , iy    );
+				//Node &node01 = GetNode(ix + 1, iy    );
+				//Node &node10 = GetNode(ix    , iy + 1);
+				//Node &node11 = GetNode(ix + 1, iy + 1);
+				real_t node00_value_e = (node00.m_var < INDEX_OFFSET)? solution_e[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_e = (node01.m_var < INDEX_OFFSET)? solution_e[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_e = (node10.m_var < INDEX_OFFSET)? solution_e[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_e = (node11.m_var < INDEX_OFFSET)? solution_e[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+				real_t node00_value_h = (node00.m_var < INDEX_OFFSET)? solution_h[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_h = (node01.m_var < INDEX_OFFSET)? solution_h[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_h = (node10.m_var < INDEX_OFFSET)? solution_h[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_h = (node11.m_var < INDEX_OFFSET)? solution_h[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+				real_t ex0 = node01_value_e - node00_value_e, ex1 = node11_value_e - node10_value_e;
+				real_t ey0 = node10_value_e - node00_value_e, ey1 = node11_value_e - node01_value_e;
+				real_t hx0 = node01_value_h - node00_value_h, hx1 = node11_value_h - node10_value_h;
+				real_t hy0 = node10_value_h - node00_value_h, hy1 = node11_value_h - node01_value_h;
+				real_t scale_x = 1.0 / sqr(m_grid_x[ix + 1] - m_grid_x[ix]);
+				real_t scale_y = 1.0 / sqr(m_grid_y[iy + 1] - m_grid_y[iy]);
+				size_t dielectric_index = (cell.m_dielectric == INDEX_NONE)? 0 : cell.m_dielectric + 1;
+				dielectric_values[dielectric_index][node00_index] += ex0 * hx0 * scale_x + ey0 * hy0 * scale_y;
+				dielectric_values[dielectric_index][node01_index] += ex0 * hx0 * scale_x + ey1 * hy1 * scale_y;
+				dielectric_values[dielectric_index][node10_index] += ex1 * hx1 * scale_x + ey0 * hy0 * scale_y;
+				dielectric_values[dielectric_index][node11_index] += ex1 * hx1 * scale_x + ey1 * hy1 * scale_y;
+				++dielectric_count[dielectric_index][node00_index];
+				++dielectric_count[dielectric_index][node01_index];
+				++dielectric_count[dielectric_index][node10_index];
+				++dielectric_count[dielectric_index][node11_index];
+				//cellnode_values[cell_index][0] = ex0 * hx0 * scale_x + ey0 * hy0 * scale_y;
+				//cellnode_values[cell_index][1] = ex0 * hx0 * scale_x + ey1 * hy1 * scale_y;
+				//cellnode_values[cell_index][2] = ex1 * hx1 * scale_x + ey0 * hy0 * scale_y;
+				//cellnode_values[cell_index][3] = ex1 * hx1 * scale_x + ey1 * hy1 * scale_y;
+			}
+		}
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+				size_t cell_index = GetCellIndex(ix, iy);
+				Cell &cell = m_cells[cell_index];
+				if(cell.m_conductor != INDEX_NONE)
+					continue;
+				size_t node00_index = GetNodeIndex(ix    , iy    );
+				size_t node01_index = GetNodeIndex(ix + 1, iy    );
+				size_t node10_index = GetNodeIndex(ix    , iy + 1);
+				size_t node11_index = GetNodeIndex(ix + 1, iy + 1);
+				size_t dielectric_index = (cell.m_dielectric == INDEX_NONE)? 0 : cell.m_dielectric + 1;
+				cellnode_values[cell_index][0] = dielectric_values[dielectric_index][node00_index] / (real_t) dielectric_count[dielectric_index][node00_index];
+				cellnode_values[cell_index][1] = dielectric_values[dielectric_index][node01_index] / (real_t) dielectric_count[dielectric_index][node01_index];
+				cellnode_values[cell_index][2] = dielectric_values[dielectric_index][node10_index] / (real_t) dielectric_count[dielectric_index][node10_index];
+				cellnode_values[cell_index][3] = dielectric_values[dielectric_index][node11_index] / (real_t) dielectric_count[dielectric_index][node11_index];
+			}
+		}
+		real_t max_value = 0.0;
+		for(size_t i = 0; i < cellnode_values.size(); ++i) {
+			for(size_t j = 0; j < 4; ++j) {
+				max_value = std::max(max_value, fabs(cellnode_values[i][j]));
+			}
+		}
+		real_t scale = 1.0 / max_value;
+		for(size_t i = 0; i < cellnode_values.size(); ++i) {
+			for(size_t j = 0; j < 4; ++j) {
+				cellnode_values[i][j] *= scale;
+			}
+		}
+	} else {
+		real_t *solution_values = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * mode;
+		real_t max_value = 0.0;
+		for(size_t i = 0; i < m_vars_surf; ++i) {
+			max_value = std::max(max_value, fabs(solution_values[i]));
+		}
+		real_t scale = 1.0 / max_value;
+		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+				size_t cell_index = GetCellIndex(ix, iy);
+				if(m_cells[cell_index].m_conductor == INDEX_NONE)
+					continue;
+				Node &node00 = GetNode(ix    , iy    );
+				Node &node01 = GetNode(ix + 1, iy    );
+				Node &node10 = GetNode(ix    , iy + 1);
+				Node &node11 = GetNode(ix + 1, iy + 1);
+				cellnode_values[cell_index][0] = (node00.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node00.m_var_surf] * scale;
+				cellnode_values[cell_index][1] = (node01.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node01.m_var_surf] * scale;
+				cellnode_values[cell_index][2] = (node10.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node10.m_var_surf] * scale;
+				cellnode_values[cell_index][3] = (node11.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node11.m_var_surf] * scale;
+			}
 		}
 	}
 }
