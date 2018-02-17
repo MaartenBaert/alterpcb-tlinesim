@@ -22,6 +22,9 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "MaterialDatabase.h"
 
+// TODO: remove
+#include <iostream>
+
 const char *const TLINERESULT_NAMES[TLINERESULT_COUNT] = {
 	"Impedance",
 	"Velocity",
@@ -111,6 +114,11 @@ void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, co
 		assert(currents.size() == modes.size());
 		assert(dielectric_losses.size() == mode_scale.size());
 		assert(resistive_losses.size() == mode_scale.size());
+
+		std::cerr << "charges = " << charges << std::endl;
+		std::cerr << "currents = " << currents << std::endl;
+		std::cerr << "dielectric_losses = " << dielectric_losses << std::endl;
+		std::cerr << "resistive_losses = " << resistive_losses << std::endl;
 
 		for(size_t j = 0; j < mode_scale.size(); ++j) {
 
