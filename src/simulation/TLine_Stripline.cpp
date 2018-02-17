@@ -35,23 +35,23 @@ void TLine_Stripline_Single(TLineContext &context) {
 	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
 	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat() * 1e-3;
-	const MaterialDielectric *substrate_1_material = FindDielectric(root, "substrate_1_material", context.m_material_database);
-	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat() * 1e-3;
-	const MaterialDielectric *substrate_2_material = FindDielectric(root, "substrate_2_material", context.m_material_database);
+	real_t substrate_thickness_1 = root.GetMember("substrate_thickness_1").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
+	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
 
-	real_t space_x = (track_width + track_thickness + substrate_1_thickness + substrate_2_thickness) * 10.0;
+	real_t space_x = (track_width + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track_box = {
 		-0.5 * track_width,
-		substrate_2_thickness,
+		substrate_thickness_2,
 		0.5 * track_width,
-		substrate_2_thickness + track_thickness,
+		substrate_thickness_2 + track_thickness,
 	};
 	Box2D world_box = {
 		track_box.x1 - space_x,
 		0.0,
 		track_box.x2 + space_x,
-		substrate_2_thickness + track_thickness + substrate_1_thickness,
+		substrate_thickness_2 + track_thickness + substrate_thickness_1,
 	};
 	Box2D world_focus = {
 		track_box.x1,
@@ -61,12 +61,12 @@ void TLine_Stripline_Single(TLineContext &context) {
 	};
 	Box2D ground1_box = {world_box.x1, world_box.y1, world_box.x2, world_box.y1};
 	Box2D ground2_box = {world_box.x1, world_box.y2, world_box.x2, world_box.y2};
-	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
-	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
+	Box2D substrate1_box = {world_box.x1, substrate_thickness_2 + track_thickness * 0.5, world_box.x2, substrate_thickness_2 + track_thickness + substrate_thickness_1};
+	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness_2 + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = std::min(substrate_1_thickness, substrate_2_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = std::min(substrate_thickness_1, substrate_thickness_2) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_thickness_1, substrate_thickness_2) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -74,8 +74,8 @@ void TLine_Stripline_Single(TLineContext &context) {
 	mesh->AddConductor(ground1_box, step0, track_material, port_ground);
 	mesh->AddConductor(ground2_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
-	mesh->AddDielectric(substrate1_box, step0, substrate_1_material);
-	mesh->AddDielectric(substrate2_box, step0, substrate_2_material);
+	mesh->AddDielectric(substrate1_box, step0, substrate_material_1);
+	mesh->AddDielectric(substrate2_box, step0, substrate_material_2);
 
 	context.m_output_mesh = std::move(mesh);
 	TLineSolveModes(context, {0.0, 1.0}, {1.0});
@@ -90,24 +90,24 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	real_t track_spacing = root.GetMember("track_spacing").AsFloat() * 1e-3;
 	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
 	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
-	real_t substrate_1_thickness = root.GetMember("substrate_1_thickness").AsFloat() * 1e-3;
-	const MaterialDielectric *substrate_1_material = FindDielectric(root, "substrate_1_material", context.m_material_database);
-	real_t substrate_2_thickness = root.GetMember("substrate_2_thickness").AsFloat() * 1e-3;
-	const MaterialDielectric *substrate_2_material = FindDielectric(root, "substrate_2_material", context.m_material_database);
+	real_t substrate_thickness_1 = root.GetMember("substrate_thickness_1").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
+	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
 
-	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_1_thickness + substrate_2_thickness) * 10.0;
+	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
-		substrate_2_thickness,
+		substrate_thickness_2,
 		-0.5 * track_spacing,
-		substrate_2_thickness + track_thickness,
+		substrate_thickness_2 + track_thickness,
 	};
 	Box2D track2_box = track1_box.MirroredX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
 		0.0,
 		track2_box.x2 + space_x,
-		substrate_2_thickness + track_thickness + substrate_1_thickness,
+		substrate_thickness_2 + track_thickness + substrate_thickness_1,
 	};
 	Box2D world_focus = {
 		track1_box.x1,
@@ -117,12 +117,12 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	};
 	Box2D ground1_box = {world_box.x1, world_box.y1, world_box.x2, world_box.y1};
 	Box2D ground2_box = {world_box.x1, world_box.y2, world_box.x2, world_box.y2};
-	Box2D substrate1_box = {world_box.x1, substrate_2_thickness + track_thickness * 0.5, world_box.x2, substrate_2_thickness + track_thickness + substrate_1_thickness};
-	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_2_thickness + track_thickness * 0.5};
+	Box2D substrate1_box = {world_box.x1, substrate_thickness_2 + track_thickness * 0.5, world_box.x2, substrate_thickness_2 + track_thickness + substrate_thickness_1};
+	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness_2 + track_thickness * 0.5};
 
-	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_1_thickness, substrate_2_thickness)) * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_thickness_1, substrate_thickness_2)) * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_1_thickness, substrate_2_thickness) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_thickness_1, substrate_thickness_2) * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -132,8 +132,8 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	mesh->AddConductor(ground2_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
 	mesh->AddConductor(track2_box, step1, track_material, port_signal2);
-	mesh->AddDielectric(substrate1_box, step0, substrate_1_material);
-	mesh->AddDielectric(substrate2_box, step0, substrate_2_material);
+	mesh->AddDielectric(substrate1_box, step0, substrate_material_1);
+	mesh->AddDielectric(substrate2_box, step0, substrate_material_2);
 
 	context.m_output_mesh = std::move(mesh);
 	TLineSolveModes(context, {0.0, 1.0, -1.0, 0.0, 1.0, 1.0}, {2.0, 1.0});
@@ -159,10 +159,10 @@ void RegisterTLine_Stripline() {
 			{"Track Width"          , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
 			{"Track Thickness"      , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
 			{"Track Material"       , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
-			{"Substrate 1 Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate 1 Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
-			{"Substrate 2 Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate 2 Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
+			{"Substrate Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
+			{"Substrate Material 1" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
+			{"Substrate Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
+			{"Substrate Material 2" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
 		},
 		{"Single-ended"},
 		&TLine_Stripline_Single,
@@ -179,10 +179,10 @@ void RegisterTLine_Stripline() {
 			{"Track Spacing"      , TLINE_PARAMETERTYPE_REAL               , default_track_spacing      , true , 0},
 			{"Track Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
 			{"Track Material"     , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
-			{"Substrate 1 Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate 1 Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
-			{"Substrate 2 Thickness", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
-			{"Substrate 2 Material" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
+			{"Substrate Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
+			{"Substrate Material 1" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
+			{"Substrate Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
+			{"Substrate Material 2" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 0},
 		},
 		{"Differential", "Common-mode"},
 		&TLine_Stripline_Differential,
