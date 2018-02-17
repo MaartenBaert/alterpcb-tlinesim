@@ -20,6 +20,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "AboutDialog.h"
 #include "Basics.h"
 #include "VData.h"
 #include "Qt.h"
@@ -111,6 +112,8 @@ private slots:
 	void OnImageTypeChange();
 	void OnMeshOverlayChange();
 	void OnModeChange();
+
+	void OnAbout();
 
 private:
 	inline SimulationType GetSimulationType() { return (SimulationType) clamp(m_combobox_simulation_type->currentIndex(), 0, SIMULATION_COUNT - 1); }

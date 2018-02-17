@@ -287,7 +287,14 @@ MainWindow::MainWindow() {
 		layout2->addWidget(groupbox_results, 1);
 	}
 
-	setStatusBar(new QStatusBar(this));
+	{
+		setStatusBar(new QStatusBar(this));
+
+		QLabel *label_about = new QLabel("<a href=\"about\">About AlterPCB-TLineSim</a>", statusBar());
+		statusBar()->addPermanentWidget(label_about);
+
+		connect(label_about, SIGNAL(linkActivated(QString)), this, SLOT(OnAbout()));
+	}
 
 	LoadMaterials();
 	OnUpdateTLineType();
@@ -788,4 +795,9 @@ void MainWindow::OnMeshOverlayChange() {
 
 void MainWindow::OnModeChange() {
 	m_meshviewer->SetMode(clamp<size_t>(m_combobox_modes->currentIndex(), 0, g_tline_types[m_tline_type].m_modes.size() - 1));
+}
+
+void MainWindow::OnAbout() {
+	AboutDialog dialog(this);
+	dialog.exec();
 }

@@ -7,14 +7,15 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 TARGET = alterpcb-tlinesim
 TEMPLATE = app
 
+DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
 LIBS += -lcholmod
-
-INCLUDEPATH += common gui simulation
-DEPENDPATH += common gui simulation
 
 QMAKE_CXXFLAGS += -std=c++11 -Wconversion
 QMAKE_CXXFLAGS_RELEASE += -DNDEBUG
 QMAKE_CXXFLAGS_RELEASE -= -g
+
+INCLUDEPATH += common gui simulation
+DEPENDPATH += common gui simulation
 
 ########## Warning: Everything below this line is auto-generated and will be overwritten! ##########
 
@@ -35,6 +36,7 @@ HEADERS += \
 	common/VData.h \
 	common/VDataReader.h \
 	common/Vector.h \
+	gui/AboutDialog.h \
 	gui/ApplicationDirs.h \
 	gui/GlobalDirs.h \
 	gui/Icons.h \
@@ -61,6 +63,7 @@ SOURCES += \
 	common/NaturalSort.cpp \
 	common/StringRegistry.cpp \
 	common/VData.cpp \
+	gui/AboutDialog.cpp \
 	gui/ApplicationDirs.cpp \
 	gui/Icons.cpp \
 	gui/MainWindow.cpp \
