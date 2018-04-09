@@ -22,7 +22,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 #include "HashTable.h"
-#include "Eigen.h"
+//#include "Eigen.h"
 
 #include <type_traits>
 #include <vector>
@@ -374,6 +374,24 @@ public:
 	template<typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
 	void RightMultiply(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
 		MultiplyBase<F1, F2, ROWMAJOR1, ROWMAJOR2, true>(output, input, num);
+	}
+
+	// Calculates output = input1 * A * input2 (convenience function).
+	// size of output = (num1, num2), size of input1 = (num1, rows), size of input2 = (cols, num2).
+	template<typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
+	void LeftRightMultiply(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input1, DenseViewBase<F3, ROWMAJOR3> input2, size_t num1, size_t num2) {
+		std::unique_ptr<F2[]> temp(new F2[GetRows() * num2]);
+		DenseViewBase<F2, ROWMAJOR2> temp_view(temp.get(), (ROWMAJOR2)? num2 : GetRows());
+		LeftMultiply(temp_view, input2, num2);
+		for(size_t i = 0; i < num1; ++i) {
+			for(size_t j = 0; j < num2; ++j) {
+				F2 sum = F2();
+				for(size_t k = 0; k < GetRows(); ++k) {
+					sum += input1(i, k) * temp_view(k, j);
+				}
+				output(i, j) = sum;
+			}
+		}
 	}
 
 	// Convert to dense matrix.

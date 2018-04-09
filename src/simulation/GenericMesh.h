@@ -28,28 +28,65 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 enum MeshImageType {
 	MESHIMAGETYPE_MESH,
-	MESHIMAGETYPE_FIELD_E,
-	MESHIMAGETYPE_FIELD_H,
+	MESHIMAGETYPE_EPOT,
+	MESHIMAGETYPE_MPOT,
 	MESHIMAGETYPE_ENERGY,
 	MESHIMAGETYPE_CURRENT,
 };
 
 class GenericMesh {
 
+private:
+	bool m_initialized, m_solved;
+
+protected:
+	Eigen::MatrixXr m_modes;
+	real_t m_frequency;
+	Eigen::MatrixXr m_inductance_matrix, m_capacitance_matrix, m_resistance_matrix, m_conductance_matrix;
+
+private:
+	Eigen::MatrixXc m_characteristic_impedance_matrix;
+	Eigen::VectorXc m_characteristic_impedances, m_propagation_constants;
+	Eigen::MatrixXc m_eigenmodes;
+	Eigen::VectorXc m_eigenmode_propagation_constants;
+
 public:
 	GenericMesh();
 	virtual ~GenericMesh();
 
-	virtual void Initialize() = 0;
-	virtual void Solve(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses,
-					   const Eigen::MatrixXr &modes, real_t frequency) = 0;
-	virtual void Cleanup() = 0;
+	void Initialize();
+	void Solve(const Eigen::MatrixXr &modes, real_t frequency);
+	void Cleanup();
 
 	virtual Box2D GetWorldBox2D() = 0;
 	virtual Box2D GetWorldFocus2D() = 0;
-	virtual bool IsInitialized() = 0;
-	virtual bool IsSolved() = 0;
-	virtual size_t GetModeCount() = 0;
-	virtual bool GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) = 0;
+	virtual void GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient,
+							size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) = 0;
+
+public:
+	inline bool IsInitialized() { return m_initialized; }
+	inline bool IsSolved() { return m_solved; }
+	inline size_t GetModeCount() { return m_modes.cols(); }
+	inline real_t GetFrequency() { return m_frequency; }
+
+	inline const Eigen::MatrixXr& GetInductanceMatrix() { return m_inductance_matrix; }
+	inline const Eigen::MatrixXr& GetCapacitanceMatrix() { return m_capacitance_matrix; }
+	inline const Eigen::MatrixXr& GetResistanceMatrix() { return m_resistance_matrix; }
+	inline const Eigen::MatrixXr& GetConductanceMatrix() { return m_conductance_matrix; }
+
+	inline const Eigen::MatrixXc& GetCharacteristicImpedanceMatrix() { return m_characteristic_impedance_matrix; }
+	inline const Eigen::VectorXc& GetCharacteristicImpedances() { return m_characteristic_impedances; }
+	inline const Eigen::VectorXc& GetPropagationConstants() { return m_propagation_constants; }
+	inline const Eigen::MatrixXc& GetEigenmodes() { return m_eigenmodes; }
+	inline const Eigen::VectorXc& GetEigenmodePropagationConstants() { return m_eigenmode_propagation_constants; }
+
+protected:
+	virtual size_t GetFixedVariableCount() = 0;
+	virtual void DoInitialize() = 0;
+	virtual void DoSolve() = 0;
+	virtual void DoCleanup() = 0;
+
+private:
+	void SolveEigenModes();
 
 };

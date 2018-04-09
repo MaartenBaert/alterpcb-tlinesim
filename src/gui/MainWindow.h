@@ -82,7 +82,7 @@ private:
 
 	MeshViewer *m_meshviewer;
 	QSlider *m_slider_zoom;
-	QButtonGroup *m_buttongroup_image_type;
+	QComboBox *m_combobox_image_type;
 	QCheckBox *m_checkbox_mesh_overlay;
 	QComboBox *m_combobox_modes;
 

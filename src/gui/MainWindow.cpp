@@ -228,29 +228,24 @@ MainWindow::MainWindow() {
 		m_slider_zoom->setValue(150000);
 		m_slider_zoom->setSingleStep(1000);
 		m_slider_zoom->setPageStep(10000);
-		QLabel *label_imagetype = new QLabel("View type:", groupbox_viewer);
-		m_buttongroup_image_type = new QButtonGroup(groupbox_viewer);
-		QRadioButton *radio_imagetype_mesh = new QRadioButton("Mesh", groupbox_viewer);
-		QRadioButton *radio_imagetype_field_e = new QRadioButton("E-field", groupbox_viewer);
-		QRadioButton *radio_imagetype_field_h = new QRadioButton("H-field", groupbox_viewer);
-		QRadioButton *radio_imagetype_energy = new QRadioButton("Energy", groupbox_viewer);
-		QRadioButton *radio_imagetype_current = new QRadioButton("Current", groupbox_viewer);
-		m_buttongroup_image_type->addButton(radio_imagetype_mesh, MESHIMAGETYPE_MESH);
-		m_buttongroup_image_type->addButton(radio_imagetype_field_e, MESHIMAGETYPE_FIELD_E);
-		m_buttongroup_image_type->addButton(radio_imagetype_field_h, MESHIMAGETYPE_FIELD_H);
-		m_buttongroup_image_type->addButton(radio_imagetype_energy, MESHIMAGETYPE_ENERGY);
-		m_buttongroup_image_type->addButton(radio_imagetype_current, MESHIMAGETYPE_CURRENT);
-		radio_imagetype_field_e->setChecked(true);
+		QLabel *label_imagetype = new QLabel("Image Type:", groupbox_viewer);
+		m_combobox_image_type = new QComboBox(groupbox_viewer);
+		m_combobox_image_type->addItem("Mesh");
+		m_combobox_image_type->addItem("Electric Potential");
+		m_combobox_image_type->addItem("Magnetic Potential");
+		m_combobox_image_type->addItem("Energy");
+		m_combobox_image_type->addItem("Current");
+		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
 		m_combobox_modes = new QComboBox(groupbox_viewer);
 		m_combobox_modes->setMinimumWidth(120);
 
-		connect(m_slider_zoom, SIGNAL(valueChanged(int)), this, SLOT(OnZoomChange()));
-		connect(m_buttongroup_image_type, SIGNAL(buttonClicked(int)), this, SLOT(OnImageTypeChange()));
-		connect(m_checkbox_mesh_overlay, SIGNAL(stateChanged(int)), this, SLOT(OnMeshOverlayChange()));
-		connect(m_combobox_modes, SIGNAL(currentIndexChanged(int)), this, SLOT(OnModeChange()));
+		connect(m_slider_zoom, SIGNAL(sliderMoved(int)), this, SLOT(OnZoomChange()));
+		connect(m_combobox_image_type, SIGNAL(activated(int)), this, SLOT(OnImageTypeChange()));
+		connect(m_checkbox_mesh_overlay, SIGNAL(clicked(bool)), this, SLOT(OnMeshOverlayChange()));
+		connect(m_combobox_modes, SIGNAL(activated(int)), this, SLOT(OnModeChange()));
 
 		QVBoxLayout *layout = new QVBoxLayout(groupbox_viewer);
 		layout->addWidget(m_meshviewer);
@@ -264,13 +259,9 @@ MainWindow::MainWindow() {
 			QHBoxLayout *layout2 = new QHBoxLayout();
 			layout->addLayout(layout2);
 			layout2->addWidget(label_imagetype);
-			layout2->addWidget(radio_imagetype_mesh);
-			layout2->addWidget(radio_imagetype_field_e);
-			layout2->addWidget(radio_imagetype_field_h);
-			layout2->addWidget(radio_imagetype_energy);
-			layout2->addWidget(radio_imagetype_current);
-			layout2->addStretch();
+			layout2->addWidget(m_combobox_image_type);
 			layout2->addWidget(m_checkbox_mesh_overlay);
+			layout2->addStretch();
 			layout2->addWidget(label_mode);
 			layout2->addWidget(m_combobox_modes);
 		}
@@ -713,8 +704,9 @@ void MainWindow::OnUpdateTLineType() {
 	// clear mesh viewer
 	m_meshviewer->SetMesh(NULL);
 
-	// do suppressed update
+	// update
 	OnUpdateSimulationType();
+	OnModeChange();
 
 }
 
@@ -786,7 +778,7 @@ void MainWindow::OnZoomChange() {
 }
 
 void MainWindow::OnImageTypeChange() {
-	m_meshviewer->SetImageType((MeshImageType) m_buttongroup_image_type->checkedId());
+	m_meshviewer->SetImageType((MeshImageType) m_combobox_image_type->currentIndex());
 }
 
 void MainWindow::OnMeshOverlayChange() {

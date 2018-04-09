@@ -32,11 +32,6 @@ int main(int argc, char* argv[]) {
 	StringRegistry string_registry;
 	UNUSED(string_registry);
 
-#if WITH_SUITESPARSE
-	CholmodSolver cholmod_solver;
-	UNUSED(cholmod_solver);
-#endif
-
 	// create application
 	QApplication app(argc, argv);
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)

@@ -95,142 +95,145 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	// background
 	painter.fillRect(0, 0, (int) w, (int) h, QColor(64, 64, 64));
 
-	if(m_mesh != NULL) {
+	if(m_mesh == NULL)
+		return;
 
-		Box2D world_box = m_mesh->GetWorldBox2D();
-		Box2D world_focus = m_mesh->GetWorldFocus2D();
-		real_t scale = exp10(-m_zoom);
+	// check whether we can get an image
+	bool has_image = (m_image_type == MESHIMAGETYPE_MESH)? m_mesh->IsInitialized() : m_mesh->IsSolved();
+	if(!has_image)
+		return;
 
-		// calculate view
-		Box2D view_box = AdjustAspectRatio(world_box, (real_t) w, (real_t) h);
-		Box2D view_focus = AdjustAspectRatio(world_focus, (real_t) w, (real_t) h);
-		Box2D view = {
-			view_focus.x1 + (view_box.x1 - view_focus.x1) * scale,
-			view_focus.y1 + (view_box.y1 - view_focus.y1) * scale,
-			view_focus.x2 + (view_box.x2 - view_focus.x2) * scale,
-			view_focus.y2 + (view_box.y2 - view_focus.y2) * scale,
-		};
-		std::swap(view.y1, view.y2); // Y-axis is upside down
+	// get view parameters
+	Box2D world_box = m_mesh->GetWorldBox2D();
+	Box2D world_focus = m_mesh->GetWorldFocus2D();
+	real_t scale = exp10(-m_zoom);
 
-		// get image data
-		std::vector<real_t> image_value;
-		std::vector<Vector2D> image_gradient;
-		if(m_mesh->GetImage2D(image_value, image_gradient, w, h, view, m_image_type, m_mode)) {
+	// calculate view
+	Box2D view_box = AdjustAspectRatio(world_box, (real_t) w, (real_t) h);
+	Box2D view_focus = AdjustAspectRatio(world_focus, (real_t) w, (real_t) h);
+	Box2D view = {
+		view_focus.x1 + (view_box.x1 - view_focus.x1) * scale,
+		view_focus.y1 + (view_box.y1 - view_focus.y1) * scale,
+		view_focus.x2 + (view_box.x2 - view_focus.x2) * scale,
+		view_focus.y2 + (view_box.y2 - view_focus.y2) * scale,
+	};
+	std::swap(view.y1, view.y2); // Y-axis is upside down
 
-			// convert to image
-			QImage image((int) w, (int) h, QImage::Format_RGB32);
-			if(m_image_type == MESHIMAGETYPE_MESH) {
+	// get image data
+	std::vector<real_t> image_value;
+	std::vector<Vector2D> image_gradient;
+	m_mesh->GetImage2D(image_value, image_gradient, w, h, view, m_image_type, m_mode);
 
-				// color plot
-				const ColorMap &cmap = COLORMAP_GRAYSCALE;
-				for(size_t j = 0; j < (size_t) h; ++j) {
-					uint32_t *row = (uint32_t*) image.scanLine((int) j);
-					real_t *row_value = image_value.data() + j * w;
-					for(size_t i = 0; i < (size_t) w; ++i) {
-						row[i] = cmap(row_value[i]).ToUint32();
-					}
-				}
+	// convert to image
+	QImage image((int) w, (int) h, QImage::Format_RGB32);
+	if(m_image_type == MESHIMAGETYPE_MESH) {
 
-			} else if(m_image_type == MESHIMAGETYPE_FIELD_E || m_image_type == MESHIMAGETYPE_FIELD_H) {
-
-				// get mesh data
-				std::vector<real_t> image_mesh_value;
-				std::vector<Vector2D> image_mesh_gradient;
-				if(m_mesh_overlay) {
-					m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
-				}
-
-				// color + contour plot
-				real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
-				const ColorMap &cmap = COLORMAP_MAGMA;
-				for(size_t j = 0; j < (size_t) h; ++j) {
-					uint32_t *row = (uint32_t*) image.scanLine((int) j);
-					real_t *row_value = image_value.data() + j * w;
-					Vector2D *row_gradient = image_gradient.data() + j * w;
-					real_t *row_mesh_value = image_mesh_value.data() + j * w;
-					for(size_t i = 0; i < (size_t) w; ++i) {
-						real_t value = row_value[i];
-						real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contour_scale;
-						real_t temp = value * contours + 0.5;
-						real_t temp2 = (temp - nearbyint(temp)) / contour_range;
-						Color plot_color = cmap(fabs(value));
-						if(m_mesh_overlay) {
-							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
-						}
-						Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
-						row[i] = ColorBlend(plot_color, contour_color).ToUint32();
-					}
-				}
-
-			} else if(m_image_type == MESHIMAGETYPE_ENERGY) {
-
-				// get mesh data
-				std::vector<real_t> image_mesh_value;
-				std::vector<Vector2D> image_mesh_gradient;
-				if(m_mesh_overlay) {
-					m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
-				}
-
-				// color + contour plot
-				real_t log_scale = 1.0 / log(1e4);
-				real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
-				const ColorMap &cmap = COLORMAP_MAGMA;
-				for(size_t j = 0; j < (size_t) h; ++j) {
-					uint32_t *row = (uint32_t*) image.scanLine((int) j);
-					real_t *row_value = image_value.data() + j * w;
-					Vector2D *row_gradient = image_gradient.data() + j * w;
-					real_t *row_mesh_value = image_mesh_value.data() + j * w;
-					for(size_t i = 0; i < (size_t) w; ++i) {
-						real_t value = log(fabs(row_value[i])) * log_scale + 1.0;
-						real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
-						real_t temp = value * contours + 0.5;
-						real_t temp2 = (temp - nearbyint(temp)) / contour_range;
-						Color plot_color = cmap(value);
-						if(m_mesh_overlay) {
-							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
-						}
-						Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
-						row[i] = ColorBlend(plot_color, contour_color).ToUint32();
-					}
-				}
-
-			} else {
-
-				// get mesh data
-				std::vector<real_t> image_mesh_value;
-				std::vector<Vector2D> image_mesh_gradient;
-				if(m_mesh_overlay) {
-					m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
-				}
-
-				// color plot
-				real_t log_scale = 1.0 / log(1e4);
-				const ColorMap &cmap = COLORMAP_MAGMA;
-				for(size_t j = 0; j < (size_t) h; ++j) {
-					uint32_t *row = (uint32_t*) image.scanLine((int) j);
-					real_t *row_value = image_value.data() + j * w;
-					real_t *row_mesh_value = image_mesh_value.data() + j * w;
-					for(size_t i = 0; i < (size_t) w; ++i) {
-						real_t value = row_value[i];
-						Color plot_color = cmap(log(fabs(value)) * log_scale + 1.0);
-						if(m_mesh_overlay) {
-							plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
-						}
-						row[i] = plot_color.ToUint32();
-					}
-				}
-
+		// color plot
+		const ColorMap &cmap = COLORMAP_GRAYSCALE;
+		for(size_t j = 0; j < (size_t) h; ++j) {
+			uint32_t *row = (uint32_t*) image.scanLine((int) j);
+			real_t *row_value = image_value.data() + j * w;
+			for(size_t i = 0; i < (size_t) w; ++i) {
+				row[i] = cmap(row_value[i]).ToUint32();
 			}
+		}
 
-			// draw image
-			int cut_x1 = clamp<int>(rinti((real_t) w * (world_box.x1 - view.x1) / (view.x2 - view.x1)), 0, (int) w);
-			int cut_x2 = clamp<int>(rinti((real_t) w * (world_box.x2 - view.x1) / (view.x2 - view.x1)), 0, (int) w);
-			int cut_y1 = clamp<int>(rinti((real_t) h * (world_box.y2 - view.y1) / (view.y2 - view.y1)), 0, (int) h);
-			int cut_y2 = clamp<int>(rinti((real_t) h * (world_box.y1 - view.y1) / (view.y2 - view.y1)), 0, (int) h);
-			painter.drawImage(cut_x1, cut_y1, image, cut_x1, cut_y1, cut_x2 - cut_x1, cut_y2 - cut_y1);
+	} else if(m_image_type == MESHIMAGETYPE_EPOT || m_image_type == MESHIMAGETYPE_MPOT) {
 
+		// get mesh data
+		std::vector<real_t> image_mesh_value;
+		std::vector<Vector2D> image_mesh_gradient;
+		if(m_mesh_overlay) {
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
+		}
+
+		// color + contour plot
+		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
+		const ColorMap &cmap = COLORMAP_MAGMA;
+		for(size_t j = 0; j < (size_t) h; ++j) {
+			uint32_t *row = (uint32_t*) image.scanLine((int) j);
+			real_t *row_value = image_value.data() + j * w;
+			Vector2D *row_gradient = image_gradient.data() + j * w;
+			real_t *row_mesh_value = image_mesh_value.data() + j * w;
+			for(size_t i = 0; i < (size_t) w; ++i) {
+				real_t value = row_value[i];
+				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contour_scale;
+				real_t temp = value * contours + 0.5;
+				real_t temp2 = (temp - nearbyint(temp)) / contour_range;
+				Color plot_color = cmap(fabs(value));
+				if(m_mesh_overlay) {
+					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+				}
+				Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
+				row[i] = ColorBlend(plot_color, contour_color).ToUint32();
+			}
+		}
+
+	} else if(m_image_type == MESHIMAGETYPE_ENERGY) {
+
+		// get mesh data
+		std::vector<real_t> image_mesh_value;
+		std::vector<Vector2D> image_mesh_gradient;
+		if(m_mesh_overlay) {
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
+		}
+
+		// color + contour plot
+		real_t log_scale = 1.0 / log(1e4);
+		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
+		const ColorMap &cmap = COLORMAP_MAGMA;
+		for(size_t j = 0; j < (size_t) h; ++j) {
+			uint32_t *row = (uint32_t*) image.scanLine((int) j);
+			real_t *row_value = image_value.data() + j * w;
+			Vector2D *row_gradient = image_gradient.data() + j * w;
+			real_t *row_mesh_value = image_mesh_value.data() + j * w;
+			for(size_t i = 0; i < (size_t) w; ++i) {
+				real_t value = log(fabs(row_value[i])) * log_scale + 1.0;
+				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
+				real_t temp = value * contours + 0.5;
+				real_t temp2 = (temp - nearbyint(temp)) / contour_range;
+				Color plot_color = cmap(value);
+				if(m_mesh_overlay) {
+					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+				}
+				Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
+				row[i] = ColorBlend(plot_color, contour_color).ToUint32();
+			}
+		}
+
+	} else {
+
+		// get mesh data
+		std::vector<real_t> image_mesh_value;
+		std::vector<Vector2D> image_mesh_gradient;
+		if(m_mesh_overlay) {
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, w, h, view, MESHIMAGETYPE_MESH, m_mode);
+		}
+
+		// color plot
+		real_t log_scale = 1.0 / log(1e4);
+		const ColorMap &cmap = COLORMAP_MAGMA;
+		for(size_t j = 0; j < (size_t) h; ++j) {
+			uint32_t *row = (uint32_t*) image.scanLine((int) j);
+			real_t *row_value = image_value.data() + j * w;
+			real_t *row_mesh_value = image_mesh_value.data() + j * w;
+			for(size_t i = 0; i < (size_t) w; ++i) {
+				real_t value = row_value[i];
+				Color plot_color = cmap(log(fabs(value)) * log_scale + 1.0);
+				if(m_mesh_overlay) {
+					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+				}
+				row[i] = plot_color.ToUint32();
+			}
 		}
 
 	}
+
+	// draw image
+	int cut_x1 = clamp<int>(rinti((real_t) w * (world_box.x1 - view.x1) / (view.x2 - view.x1)), 0, (int) w);
+	int cut_x2 = clamp<int>(rinti((real_t) w * (world_box.x2 - view.x1) / (view.x2 - view.x1)), 0, (int) w);
+	int cut_y1 = clamp<int>(rinti((real_t) h * (world_box.y2 - view.y1) / (view.y2 - view.y1)), 0, (int) h);
+	int cut_y2 = clamp<int>(rinti((real_t) h * (world_box.y1 - view.y1) / (view.y2 - view.y1)), 0, (int) h);
+	painter.drawImage(cut_x1, cut_y1, image, cut_x1, cut_y1, cut_x2 - cut_x1, cut_y2 - cut_y1);
 
 }

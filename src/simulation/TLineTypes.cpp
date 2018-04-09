@@ -106,25 +106,18 @@ void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes) {
 	for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
 
 		// solve
-		Eigen::MatrixXr charges, currents, dielectric_losses, resistive_losses;
-		context.m_output_mesh->Solve(charges, currents, dielectric_losses, resistive_losses, modes, context.m_frequencies[i]);
+		context.m_output_mesh->Solve(modes, context.m_frequencies[i]);
 
-		/*
 		real_t omega = 2.0 * M_PI * context.m_frequencies[i];
-		for(size_t j = 0; j < modes.cols(); ++j) {
+		for(size_t j = 0; j < (size_t) modes.cols(); ++j) {
 
 			// process results
-			real_t total_charge = 0.0, total_current = 0.0;
-			for(size_t k = 0; k < ports; ++k) {
-				total_charge += charges[ports * j + k] * modes[ports * j + k] / mode_scale[j];
-				total_current += currents[ports * j + k] * modes[ports * j + k] / mode_scale[j];
-			}
-			real_t ind = mode_scale[j] / total_current;
-			real_t cap = total_charge / mode_scale[j];
-			real_t res = resistive_losses[j] / sqr(total_current);
-			real_t cond = dielectric_losses[j] / sqr(mode_scale[j]);
-			complex_t z0 = sqrt(complex_t(res, omega * ind) / complex_t(cond, omega * cap));
-			complex_t gamma = sqrt(complex_t(res, omega * ind) * complex_t(cond, omega * cap));
+			real_t ind = context.m_output_mesh->GetInductanceMatrix()(j, j);
+			real_t cap = context.m_output_mesh->GetCapacitanceMatrix()(j, j);
+			real_t res = context.m_output_mesh->GetResistanceMatrix()(j, j);
+			real_t cond = context.m_output_mesh->GetConductanceMatrix()(j, j);
+			complex_t z0 = context.m_output_mesh->GetCharacteristicImpedances()[j];
+			complex_t gamma = context.m_output_mesh->GetPropagationConstants()[j];
 
 			// generate outputs
 			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * (modes.cols() * i + j);
@@ -139,7 +132,7 @@ void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes) {
 			output_values[TLINERESULT_ALPHA] = gamma.real();
 			output_values[TLINERESULT_BETA] = gamma.imag();
 
-		}*/
+		}
 
 		// update progress
 		if(context.m_progress_callback) {

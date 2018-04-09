@@ -103,7 +103,9 @@ Propagation modes in a quasi-TEM transmission line have a voltage component and 
 
 Although the characteristic impedance matrix describes the behavior of the transmission line perfectly, it is not very useful for the designer. It would be more convenient to extract an approximate characteristic impedance for each mode and describe the coupling by other means (e.g. S-parameters). We could extract the diagonal elements of the characteristic impedance matrix and ignore the rest, but this usually results in an overestimation, because it corresponds to leaving the unused tracks floating, which reduces the capacitance and increases the inductance. We could instead use the diagonal elements of the characteristic admittance matrix (the inverse of the characteristic impedance matrix), but this results in an underestimation, because it corresponds to shorting the unused tracks to ground, which increases the capacitance and reduces the inductance. The solver uses a simple compromise: it calculates the impedance and admittance matrices, extracts the diagonal elements, and uses the geometric mean of the two impedance values obtained this way. Usually the resulting values are very close to optimal in terms of minimizing the amplitude of reflections caused by impedance mismatch, so they should be adequate for practical transmission line design.
 
+### Propagation constants
 
+Propagation constants of eigenmodes can be used to determine the speed of propagation as well as the attenuation of the signal. However the designer may want to know these properties even for modes that aren't true eigenmodes. In this case the solver uses the Rayleigh quotient to determine an approximate propagation constant.
 
 TODO:
 - propagation constant (coupled)
