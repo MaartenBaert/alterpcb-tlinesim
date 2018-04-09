@@ -81,7 +81,7 @@ private:
 	HashTable<StringRegistryEntry, StringRegistryHasher> m_entries;
 
 public:
-	inline StringRegistry() : m_entries(1024) {
+	inline StringRegistry() {
 		s_instance = this;
 	}
 	inline ~StringRegistry() {

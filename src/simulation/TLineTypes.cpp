@@ -96,31 +96,22 @@ std::string CanonicalName(const std::string &name) {
 	return out;
 }
 
-void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, const std::vector<real_t> &mode_scale) {
-	size_t ports = modes.size() / mode_scale.size();
+void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes) {
 
 	// initialize
 	context.m_output_mesh->Initialize();
 
 	context.m_results.clear();
-	context.m_results.resize(TLINERESULT_COUNT * mode_scale.size() * context.m_frequencies.size());
+	context.m_results.resize(TLINERESULT_COUNT * modes.cols() * context.m_frequencies.size());
 	for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
 
 		// solve
-		std::vector<real_t> charges, currents, dielectric_losses, resistive_losses;
-		real_t freq = context.m_frequencies[i], omega = 2.0 * M_PI * freq;
-		context.m_output_mesh->Solve(charges, currents, dielectric_losses, resistive_losses, modes, mode_scale.size(), freq);
-		assert(charges.size() == modes.size());
-		assert(currents.size() == modes.size());
-		assert(dielectric_losses.size() == mode_scale.size());
-		assert(resistive_losses.size() == mode_scale.size());
+		Eigen::MatrixXr charges, currents, dielectric_losses, resistive_losses;
+		context.m_output_mesh->Solve(charges, currents, dielectric_losses, resistive_losses, modes, context.m_frequencies[i]);
 
-		std::cerr << "charges = " << charges << std::endl;
-		std::cerr << "currents = " << currents << std::endl;
-		std::cerr << "dielectric_losses = " << dielectric_losses << std::endl;
-		std::cerr << "resistive_losses = " << resistive_losses << std::endl;
-
-		for(size_t j = 0; j < mode_scale.size(); ++j) {
+		/*
+		real_t omega = 2.0 * M_PI * context.m_frequencies[i];
+		for(size_t j = 0; j < modes.cols(); ++j) {
 
 			// process results
 			real_t total_charge = 0.0, total_current = 0.0;
@@ -136,7 +127,7 @@ void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, co
 			complex_t gamma = sqrt(complex_t(res, omega * ind) * complex_t(cond, omega * cap));
 
 			// generate outputs
-			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * (mode_scale.size() * i + j);
+			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * (modes.cols() * i + j);
 			output_values[TLINERESULT_IMPEDANCE] = z0.real();
 			output_values[TLINERESULT_VELOCITY] = omega / gamma.imag();
 			output_values[TLINERESULT_WAVELENGTH] = 2.0 * M_PI / gamma.imag() * 1e3;
@@ -148,7 +139,7 @@ void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, co
 			output_values[TLINERESULT_ALPHA] = gamma.real();
 			output_values[TLINERESULT_BETA] = gamma.imag();
 
-		}
+		}*/
 
 		// update progress
 		if(context.m_progress_callback) {

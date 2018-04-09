@@ -82,9 +82,8 @@ inline hash_t HashFinish(hash_t hash) {
 }
 
 inline hash_t HashTruncate(hash_t hash, uint32_t bits) {
-	assert(bits <= 32);
-	uint32_t shift = 32 - bits;
-	return (hash << shift) >> shift; // also works when bits == 32
+	assert(bits < 32);
+	return hash & (((uint32_t) 1 << bits) - 1);
 }
 
 }

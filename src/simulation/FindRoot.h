@@ -23,10 +23,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "MiscMath.h"
 
-// TODO: remove
-//#include <iostream>
-//#include <iomanip>
-
 // Find the root of func(x) for x in the interval [a, b] using Brent's method. This method uses a combination of
 // the bisection method, secant method and inverse quadratic interpolation method .
 // The sign of func(a) and func(b) must be opposite.
@@ -41,17 +37,16 @@ real_t FindRootBracketed(Func &&func, real_t a, real_t b, real_t fa, real_t fb, 
 	if(!std::isfinite(fb))
 		throw std::runtime_error("Input fb is non-finite.");
 	if(!FinitePositive(xtol))
-		throw std::runtime_error("Input xtol must be positive.");
-	if(!FinitePositive(ftol))
-		throw std::runtime_error("Input ftol must be positive.");
+		throw std::runtime_error("Input xtol should be positive.");
+	if(!FiniteNonNegative(ftol))
+		throw std::runtime_error("Input ftol should be non-negative.");
 	if((fa > 0.0) == (fb > 0.0))
 		throw std::runtime_error("Inputs fa and fb should have opposite signs.");
 	if(fabs(fa) < fabs(fb)) {
 		std::swap(a, b);
 		std::swap(fa, fb);
 	}
-	//std::cerr.precision(12);
-	real_t c = a, fc = fa, d = 0.0, delta = 4.0 * std::numeric_limits<real_t>::epsilon() * std::max(fabs(a), fabs(b));
+	real_t c = a, fc = fa, d = 0.0, delta = 4.0 * GetEpsilon(a, b);
 	bool mflag = true;
 	while(fabs(a - b) > xtol && fabs(fb) > ftol) {
 		real_t ab = a * 0.75 + b * 0.25; // overflow-safe
@@ -64,18 +59,10 @@ real_t FindRootBracketed(Func &&func, real_t a, real_t b, real_t fa, real_t fb, 
 			// use secant method
 			s = b - fb * (b - a) / (fb - fa);
 		}
-		//std::cerr << "mflag " << (s <= std::min(ab, b)) << (s >= std::max(ab, b)) << (fabs(s - b) >= bcd * 0.5) << (bcd < delta) << "   ";
 		mflag = (!std::isfinite(s) || s <= std::min(ab, b) || s >= std::max(ab, b) || fabs(s - b) >= bcd * 0.5 || bcd < delta);
 		if(mflag) {
 			// use bisection method
 			s = a * 0.5 + b * 0.5; // overflow-safe
-			//std::cerr << "bisection   " << std::setw(15) << a << " " << std::setw(15) << b << " " << std::setw(15) << c << " " << std::setw(15) << d << " " << std::setw(15) << s << std::endl;
-		} else {
-			if(fa != fc && fb != fc) {
-				//std::cerr << "quadratic   " << std::setw(15) << a << " " << std::setw(15) << b << " " << std::setw(15) << c << " " << std::setw(15) << d << " " << std::setw(15) << s << std::endl;
-			} else {
-				//std::cerr << "secant      " << std::setw(15) << a << " " << std::setw(15) << b << " " << std::setw(15) << c << " " << std::setw(15) << d << " " << std::setw(15) << s << std::endl;
-			}
 		}
 		d = c;
 		c = b;
@@ -110,8 +97,8 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 		throw std::runtime_error("Input x should be positive.");
 	if(!FinitePositive(xreltol))
 		throw std::runtime_error("Input xreltol should be positive.");
-	if(!FinitePositive(ftol))
-		throw std::runtime_error("Input ftol should be positive.");
+	if(!FiniteNonNegative(ftol))
+		throw std::runtime_error("Input ftol should be non-negative.");
 	if(!FinitePositive(search_range))
 		throw std::runtime_error("Input search_range should be positive.");
 	real_t fx = func(x);
@@ -121,7 +108,6 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 	if(fabs(fx) <= ftol)
 		return x;
 	real_t a = x, fa = fx, b = x, fb = fx;
-	//std::cerr.precision(12);
 	for( ; ; ) {
 
 		// try lower value
@@ -130,7 +116,6 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 		if(!std::isfinite(fx)) {
 			throw std::runtime_error("Function result is non-finite.");
 		}
-		//std::cerr << "lower       " << std::setw(15) << a << " " << std::setw(15) << x << std::endl;
 		if((fx > 0.0) != (fa > 0.0)) {
 			return FindRootBracketed(std::forward<Func>(func), a, x, fa, fx, std::max(fabs(a), fabs(x)) * xreltol, ftol);
 		}
@@ -143,7 +128,6 @@ real_t FindRootRelative(Func &&func, real_t x, real_t xreltol, real_t ftol, real
 		if(!std::isfinite(fx)) {
 			throw std::runtime_error("Function result is non-finite.");
 		}
-		//std::cerr << "higher      " << std::setw(15) << b << " " << std::setw(15) << x << std::endl;
 		if((fx > 0.0) != (fb > 0.0)) {
 			return FindRootBracketed(std::forward<Func>(func), b, x, fb, fx, std::max(fabs(b), fabs(x)) * xreltol, ftol);
 		}

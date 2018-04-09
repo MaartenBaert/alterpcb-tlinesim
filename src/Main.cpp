@@ -31,8 +31,11 @@ int main(int argc, char* argv[]) {
 	// create singletons
 	StringRegistry string_registry;
 	UNUSED(string_registry);
+
+#if WITH_SUITESPARSE
 	CholmodSolver cholmod_solver;
 	UNUSED(cholmod_solver);
+#endif
 
 	// create application
 	QApplication app(argc, argv);

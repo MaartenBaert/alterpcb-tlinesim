@@ -21,6 +21,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Basics.h"
+#include "Eigen.h"
 #include "Vector.h"
 
 #include <vector>
@@ -40,8 +41,8 @@ public:
 	virtual ~GenericMesh();
 
 	virtual void Initialize() = 0;
-	virtual void Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses,
-					   std::vector<real_t> &resistive_losses, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) = 0;
+	virtual void Solve(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses,
+					   const Eigen::MatrixXr &modes, real_t frequency) = 0;
 	virtual void Cleanup() = 0;
 
 	virtual Box2D GetWorldBox2D() = 0;

@@ -18,6 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if WITH_SUITESPARSE
+
 #include "CholmodSolver.h"
 
 static_assert(sizeof(real_t) == sizeof(double), "real_t has incorrect size!");
@@ -60,14 +62,26 @@ void CholmodSparseMatrix::Reset(size_t rows, size_t cols, size_t coefs, bool sor
 	}
 }
 
-void CholmodSparseMatrix::Reset(SymmetricSparseMatrix<real_t> &matrix) {
-	Reset(matrix.GetSize1(), matrix.GetSize1(), matrix.GetCoefficientsA(), false, true, 1, CHOLMOD_REAL);
-	matrix.MakeCscA((int*) m_sparse->p, (int*) m_sparse->i, (real_t*) m_sparse->x);
+void CholmodSparseMatrix::Reset(const SymmetricSparseMatrix<real_t> &matrix) {
+	Reset(matrix.GetSize1(), matrix.GetSize1(), matrix.GetCoefficientsA(), true, true, 1, CHOLMOD_REAL);
+	matrix.GenerateCscA((int*) m_sparse->p, (int*) m_sparse->i, (real_t*) m_sparse->x);
 }
 
-void CholmodSparseMatrix::Reset(SymmetricSparseMatrix<complex_t> &matrix) {
-	Reset(matrix.GetSize1(), matrix.GetSize1(), matrix.GetCoefficientsA(), false, true, 1, CHOLMOD_COMPLEX);
-	matrix.MakeCscA((int*) m_sparse->p, (int*) m_sparse->i, (complex_t*) m_sparse->x);
+void CholmodSparseMatrix::Reset(const SymmetricSparseMatrix<complex_t> &matrix) {
+	Reset(matrix.GetSize1(), matrix.GetSize1(), matrix.GetCoefficientsA(), true, true, 1, CHOLMOD_COMPLEX);
+	matrix.GenerateCscA((int*) m_sparse->p, (int*) m_sparse->i, (complex_t*) m_sparse->x);
+}
+
+void CholmodSparseMatrix::SaveMatrixMarket(const std::string &filename) {
+	if(m_sparse == NULL)
+		throw std::runtime_error("Cholmod sparse matrix can't be saved because it is NULL.");
+	FILE *f = fopen(filename.c_str(), "w");
+	if(f == NULL)
+		throw std::runtime_error("Could not open file '" + filename + "' for writing.");
+	int res = cholmod_write_sparse(f, m_sparse, NULL, NULL, CholmodSolver::GetCommon());
+	fclose(f);
+	if(res == -1)
+		throw std::runtime_error("Cholmod sparse matrix saving failed.");
 }
 
 CholmodDenseMatrix::CholmodDenseMatrix() {
@@ -144,3 +158,5 @@ void CholmodFactorization::Solve(CholmodDenseMatrix &solution, const CholmodDens
 	if(!cholmod_solve2(CHOLMOD_A, m_factor, const_cast<CholmodDenseMatrix&>(rhs).GetDense(), NULL, &solution.GetDense(), NULL, &ws1.GetDense(), &ws2.GetDense(), CholmodSolver::GetCommon()))
 		throw std::runtime_error("Cholmod sparse matrix solve failed.");
 }
+
+#endif

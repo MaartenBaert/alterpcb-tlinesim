@@ -24,8 +24,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Json.h"
 #include "MaterialDatabase.h"
 
-#include <cfloat>
-
 #include <iostream> // TODO: remove
 
 void TLine_CoplanarWaveguide_Single(TLineContext &context) {
@@ -94,7 +92,10 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box4, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
-	TLineSolveModes(context, {0.0, 1.0}, {1.0});
+
+	Eigen::MatrixXr modes(2, 1);
+	modes.col(0) << 0.0, 1.0;
+	TLineSolveModes(context, modes);
 
 }
 
@@ -170,7 +171,11 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box5, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
-	TLineSolveModes(context, {0.0, 1.0, -1.0, 0.0, 1.0, 1.0}, {2.0, 1.0});
+
+	Eigen::MatrixXr modes(3, 2);
+	modes.col(0) << 0.0, 0.5, -0.5;
+	modes.col(1) << 0.0, 1.0, 1.0;
+	TLineSolveModes(context, modes);
 
 }
 

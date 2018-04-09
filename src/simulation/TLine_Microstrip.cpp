@@ -24,8 +24,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Json.h"
 #include "MaterialDatabase.h"
 
-#include <cfloat>
-
 #include <iostream> // TODO: remove
 
 void TLine_Microstrip_Single(TLineContext &context) {
@@ -80,7 +78,10 @@ void TLine_Microstrip_Single(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
-	TLineSolveModes(context, {0.0, 1.0}, {1.0});
+
+	Eigen::MatrixXr modes(2, 1);
+	modes.col(0) << 0.0, 1.0;
+	TLineSolveModes(context, modes);
 
 }
 
@@ -142,7 +143,11 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
-	TLineSolveModes(context, {0.0, 1.0, -1.0, 0.0, 1.0, 1.0}, {2.0, 1.0});
+
+	Eigen::MatrixXr modes(3, 2);
+	modes.col(0) << 0.0, 0.5, -0.5;
+	modes.col(1) << 0.0, 1.0, 1.0;
+	TLineSolveModes(context, modes);
 
 }
 
@@ -210,7 +215,11 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
 
 	context.m_output_mesh = std::move(mesh);
-	TLineSolveModes(context, {0.0, 1.0, 0.0, 0.0, 0.0, 1.0}, {1.0, 1.0});
+
+	Eigen::MatrixXr modes(3, 2);
+	modes.col(0) << 0.0, 1.0, 0.0;
+	modes.col(1) << 0.0, 0.0, 1.0;
+	TLineSolveModes(context, modes);
 
 }
 
@@ -267,16 +276,16 @@ void RegisterTLine_Microstrip() {
 		"Microstrip (asymmetric)",
 		"A simple test case for eigenmode decomposition.",
 		{
-			{"Track Width 1"          , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
-			{"Track Width 2"          , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
-			{"Track Spacing"          , TLINE_PARAMETERTYPE_REAL               , default_track_spacing          , true , 0},
-			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , default_track_thickness        , true , 0},
-			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material         , false, 1},
-			{"Substrate Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
-			{"Substrate Material"     , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
-			{"Solder Mask Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_1, true , 0},
-			{"Solder Mask Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_2, true , 0},
-			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_solder_mask_material   , false, 0},
+			{"Track Width 1"          , TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.3") , true , 0},
+			{"Track Width 2"          , TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.6") , true , 0},
+			{"Track Spacing"          , TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.2") , true , 0},
+			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.05"), true , 0},
+			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , "Copper"                , false, 1},
+			{"Substrate Thickness"    , TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.3") , true , 0},
+			{"Substrate Material"     , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, "Rogers RO4350B"        , false, 1},
+			{"Solder Mask Thickness 1", TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.0") , true , 0},
+			{"Solder Mask Thickness 2", TLINE_PARAMETERTYPE_REAL               , Json::FromString("0.0") , true , 0},
+			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, "Solder Mask"           , false, 0},
 		},
 		{"Mode 1", "Mode 2"},
 		&TLine_Microstrip_Asymmetric,

@@ -21,11 +21,17 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Basics.h"
-#include "CholmodSolver.h"
 #include "GenericMesh.h"
 #include "MaterialDatabase.h"
 #include "SparseMatrix.h"
 #include "Vector.h"
+
+#if WITH_SUITESPARSE
+#include "CholmodSolver.h"
+#else
+#include <Eigen/SparseCore>
+#include <Eigen/SparseCholesky>
+#endif
 
 class GridMesh2D : public GenericMesh {
 
@@ -79,6 +85,8 @@ private:
 		inline Cell() : m_conductor(INDEX_NONE), m_dielectric(INDEX_NONE) {}
 	};
 
+	typedef Eigen::SparseMatrix<real_t> EigenSparseMatrix;
+
 private:
 	Box2D m_world_box, m_world_focus;
 	real_t m_grid_inc, m_grid_epsilon;
@@ -96,17 +104,31 @@ private:
 
 	bool m_solved;
 	real_t m_solution_frequency;
-	size_t m_mode_count;
-	std::vector<real_t> m_modes;
+	Eigen::MatrixXr m_modes;
+	Eigen::MatrixXc m_characteristic_impedance_matrix;
+	Eigen::VectorXc m_characteristic_impedances;
+	Eigen::MatrixXc m_eigenmodes;
+	Eigen::VectorXc m_propagation_constants;
+
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
-	SymmetricSparseMatrix<real_t> m_matrix_e, m_matrix_h, m_matrix_surf;
+	SparseBlockMatrixCSU<real_t> m_matrix_epot, m_matrix_mpot, m_matrix_eloss;
+	SparseBlockMatrixC<real_t> m_matrix_surf_resid;
+	SparseMatrixCSU<real_t> m_matrix_surf_curr, m_matrix_surf_loss;
+
+#if WITH_SUITESPARSE
 	CholmodSparseMatrix m_cholmod_sparse, m_cholmod_sparse_surf;
 	CholmodFactorization m_cholmod_factor, m_cholmod_factor_surf;
 	CholmodDenseMatrix m_cholmod_rhs, m_cholmod_rhs_surf;
 	CholmodDenseMatrix m_cholmod_ws1, m_cholmod_ws1_surf;
 	CholmodDenseMatrix m_cholmod_ws2, m_cholmod_ws2_surf;
 	CholmodDenseMatrix m_cholmod_solution_e, m_cholmod_solution_h, m_cholmod_solution_surf;
+#else
+	EigenSparseMatrix m_eigen_sparse, m_eigen_sparse_surf;
+	Eigen::SimplicialLDLT<EigenSparseMatrix, Eigen::Upper> m_eigen_chol, m_eigen_chol_surf;
+	Eigen::MatrixXr m_eigen_rhs, m_eigen_rhs_surf;
+	Eigen::MatrixXr m_eigen_solution_epot, m_eigen_solution_mpot, m_eigen_solution_surf;
+#endif
 
 public:
 	GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);
@@ -123,8 +145,8 @@ public:
 	void AddDielectric(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialDielectric *material);
 
 	virtual void Initialize() override;
-	virtual void Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses,
-					   std::vector<real_t> &resistive_losses, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) override;
+	virtual void Solve(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses,
+					   const Eigen::MatrixXr &modes, real_t frequency) override;
 	virtual void Cleanup() override;
 
 	virtual Box2D GetWorldBox2D() override;
@@ -138,9 +160,9 @@ private:
 	void InitGrid();
 	void InitCells();
 	void InitVariables();
-	void InitSurfaceMatrix();
-	void GenerateMatrices();
-	void SolveModes(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses, std::vector<real_t> &resistive_losses);
+	void BuildMatrices();
+	void SolveMatrices(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses);
+	void SolveEigenModes(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses);
 
 	void GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type);
 	void GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type);

@@ -70,12 +70,45 @@ inline F exp10(F x) {
 #endif
 
 template<typename F>
+inline F GetEpsilon(F x) {
+	return std::max(std::numeric_limits<real_t>::min(), std::numeric_limits<real_t>::epsilon() * fabs(x));
+}
+template<typename F>
+inline F GetEpsilon(F x1, F x2) {
+	return std::max(std::numeric_limits<real_t>::min(), std::numeric_limits<real_t>::epsilon() * std::max(fabs(x1), fabs(x2)));
+}
+
+template<typename F>
 inline bool FinitePositive(F x) {
 	return std::isfinite(x) && x > 0.0;
 }
 template<typename F>
+inline bool FiniteNegative(F x) {
+	return std::isfinite(x) && x < 0.0;
+}
+template<typename F>
+inline bool FiniteNonPositive(F x) {
+	return std::isfinite(x) && x <= 0.0;
+}
+template<typename F>
+inline bool FiniteNonNegative(F x) {
+	return std::isfinite(x) && x >= 0.0;
+}
+template<typename F>
+inline bool FiniteGreater(F x, F y) {
+	return std::isfinite(x) && std::isfinite(y) && x > y;
+}
+template<typename F>
 inline bool FiniteLess(F x, F y) {
 	return std::isfinite(x) && std::isfinite(y) && x < y;
+}
+template<typename F>
+inline bool FiniteGreaterEqual(F x, F y) {
+	return std::isfinite(x) && std::isfinite(y) && x >= y;
+}
+template<typename F>
+inline bool FiniteLessEqual(F x, F y) {
+	return std::isfinite(x) && std::isfinite(y) && x <= y;
 }
 
 template<typename F>

@@ -7,12 +7,12 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 TARGET = alterpcb-tlinesim
 TEMPLATE = app
 
-DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
+DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\"" WITH_SUITESPARSE=0
 LIBS += -lcholmod
 
 QMAKE_CXXFLAGS += -std=c++11 -Wconversion
-QMAKE_CXXFLAGS_RELEASE += -DNDEBUG
-QMAKE_CXXFLAGS_RELEASE -= -g
+QMAKE_CXXFLAGS_RELEASE -= -O2 -g
+QMAKE_CXXFLAGS_RELEASE += -O3 -DNDEBUG
 
 INCLUDEPATH += common gui simulation
 DEPENDPATH += common gui simulation
@@ -52,7 +52,9 @@ HEADERS += \
 	simulation/GridMesh2D.h \
 	simulation/MaterialDatabase.h \
 	simulation/SparseMatrix.h \
-	simulation/TLineTypes.h
+	simulation/TLineTypes.h \
+    simulation/MatrixMarket.h \
+    simulation/Eigen.h
 
 SOURCES += \
 	Main.cpp \

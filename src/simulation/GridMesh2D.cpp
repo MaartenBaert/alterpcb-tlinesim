@@ -20,19 +20,20 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "GridMesh2D.h"
 
+#include "MatrixMarket.h"
 #include "MiscMath.h"
 #include "StringHelper.h"
 
 #include <cfloat>
 
 #include <algorithm>
-
-#define SIMULATION_VERBOSE 1
-
-#if SIMULATION_VERBOSE
 #include <chrono>
 #include <iostream>
-#endif
+
+#include <Eigen/Dense>
+
+#define SIMULATION_VERBOSE 1
+#define SIMULATION_SAVE_MATRIXMARKET 1
 
 GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon) {
 	if(!FinitePositive(grid_inc))
@@ -49,7 +50,6 @@ GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t 
 	m_vars_surf = 0;
 	m_solved = false;
 	m_solution_frequency = 0.0;
-	m_mode_count = 0;
 }
 
 GridMesh2D::~GridMesh2D() {
@@ -116,10 +116,6 @@ void GridMesh2D::Initialize() {
 #if SIMULATION_VERBOSE
 	auto t4 = std::chrono::high_resolution_clock::now();
 #endif
-	InitSurfaceMatrix();
-#if SIMULATION_VERBOSE
-	auto t5 = std::chrono::high_resolution_clock::now();
-#endif
 
 #if SIMULATION_VERBOSE
 	std::cerr << "GridMesh2D stats:"
@@ -132,7 +128,6 @@ void GridMesh2D::Initialize() {
 			  << " grid=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
 			  << " cells=" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us"
 			  << " vars=" << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us"
-			  << " surf=" << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << "us"
 			  << std::endl;
 #endif
 
@@ -140,34 +135,42 @@ void GridMesh2D::Initialize() {
 
 }
 
-void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses,
-					   std::vector<real_t> &resistive_losses, const std::vector<real_t> &modes, size_t mode_count, real_t frequency) {
+void GridMesh2D::Solve(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses,
+					   const Eigen::MatrixXr &modes, real_t frequency) {
 	if(!m_initialized)
 		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
-	if(modes.size() != m_vars_fixed * mode_count)
-		throw std::runtime_error(MakeString("GridMesh2D error: Expected modes array with ", m_vars_fixed * mode_count, " elements, got ", modes.size(), " instead."));
+	if((size_t) modes.rows() != m_vars_fixed)
+		throw std::runtime_error(MakeString("GridMesh2D error: Expected mode matrix with ", m_vars_fixed, " rows, got ", modes.rows(), " instead."));
+	if((size_t) modes.cols() == 0)
+		throw std::runtime_error(MakeString("GridMesh2D error: Expected mode matrix with at least one column, got ", modes.cols(), " instead."));
+	if((size_t) modes.cols() >= m_vars_fixed)
+		throw std::runtime_error(MakeString("GridMesh2D error: Expected mode matrix with less than ", m_vars_fixed, " columns, got ", modes.cols(), " instead."));
 
 	m_solved = false;
 	m_solution_frequency = frequency;
-	m_mode_count = mode_count;
 	m_modes = modes;
 
 #if SIMULATION_VERBOSE
 	auto t1 = std::chrono::high_resolution_clock::now();
 #endif
-	GenerateMatrices();
+	BuildMatrices();
 #if SIMULATION_VERBOSE
 	auto t2 = std::chrono::high_resolution_clock::now();
 #endif
-	SolveModes(charges, currents, dielectric_losses, resistive_losses);
+	SolveMatrices(charges, currents, dielectric_losses, resistive_losses);
 #if SIMULATION_VERBOSE
 	auto t3 = std::chrono::high_resolution_clock::now();
+#endif
+	SolveEigenModes(charges, currents, dielectric_losses, resistive_losses);
+#if SIMULATION_VERBOSE
+	auto t4 = std::chrono::high_resolution_clock::now();
 #endif
 
 #if SIMULATION_VERBOSE
 	std::cerr << "GridMesh2D solve time:"
 			  << " build=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
 			  << " solve=" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us"
+			  << " eigenmodes=" << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us"
 			  << std::endl;
 #endif
 
@@ -176,6 +179,10 @@ void GridMesh2D::Solve(std::vector<real_t> &charges, std::vector<real_t> &curren
 }
 
 void GridMesh2D::Cleanup() {
+	m_matrix_epot.Free();
+	m_matrix_mpot.Free();
+	m_matrix_surf_curr.Free();
+#if WITH_SUITESPARSE
 	m_cholmod_sparse.Reset();
 	m_cholmod_sparse_surf.Reset();
 	m_cholmod_factor.Reset();
@@ -186,6 +193,16 @@ void GridMesh2D::Cleanup() {
 	m_cholmod_ws1_surf.Reset();
 	m_cholmod_ws2.Reset();
 	m_cholmod_ws2_surf.Reset();
+#else
+	m_eigen_sparse.resize(0, 0);
+	m_eigen_sparse.data().squeeze();
+	m_eigen_sparse_surf.resize(0, 0);
+	m_eigen_sparse_surf.data().squeeze();
+	// TODO: m_eigen_chol
+	// TODO: m_eigen_chol_surf;
+	m_eigen_rhs.resize(0, 0);
+	m_eigen_rhs_surf.resize(0, 0);
+#endif
 }
 
 Box2D GridMesh2D::GetWorldBox2D() {
@@ -207,14 +224,14 @@ Box2D GridMesh2D::GetWorldFocus2D() {
 size_t GridMesh2D::GetModeCount() {
 	if(!m_initialized || !m_solved)
 		return 0;
-	return m_mode_count;
+	return m_modes.cols();
 }
 
 bool GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
 	if(!m_initialized)
 		return false;
 	if(type != MESHIMAGETYPE_MESH) {
-		if(!m_solved || mode >= m_mode_count)
+		if(!m_solved || mode >= (size_t) m_modes.cols())
 			return false;
 	}
 
@@ -483,80 +500,7 @@ void GridMesh2D::InitVariables() {
 
 }
 
-void GridMesh2D::InitSurfaceMatrix() {
-
-	// generate matrix
-	m_matrix_surf.Reset(m_vars_surf, 0, 2);
-	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-
-			// get cell, skip cells that are inside conductors
-			Cell &cell = GetCell(ix, iy);
-			if(cell.m_conductor != INDEX_NONE)
-				continue;
-
-			// get neighboring nodes
-			Node &node00 = GetNode(ix    , iy    );
-			Node &node01 = GetNode(ix + 1, iy    );
-			Node &node10 = GetNode(ix    , iy + 1);
-			Node &node11 = GetNode(ix + 1, iy + 1);
-
-			// get cell size
-			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
-
-			// process conductor surfaces
-			Edge &edgeh0 = GetEdgeH(ix, iy);
-			Edge &edgeh1 = GetEdgeH(ix, iy + 1);
-			Edge &edgev0 = GetEdgeV(ix, iy);
-			Edge &edgev1 = GetEdgeV(ix + 1, iy);
-			if(edgeh0.m_conductor != INDEX_NONE) {
-				assert(node00.m_var_surf != INDEX_NONE);
-				assert(node01.m_var_surf != INDEX_NONE);
-				//real_t coef = 0.25 * delta_x;
-				real_t coef = 1.0 / 6.0 * delta_x;
-				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
-				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
-				m_matrix_surf.Add(node00.m_var_surf, node01.m_var_surf, coef);
-			}
-			if(edgeh1.m_conductor != INDEX_NONE) {
-				assert(node10.m_var_surf != INDEX_NONE);
-				assert(node11.m_var_surf != INDEX_NONE);
-				//real_t coef = 0.25 * delta_x;
-				real_t coef = 1.0 / 6.0 * delta_x;
-				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
-				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf.Add(node10.m_var_surf, node11.m_var_surf, coef);
-			}
-			if(edgev0.m_conductor != INDEX_NONE) {
-				assert(node00.m_var_surf != INDEX_NONE);
-				assert(node10.m_var_surf != INDEX_NONE);
-				//real_t coef = 0.25 * delta_y;
-				real_t coef = 1.0 / 6.0 * delta_y;
-				m_matrix_surf.Add(node00.m_var_surf, node00.m_var_surf, coef);
-				m_matrix_surf.Add(node10.m_var_surf, node10.m_var_surf, coef);
-				m_matrix_surf.Add(node00.m_var_surf, node10.m_var_surf, coef);
-			}
-			if(edgev1.m_conductor != INDEX_NONE) {
-				assert(node01.m_var_surf != INDEX_NONE);
-				assert(node11.m_var_surf != INDEX_NONE);
-				//real_t coef = 0.25 * delta_y;
-				real_t coef = 1.0 / 6.0 * delta_y;
-				m_matrix_surf.Add(node01.m_var_surf, node01.m_var_surf, coef);
-				m_matrix_surf.Add(node11.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf.Add(node01.m_var_surf, node11.m_var_surf, coef);
-			}
-
-		}
-	}
-
-	// factorize surface matrix
-	m_cholmod_sparse_surf.Reset(m_matrix_surf);
-	m_cholmod_factor_surf.Factorize(m_cholmod_sparse_surf);
-
-}
-
-void GridMesh2D::GenerateMatrices() {
+void GridMesh2D::BuildMatrices() {
 	assert(m_initialized && !m_solved);
 
 	// load conductor properties
@@ -573,9 +517,14 @@ void GridMesh2D::GenerateMatrices() {
 		GetDielectricProperties(m_dielectric_properties[i], m_dielectrics[i].m_material, m_solution_frequency);
 	}
 
-	// generate matrices
-	m_matrix_e.Reset(m_vars_real, m_vars_fixed, 5);
-	m_matrix_h.Reset(m_vars_real, m_vars_fixed, 5);
+	// build matrices
+	m_matrix_epot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
+	m_matrix_mpot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
+	m_matrix_eloss.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
+	m_matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_real, m_vars_fixed, 5);
+	m_matrix_surf_curr.Reset(m_vars_surf, m_vars_surf, 2);
+	m_matrix_surf_loss.Reset(m_vars_surf, m_vars_surf, 2);
+	real_t solution_omega = 2.0 * M_PI * m_solution_frequency;
 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
@@ -606,254 +555,377 @@ void GridMesh2D::GenerateMatrices() {
 			real_t scale_y_e = 1.0 / 6.0 * permittivity_y.real() * delta_x / delta_y;
 			real_t scale_x_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_y / delta_x;
 			real_t scale_y_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_x / delta_y;
+			real_t scale_x_e_loss = -1.0 / 6.0 * permittivity_x.imag() * solution_omega * delta_y / delta_x;
+			real_t scale_y_e_loss = -1.0 / 6.0 * permittivity_y.imag() * solution_omega * delta_x / delta_y;
 
 			// calculate E coefficients
-			real_t coef_s_e = scale_x_e + scale_y_e;
-			real_t coef_x_e = -2.0 * scale_x_e + scale_y_e;
-			real_t coef_y_e = -2.0 * scale_y_e + scale_x_e;
-			real_t coef_d_e = -scale_x_e - scale_y_e;
+			real_t coef_s_e_pot = scale_x_e + scale_y_e;
+			real_t coef_x_e_pot = scale_y_e - 2.0 * scale_x_e;
+			real_t coef_y_e_pot = scale_x_e - 2.0 * scale_y_e;
+			real_t coef_d_e_pot = -(scale_x_e + scale_y_e);
 
 			// calculate H coefficients
-			real_t coef_s_h = scale_x_h + scale_y_h;
-			real_t coef_x_h = -2.0 * scale_x_h + scale_y_h;
-			real_t coef_y_h = -2.0 * scale_y_h + scale_x_h;
-			real_t coef_d_h = -scale_x_h - scale_y_h;
+			real_t coef_s_h_pot = scale_x_h + scale_y_h;
+			real_t coef_x_h_pot = scale_y_h - 2.0 * scale_x_h;
+			real_t coef_y_h_pot = scale_x_h - 2.0 * scale_y_h;
+			real_t coef_d_h_pot = -(scale_x_h + scale_y_h);
+
+			// calculate loss coefficients
+			real_t coef_s_e_loss = scale_x_e_loss + scale_y_e_loss;
+			real_t coef_x_e_loss = scale_y_e_loss - 2.0 * scale_x_e_loss;
+			real_t coef_y_e_loss = scale_x_e_loss - 2.0 * scale_y_e_loss;
+			real_t coef_d_e_loss = -(scale_x_e_loss + scale_y_e_loss);
 
 			// add to E matrix
-			m_matrix_e.Add(node00.m_var, node00.m_var, coef_s_e);
-			m_matrix_e.Add(node01.m_var, node01.m_var, coef_s_e);
-			m_matrix_e.Add(node10.m_var, node10.m_var, coef_s_e);
-			m_matrix_e.Add(node11.m_var, node11.m_var, coef_s_e);
-			m_matrix_e.Add(node00.m_var, node01.m_var, coef_x_e);
-			m_matrix_e.Add(node10.m_var, node11.m_var, coef_x_e);
-			m_matrix_e.Add(node00.m_var, node10.m_var, coef_y_e);
-			m_matrix_e.Add(node01.m_var, node11.m_var, coef_y_e);
-			m_matrix_e.Add(node00.m_var, node11.m_var, coef_d_e);
-			m_matrix_e.Add(node01.m_var, node10.m_var, coef_d_e);
+			m_matrix_epot.Insert(node00.m_var, node00.m_var, coef_s_e_pot);
+			m_matrix_epot.Insert(node01.m_var, node01.m_var, coef_s_e_pot);
+			m_matrix_epot.Insert(node10.m_var, node10.m_var, coef_s_e_pot);
+			m_matrix_epot.Insert(node11.m_var, node11.m_var, coef_s_e_pot);
+			m_matrix_epot.Insert(node00.m_var, node01.m_var, coef_x_e_pot);
+			m_matrix_epot.Insert(node10.m_var, node11.m_var, coef_x_e_pot);
+			m_matrix_epot.Insert(node00.m_var, node10.m_var, coef_y_e_pot);
+			m_matrix_epot.Insert(node01.m_var, node11.m_var, coef_y_e_pot);
+			m_matrix_epot.Insert(node00.m_var, node11.m_var, coef_d_e_pot);
+			m_matrix_epot.Insert(node01.m_var, node10.m_var, coef_d_e_pot);
 
 			// add to H matrix
-			m_matrix_h.Add(node00.m_var, node00.m_var, coef_s_h);
-			m_matrix_h.Add(node01.m_var, node01.m_var, coef_s_h);
-			m_matrix_h.Add(node10.m_var, node10.m_var, coef_s_h);
-			m_matrix_h.Add(node11.m_var, node11.m_var, coef_s_h);
-			m_matrix_h.Add(node00.m_var, node01.m_var, coef_x_h);
-			m_matrix_h.Add(node10.m_var, node11.m_var, coef_x_h);
-			m_matrix_h.Add(node00.m_var, node10.m_var, coef_y_h);
-			m_matrix_h.Add(node01.m_var, node11.m_var, coef_y_h);
-			m_matrix_h.Add(node00.m_var, node11.m_var, coef_d_h);
-			m_matrix_h.Add(node01.m_var, node10.m_var, coef_d_h);
+			m_matrix_mpot.Insert(node00.m_var, node00.m_var, coef_s_h_pot);
+			m_matrix_mpot.Insert(node01.m_var, node01.m_var, coef_s_h_pot);
+			m_matrix_mpot.Insert(node10.m_var, node10.m_var, coef_s_h_pot);
+			m_matrix_mpot.Insert(node11.m_var, node11.m_var, coef_s_h_pot);
+			m_matrix_mpot.Insert(node00.m_var, node01.m_var, coef_x_h_pot);
+			m_matrix_mpot.Insert(node10.m_var, node11.m_var, coef_x_h_pot);
+			m_matrix_mpot.Insert(node00.m_var, node10.m_var, coef_y_h_pot);
+			m_matrix_mpot.Insert(node01.m_var, node11.m_var, coef_y_h_pot);
+			m_matrix_mpot.Insert(node00.m_var, node11.m_var, coef_d_h_pot);
+			m_matrix_mpot.Insert(node01.m_var, node10.m_var, coef_d_h_pot);
+
+			// add to E loss matrix
+			m_matrix_eloss.Insert(node00.m_var, node00.m_var, coef_s_e_loss);
+			m_matrix_eloss.Insert(node01.m_var, node01.m_var, coef_s_e_loss);
+			m_matrix_eloss.Insert(node10.m_var, node10.m_var, coef_s_e_loss);
+			m_matrix_eloss.Insert(node11.m_var, node11.m_var, coef_s_e_loss);
+			m_matrix_eloss.Insert(node00.m_var, node01.m_var, coef_x_e_loss);
+			m_matrix_eloss.Insert(node10.m_var, node11.m_var, coef_x_e_loss);
+			m_matrix_eloss.Insert(node00.m_var, node10.m_var, coef_y_e_loss);
+			m_matrix_eloss.Insert(node01.m_var, node11.m_var, coef_y_e_loss);
+			m_matrix_eloss.Insert(node00.m_var, node11.m_var, coef_d_e_loss);
+			m_matrix_eloss.Insert(node01.m_var, node10.m_var, coef_d_e_loss);
+
+			// add to surface residual matrix
+			if(node00.m_var_surf != INDEX_NONE) {
+				m_matrix_surf_resid.Insert(node00.m_var_surf, node00.m_var, coef_s_h_pot * 2.0);
+				m_matrix_surf_resid.Insert(node00.m_var_surf, node01.m_var, coef_x_h_pot);
+				m_matrix_surf_resid.Insert(node00.m_var_surf, node10.m_var, coef_y_h_pot);
+				m_matrix_surf_resid.Insert(node00.m_var_surf, node11.m_var, coef_d_h_pot);
+			}
+			if(node01.m_var_surf != INDEX_NONE) {
+				m_matrix_surf_resid.Insert(node01.m_var_surf, node00.m_var, coef_x_h_pot);
+				m_matrix_surf_resid.Insert(node01.m_var_surf, node01.m_var, coef_s_h_pot * 2.0);
+				m_matrix_surf_resid.Insert(node01.m_var_surf, node10.m_var, coef_d_h_pot);
+				m_matrix_surf_resid.Insert(node01.m_var_surf, node11.m_var, coef_y_h_pot);
+			}
+			if(node10.m_var_surf != INDEX_NONE) {
+				m_matrix_surf_resid.Insert(node10.m_var_surf, node00.m_var, coef_y_h_pot);
+				m_matrix_surf_resid.Insert(node10.m_var_surf, node01.m_var, coef_d_h_pot);
+				m_matrix_surf_resid.Insert(node10.m_var_surf, node10.m_var, coef_s_h_pot * 2.0);
+				m_matrix_surf_resid.Insert(node10.m_var_surf, node11.m_var, coef_x_h_pot);
+			}
+			if(node11.m_var_surf != INDEX_NONE) {
+				m_matrix_surf_resid.Insert(node11.m_var_surf, node00.m_var, coef_d_h_pot);
+				m_matrix_surf_resid.Insert(node11.m_var_surf, node01.m_var, coef_y_h_pot);
+				m_matrix_surf_resid.Insert(node11.m_var_surf, node10.m_var, coef_x_h_pot);
+				m_matrix_surf_resid.Insert(node11.m_var_surf, node11.m_var, coef_s_h_pot * 2.0);
+			}
+
+			// process conductor surfaces
+			Edge &edgeh0 = GetEdgeH(ix, iy);
+			Edge &edgeh1 = GetEdgeH(ix, iy + 1);
+			Edge &edgev0 = GetEdgeV(ix, iy);
+			Edge &edgev1 = GetEdgeV(ix + 1, iy);
+			if(edgeh0.m_conductor != INDEX_NONE) {
+				assert(node00.m_var_surf != INDEX_NONE);
+				assert(node01.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_x;
+				real_t coef_loss = coef * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
+				m_matrix_surf_curr.Insert(node00.m_var_surf, node00.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node01.m_var_surf, node01.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node00.m_var_surf, node01.m_var_surf, coef);
+				m_matrix_surf_loss.Insert(node00.m_var_surf, node00.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node01.m_var_surf, node01.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node00.m_var_surf, node01.m_var_surf, coef_loss);
+			}
+			if(edgeh1.m_conductor != INDEX_NONE) {
+				assert(node10.m_var_surf != INDEX_NONE);
+				assert(node11.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_x;
+				real_t coef_loss = coef * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
+				m_matrix_surf_curr.Insert(node10.m_var_surf, node10.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node11.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node10.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf_loss.Insert(node10.m_var_surf, node10.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node11.m_var_surf, node11.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node10.m_var_surf, node11.m_var_surf, coef_loss);
+			}
+			if(edgev0.m_conductor != INDEX_NONE) {
+				assert(node00.m_var_surf != INDEX_NONE);
+				assert(node10.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_y;
+				real_t coef_loss = coef * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
+				m_matrix_surf_curr.Insert(node00.m_var_surf, node00.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node10.m_var_surf, node10.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node00.m_var_surf, node10.m_var_surf, coef);
+				m_matrix_surf_loss.Insert(node00.m_var_surf, node00.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node10.m_var_surf, node10.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node00.m_var_surf, node10.m_var_surf, coef_loss);
+			}
+			if(edgev1.m_conductor != INDEX_NONE) {
+				assert(node01.m_var_surf != INDEX_NONE);
+				assert(node11.m_var_surf != INDEX_NONE);
+				real_t coef = 1.0 / 6.0 * delta_y;
+				real_t coef_loss = coef * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
+				m_matrix_surf_curr.Insert(node01.m_var_surf, node01.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node11.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf_curr.Insert(node01.m_var_surf, node11.m_var_surf, coef);
+				m_matrix_surf_loss.Insert(node01.m_var_surf, node01.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node11.m_var_surf, node11.m_var_surf, coef_loss);
+				m_matrix_surf_loss.Insert(node01.m_var_surf, node11.m_var_surf, coef_loss);
+			}
 
 		}
+	}
+
+#if SIMULATION_SAVE_MATRIXMARKET
+	SaveMatrixMarket(m_matrix_epot.GetMatrixA(), "matrix_e.mtx");
+	SaveMatrixMarket(m_matrix_mpot.GetMatrixA(), "matrix_h.mtx");
+#endif
+
+}
+
+void GridMesh2D::SolveMatrices(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses) {
+	assert(m_initialized && !m_solved);
+
+	// factorize E matrix
+#if WITH_SUITESPARSE
+	m_cholmod_sparse.Reset(m_matrix_e);
+	m_cholmod_factor.Factorize(m_cholmod_sparse);
+#else
+	m_eigen_sparse.resize(m_matrix_epot.GetMatrixA().GetRows(), m_matrix_epot.GetMatrixA().GetCols());
+	m_eigen_sparse.resizeNonZeros(m_matrix_epot.GetMatrixA().GetCoefficients());
+	m_matrix_epot.GetMatrixA().ToCSC(m_eigen_sparse.outerIndexPtr(), m_eigen_sparse.innerIndexPtr(), m_eigen_sparse.valuePtr());
+	if(m_eigen_chol.permutationP().size() == 0) {
+		m_eigen_chol.analyzePattern(m_eigen_sparse);
+	}
+	m_eigen_chol.factorize(m_eigen_sparse);
+	if(m_eigen_chol.info() != Eigen::Success)
+		throw std::runtime_error("Sparse matrix factorization failed!");
+#endif
+
+	// solve E matrix
+#if WITH_SUITESPARSE
+	m_cholmod_rhs.ResetReal(m_vars_real, m_mode_count);
+	m_matrix_epot.GenerateRHS(DenseViewC(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride()),
+							  DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_cholmod_factor.Solve(m_cholmod_solution_e, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
+#else
+	m_eigen_rhs.resize(m_vars_real, m_modes.cols());
+	m_matrix_epot.CalculateRHS(DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
+							   DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_eigen_solution_epot = m_eigen_chol.solve(m_eigen_rhs);
+#endif
+
+	// calculate the charge matrix (residual of E matrix)
+	charges.resize(m_modes.cols(), m_modes.cols());
+#if WITH_SUITESPARSE
+	m_matrix_epot.CalculateResidual(DenseViewC(charges.data(), charges.outerStride()),
+									DenseViewC(m_cholmod_solution_e_pot.GetRealData(), m_cholmod_solution_e_pot.GetStride()),
+									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#else
+	m_matrix_epot.CalculateResidual(DenseViewC(charges.data(), charges.outerStride()),
+									DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
+									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#endif
+
+	// factorize H matrix
+#if WITH_SUITESPARSE
+	m_cholmod_sparse.Reset(m_matrix_h);
+	m_cholmod_factor.Factorize(m_cholmod_sparse);
+#else
+	m_eigen_sparse.resize(m_matrix_mpot.GetMatrixA().GetRows(), m_matrix_mpot.GetMatrixA().GetCols());
+	m_eigen_sparse.resizeNonZeros(m_matrix_mpot.GetMatrixA().GetCoefficients());
+	m_matrix_mpot.GetMatrixA().ToCSC(m_eigen_sparse.outerIndexPtr(), m_eigen_sparse.innerIndexPtr(), m_eigen_sparse.valuePtr());
+	if(m_eigen_chol.permutationP().size() == 0) {
+		m_eigen_chol.analyzePattern(m_eigen_sparse);
+	}
+	m_eigen_chol.factorize(m_eigen_sparse);
+	if(m_eigen_chol.info() != Eigen::Success)
+		throw std::runtime_error("Sparse matrix factorization failed!");
+#endif
+
+	// solve H matrix
+#if WITH_SUITESPARSE
+	m_cholmod_rhs.ResetReal(m_vars_real, m_mode_count);
+	m_matrix_mpot.CalculateRHS(DenseViewC(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride()),
+							   DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_cholmod_factor.Solve(m_cholmod_solution_h, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
+#else
+	m_eigen_rhs.resize(m_vars_real, m_modes.cols());
+	m_matrix_mpot.CalculateRHS(DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
+							   DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_eigen_solution_mpot = m_eigen_chol.solve(m_eigen_rhs);
+#endif
+
+	// calculate the current matrix (residual of H matrix)
+	currents.resize(m_modes.cols(), m_modes.cols());
+#if WITH_SUITESPARSE
+	m_matrix_mpot.CalculateResidual(DenseViewC(currents.data(), currents.outerStride()),
+									DenseViewC(m_cholmod_solution_h_pot.GetRealData(), m_cholmod_solution_h_pot.GetStride()),
+									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#else
+	m_matrix_mpot.CalculateResidual(DenseViewC(currents.data(), currents.outerStride()),
+									DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()),
+									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#endif
+
+	// calculate dielectric losses
+	dielectric_losses.resize(m_modes.cols(), m_modes.cols());
+#if WITH_SUITESPARSE
+	m_matrix_eloss.CalculateQuadratic(DenseViewC(dielectric_losses.data(), dielectric_losses.outerStride()),
+									  DenseViewC(m_cholmod_solution_epot.GetRealData(), m_cholmod_solution_epot.GetStride()),
+									  DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#else
+	m_matrix_eloss.CalculateQuadratic(DenseViewC(dielectric_losses.data(), dielectric_losses.outerStride()),
+									  DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
+									  DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+#endif
+
+	// factorize current matrix
+#if WITH_SUITESPARSE
+	m_cholmod_sparse_surf.Reset(m_matrix_current);
+	m_cholmod_factor_surf.Factorize(m_cholmod_sparse_surf);
+#else
+	m_eigen_sparse_surf.resize(m_matrix_surf_curr.GetRows(), m_matrix_surf_curr.GetCols());
+	m_eigen_sparse_surf.resizeNonZeros(m_matrix_surf_curr.GetCoefficients());
+	m_matrix_surf_curr.ToCSC(m_eigen_sparse_surf.outerIndexPtr(), m_eigen_sparse_surf.innerIndexPtr(), m_eigen_sparse_surf.valuePtr());
+	if(m_eigen_chol_surf.permutationP().size() == 0) {
+		m_eigen_chol_surf.analyzePattern(m_eigen_sparse_surf);
+	}
+	m_eigen_chol_surf.factorize(m_eigen_sparse_surf);
+	if(m_eigen_chol_surf.info() != Eigen::Success)
+		throw std::runtime_error("Sparse matrix factorization failed!");
+#endif
+
+	// calculate surface currents
+#if WITH_SUITESPARSE
+	m_cholmod_rhs_surf.ResetReal(m_vars_surf, m_modes.cols());
+	m_matrix_surf_resid.GetMatrixA().LeftMultiply(DenseViewC(m_cholmod_rhs_surf.GetRealData(), m_cholmod_rhs_surf.GetStride()),
+												  DenseViewC(m_cholmod_solution_hpot.GetRealData(), m_cholmod_solution_hpot.GetStride()), m_modes.cols());
+	m_matrix_surf_resid.GetMatrixB().LeftMultiplyAdd(DenseViewC(m_cholmod_rhs_surf.data(), m_cholmod_rhs_surf.outerStride()),
+													 DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_cholmod_factor_surf.Solve(m_cholmod_solution_surf, m_cholmod_rhs_surf, m_cholmod_ws1_surf, m_cholmod_ws2_surf);
+#else
+	m_eigen_rhs_surf.resize(m_vars_surf, m_modes.cols());
+	m_matrix_surf_resid.GetMatrixA().LeftMultiply(DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
+												  DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()), m_modes.cols());
+	m_matrix_surf_resid.GetMatrixB().LeftMultiplyAdd(DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
+													 DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+	m_eigen_solution_surf = m_eigen_chol_surf.solve(m_eigen_rhs_surf);
+#endif
+
+	// calculate resistive losses
+	{
+		Eigen::MatrixXr temp; // TODO: move to sparse matrix?
+		temp.resize(m_vars_surf, m_modes.cols());
+#if WITH_SUITESPARSE
+		m_matrix_surf_loss.LeftMultiply(DenseViewC(temp.data(), temp.outerStride()), DenseViewC(m_cholmod_solution_surf.GetRealData(), m_cholmod_solution_surf.GetStride()), m_modes.cols());
+#else
+		m_matrix_surf_loss.LeftMultiply(DenseViewC(temp.data(), temp.outerStride()), DenseViewC(m_eigen_solution_surf.data(), m_eigen_solution_surf.outerStride()), m_modes.cols());
+#endif
+		resistive_losses = m_eigen_solution_surf.transpose() * temp;
 	}
 
 }
 
-void GridMesh2D::SolveModes(std::vector<real_t> &charges, std::vector<real_t> &currents, std::vector<real_t> &dielectric_losses, std::vector<real_t> &resistive_losses) {
-	assert(m_initialized && !m_solved);
+void GridMesh2D::SolveEigenModes(Eigen::MatrixXr &charges, Eigen::MatrixXr &currents, Eigen::MatrixXr &dielectric_losses, Eigen::MatrixXr &resistive_losses) {
 
-	// preallocate matrix for right-hand-side
-	m_cholmod_rhs.ResetReal(m_vars_real, m_mode_count);
+	std::cerr << "charges =\n" << charges << std::endl;
+	std::cerr << "currents =\n" << currents << std::endl;
+	std::cerr << "dielectric_losses =\n" << dielectric_losses << std::endl;
+	std::cerr << "resistive_losses =\n" << resistive_losses << std::endl;
+	std::cerr << std::endl;
 
-	// factorize E matrix
-	m_cholmod_sparse.Reset(m_matrix_e);
-	m_cholmod_factor.Factorize(m_cholmod_sparse);
+	// calculate L, C, R and G
+	Eigen::MatrixXr inductance = currents.inverse();
+	Eigen::MatrixXr capacitance = charges;
+	Eigen::MatrixXr resistance = inductance.transpose() * resistive_losses * inductance;
+	Eigen::MatrixXr conductance = dielectric_losses;
 
-	// solve E matrix
-	std::fill_n(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride() * m_mode_count, 0.0);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *rhs = m_cholmod_rhs.GetRealData() + m_cholmod_rhs.GetStride() * i;
-		const real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
-		m_matrix_e.SubtractFromRhs(rhs, fixed_values);
-	}
-	m_cholmod_factor.Solve(m_cholmod_solution_e, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
+	std::cerr << "inductance =\n" << inductance << std::endl;
+	std::cerr << "capacitance =\n" << capacitance << std::endl;
+	std::cerr << "resistance =\n" << resistance << std::endl;
+	std::cerr << "conductance =\n" << conductance << std::endl;
+	std::cerr << std::endl;
 
-	// calculate the surface charges
-	charges.clear();
-	charges.resize(m_vars_fixed * m_mode_count);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *residual = charges.data() + m_vars_fixed * i;
-		real_t *solution = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
-		m_matrix_e.CalculateResidual(residual, solution, fixed_values);
-	}
-
-	// factorize H matrix
-	m_cholmod_sparse.Reset(m_matrix_h);
-	m_cholmod_factor.Factorize(m_cholmod_sparse);
-
-	// solve H matrix
-	std::fill_n(m_cholmod_rhs.GetRealData(), m_cholmod_rhs.GetStride() * m_mode_count, 0.0);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		m_matrix_h.SubtractFromRhs(m_cholmod_rhs.GetRealData() + m_cholmod_rhs.GetStride() * i, m_modes.data() + m_vars_fixed * i);
-	}
-	m_cholmod_factor.Solve(m_cholmod_solution_h, m_cholmod_rhs, m_cholmod_ws1, m_cholmod_ws2);
-
-	// calculate the surface currents
-	currents.clear();
-	currents.resize(m_vars_fixed * m_mode_count);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *residual = currents.data() + m_vars_fixed * i;
-		real_t *solution = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * i;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
-		m_matrix_h.CalculateResidual(residual, solution, fixed_values);
-	}
-
-	// calculate surface residuals and dielectric losses
+	// convert to impedance and admittance matrices
 	real_t solution_omega = 2.0 * M_PI * m_solution_frequency;
-	dielectric_losses.clear();
-	dielectric_losses.resize(m_mode_count);
-	m_cholmod_rhs_surf.ResetReal(m_vars_surf, m_mode_count);
-	std::fill_n(m_cholmod_rhs_surf.GetRealData(), m_cholmod_rhs_surf.GetStride() * m_mode_count, 0.0);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * i;
-		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * i;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * i;
-		real_t *surf_resid_h = m_cholmod_rhs_surf.GetRealData() + m_cholmod_rhs_surf.GetStride() * i;
-		real_t total_dielectric_loss = 0.0;
-		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+	Eigen::MatrixXc impedance(m_modes.cols(), m_modes.cols()), admittance(m_modes.cols(), m_modes.cols());
+	impedance.real() = resistance;
+	impedance.imag() = solution_omega * inductance;
+	admittance.real() = conductance;
+	admittance.imag() = solution_omega * capacitance;
 
-				// get cell, skip cells that are inside conductors
-				Cell &cell = GetCell(ix, iy);
-				if(cell.m_conductor != INDEX_NONE)
-					continue;
+	// calculate eigenmodes
+	Eigen::ComplexEigenSolver<Eigen::MatrixXc> eigensolver(impedance * admittance);
+	if(eigensolver.info() != Eigen::Success)
+		throw std::runtime_error("Eigenmode decomposition failed!");
+	auto &eigval = eigensolver.eigenvalues();
+	auto &eigvec = eigensolver.eigenvectors();
 
-				// get neighboring nodes
-				Node &node00 = GetNode(ix    , iy    );
-				Node &node01 = GetNode(ix + 1, iy    );
-				Node &node10 = GetNode(ix    , iy + 1);
-				Node &node11 = GetNode(ix + 1, iy + 1);
+	std::cerr << "eigenvalues =\n" << eigval << std::endl;
+	std::cerr << "eigenvectors =\n" << eigvec << std::endl;
+	std::cerr << std::endl;
 
-				// get node values
-				real_t node00_value_e = (node00.m_var < INDEX_OFFSET)? solution_e[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
-				real_t node01_value_e = (node01.m_var < INDEX_OFFSET)? solution_e[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
-				real_t node10_value_e = (node10.m_var < INDEX_OFFSET)? solution_e[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
-				real_t node11_value_e = (node11.m_var < INDEX_OFFSET)? solution_e[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
-				real_t node00_value_h = (node00.m_var < INDEX_OFFSET)? solution_h[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
-				real_t node01_value_h = (node01.m_var < INDEX_OFFSET)? solution_h[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
-				real_t node10_value_h = (node10.m_var < INDEX_OFFSET)? solution_h[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
-				real_t node11_value_h = (node11.m_var < INDEX_OFFSET)? solution_h[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+	// calculate impedances, admittance and (approximated) characteristic impedance
+	m_characteristic_impedance_matrix = eigvec * eigval.cwiseInverse().cwiseSqrt().asDiagonal() * eigvec.inverse() * impedance;
+	Eigen::VectorXc diag_impedance = m_characteristic_impedance_matrix.diagonal();
+	Eigen::VectorXc diag_admittance = m_characteristic_impedance_matrix.inverse().diagonal();
+	m_characteristic_impedances = (diag_impedance.array() / diag_admittance.array()).sqrt().matrix();
 
-				// get cell size
-				real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-				real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+	std::cerr << "m_characteristic_impedance_matrix =\n" << m_characteristic_impedance_matrix << std::endl;
+	std::cerr << "m_characteristic_impedances =\n" << m_characteristic_impedances << std::endl;
+	std::cerr << std::endl;
 
-				// get dielectric properties
-				std::complex<real_t> permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
-				if(cell.m_dielectric != INDEX_NONE) {
-					permittivity_x = m_dielectric_properties[cell.m_dielectric].m_permittivity_x;
-					permittivity_y = m_dielectric_properties[cell.m_dielectric].m_permittivity_y;
-				}
-
-				// calculate scale factors
-				real_t scale_x_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_y / delta_x;
-				real_t scale_y_h = 1.0 / 6.0 / VACUUM_PERMEABILITY * delta_x / delta_y;
-
-				// calculate H coefficients
-				real_t coef_s_h = scale_x_h + scale_y_h;
-				real_t coef_x_h = -2.0 * scale_x_h + scale_y_h;
-				real_t coef_y_h = -2.0 * scale_y_h + scale_x_h;
-				real_t coef_d_h = -scale_x_h - scale_y_h;
-
-				// calculate residual
-				if(node00.m_var_surf != INDEX_NONE)
-					surf_resid_h[node00.m_var_surf] += node00_value_h * coef_s_h * 2.0 + node01_value_h * coef_x_h + node10_value_h * coef_y_h + node11_value_h * coef_d_h;
-				if(node01.m_var_surf != INDEX_NONE)
-					surf_resid_h[node01.m_var_surf] += node01_value_h * coef_s_h * 2.0 + node00_value_h * coef_x_h + node11_value_h * coef_y_h + node10_value_h * coef_d_h;
-				if(node10.m_var_surf != INDEX_NONE)
-					surf_resid_h[node10.m_var_surf] += node10_value_h * coef_s_h * 2.0 + node11_value_h * coef_x_h + node00_value_h * coef_y_h + node01_value_h * coef_d_h;
-				if(node11.m_var_surf != INDEX_NONE)
-					surf_resid_h[node11.m_var_surf] += node11_value_h * coef_s_h * 2.0 + node10_value_h * coef_x_h + node01_value_h * coef_y_h + node00_value_h * coef_d_h;
-
-				// calculate dielectric loss
-				real_t loss_x = -1.0 / 3.0 * permittivity_x.imag() * solution_omega * delta_y / delta_x;
-				real_t loss_y = -1.0 / 3.0 * permittivity_y.imag() * solution_omega * delta_x / delta_y;
-				real_t dx0 = node01_value_e - node00_value_e, dx1 = node11_value_e - node10_value_e;
-				real_t dy0 = node10_value_e - node00_value_e, dy1 = node11_value_e - node01_value_e;
-				total_dielectric_loss += (sqr(dx0 + dx1) - dx0 * dx1) * loss_x + (sqr(dy0 + dy1) - dy0 * dy1) * loss_y;
-
+	// reorder eigenmodes to match user-provided modes and calculate propagation constants
+	m_eigenmodes.resize(m_modes.cols(), m_modes.cols());
+	m_propagation_constants.resize(m_modes.cols());
+	std::vector<size_t> modemap(m_modes.cols());
+	for(size_t i = 0; i < (size_t) m_modes.cols(); ++i) {
+		modemap[i] = i;
+	}
+	for(size_t i = 0; i < (size_t) m_modes.cols(); ++i) {
+		size_t best_index = i;
+		complex_t best_value = complex_t(0.0, 0.0);
+		for(size_t j = i; j < (size_t) m_modes.cols(); ++j) {
+			complex_t value = eigvec(i, modemap[j]);
+			if(std::norm(value) > std::norm(best_value)) {
+				best_index = j;
+				best_value = value;
 			}
 		}
-		dielectric_losses[i] = total_dielectric_loss;
+		std::swap(modemap[i], modemap[best_index]);
+		m_eigenmodes.col(i) = eigvec.col(modemap[i]); // / best_value;
+		m_propagation_constants[i] = std::sqrt(eigval(modemap[i]));
 	}
 
-	// solve surface matrix
-	m_cholmod_factor_surf.Solve(m_cholmod_solution_surf, m_cholmod_rhs_surf, m_cholmod_ws1_surf, m_cholmod_ws2_surf);
-
-	// calculate resistive losses
-	resistive_losses.clear();
-	resistive_losses.resize(m_mode_count);
-	for(size_t i = 0; i < m_mode_count; ++i) {
-		real_t *solution_surf = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * i;
-		real_t total_resistive_loss = 0.0;
-		// TODO: remove
-		//std::vector<real_t> debug_total_current(m_vars_fixed, 0.0);
-		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-
-				// get cell, skip cells that are inside conductors
-				Cell &cell = GetCell(ix, iy);
-				if(cell.m_conductor != INDEX_NONE)
-					continue;
-
-				// get neighboring nodes
-				Node &node00 = GetNode(ix    , iy    );
-				Node &node01 = GetNode(ix + 1, iy    );
-				Node &node10 = GetNode(ix    , iy + 1);
-				Node &node11 = GetNode(ix + 1, iy + 1);
-
-				// get cell size
-				real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-				real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
-
-				// process conductor surfaces
-				Edge &edgeh0 = GetEdgeH(ix, iy);
-				Edge &edgeh1 = GetEdgeH(ix, iy + 1);
-				Edge &edgev0 = GetEdgeV(ix, iy);
-				Edge &edgev1 = GetEdgeV(ix + 1, iy);
-				if(edgeh0.m_conductor != INDEX_NONE) {
-					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
-					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node01.m_var_surf];
-					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
-					//if(m_ports[m_conductors[edgeh0.m_conductor].m_port].m_var >= INDEX_OFFSET)
-					//	debug_total_current[m_ports[m_conductors[edgeh0.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_x;
-				}
-				if(edgeh1.m_conductor != INDEX_NONE) {
-					real_t loss_x = 1.0 / 3.0 * delta_x * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
-					real_t curr0 = solution_surf[node10.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
-					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_x;
-					//if(m_ports[m_conductors[edgeh1.m_conductor].m_port].m_var >= INDEX_OFFSET)
-					//	debug_total_current[m_ports[m_conductors[edgeh1.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_x;
-				}
-				if(edgev0.m_conductor != INDEX_NONE) {
-					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
-					real_t curr0 = solution_surf[node00.m_var_surf], curr1 = solution_surf[node10.m_var_surf];
-					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
-					//if(m_ports[m_conductors[edgev0.m_conductor].m_port].m_var >= INDEX_OFFSET)
-					//	debug_total_current[m_ports[m_conductors[edgev0.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_y;
-				}
-				if(edgev1.m_conductor != INDEX_NONE) {
-					real_t loss_y = 1.0 / 3.0 * delta_y * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
-					real_t curr0 = solution_surf[node01.m_var_surf], curr1 = solution_surf[node11.m_var_surf];
-					total_resistive_loss += (sqr(curr0 + curr1) - curr0 * curr1) * loss_y;
-					//if(m_ports[m_conductors[edgev1.m_conductor].m_port].m_var >= INDEX_OFFSET)
-					//	debug_total_current[m_ports[m_conductors[edgev1.m_conductor].m_port].m_var - INDEX_OFFSET] += (curr0 + curr1) * 0.5 * delta_y;
-				}
-
-			}
-		}
-		resistive_losses[i] = total_resistive_loss;
-
-		//real_t *debug_resid_current = currents.data() + m_vars_fixed * i;
-		//std::cerr << "debug_resid_current ="; for(size_t i = 0; i < m_vars_fixed; ++i) { std::cerr << " " << debug_resid_current[i]; } std::cerr << std::endl;
-		//std::cerr << "debug_total_current ="; for(size_t i = 0; i < m_vars_fixed; ++i) { std::cerr << " " << debug_total_current[i]; } std::cerr << std::endl;
-	}
+	std::cerr << "m_eigenmodes =\n" << m_eigenmodes << std::endl;
+	std::cerr << "m_propagation_constants =\n" << m_propagation_constants << std::endl;
+	std::cerr << std::endl;
 
 }
 
 void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type) {
 	assert(m_initialized);
-	assert(mode < m_mode_count);
+	assert(mode < (size_t) m_modes.cols());
 	assert(type == MESHIMAGETYPE_MESH);
 	UNUSED(mode);
 	UNUSED(type);
@@ -885,21 +957,26 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, Me
 
 void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type) {
 	assert(m_initialized && m_solved);
-	assert(mode < m_mode_count);
+	assert(mode < (size_t) m_modes.cols());
 	assert(type == MESHIMAGETYPE_FIELD_E || type == MESHIMAGETYPE_FIELD_H);
 	node_values.clear();
 	node_values.resize(m_nodes.size(), 0.0);
+#if WITH_SUITESPARSE
 	CholmodDenseMatrix &solution = (type == MESHIMAGETYPE_FIELD_E)? m_cholmod_solution_e : m_cholmod_solution_h;
 	real_t *solution_values = solution.GetRealData() + solution.GetStride() * mode;
-	real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+#else
+	Eigen::MatrixXr &solution = (type == MESHIMAGETYPE_FIELD_E)? m_eigen_solution_epot : m_eigen_solution_mpot;
+	real_t *solution_values = solution.data() + solution.outerStride() * mode;
+#endif
+	real_t *fixed_values = m_modes.data() + m_modes.outerStride() * mode;
 	for(size_t i = 0; i < m_nodes.size(); ++i) {
 		size_t var = m_nodes[i].m_var;
 		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
 	}
 	/*} else if(type == MESHIMAGETYPE_ENERGY) {
-		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * mode;
-		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * mode;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+		real_t *solution_e = m_cholmod_solution_e_pot.GetRealData() + m_cholmod_solution_e_pot.GetStride() * mode;
+		real_t *solution_h = m_cholmod_solution_h_pot.GetRealData() + m_cholmod_solution_h_pot.GetStride() * mode;
+		real_t *fixed_values = m_modes.data() + m_modes.outerStride() * mode;
 		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 				Cell &cell = GetCell(ix, iy);
@@ -966,14 +1043,19 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, Me
 
 void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type) {
 	assert(m_initialized && m_solved);
-	assert(mode < m_mode_count);
+	assert(mode < (size_t) m_modes.cols());
 	assert(type == MESHIMAGETYPE_ENERGY || type == MESHIMAGETYPE_CURRENT);
 	cellnode_values.clear();
 	cellnode_values.resize(m_cells.size());
 	if(type == MESHIMAGETYPE_ENERGY) {
-		real_t *solution_e = m_cholmod_solution_e.GetRealData() + m_cholmod_solution_e.GetStride() * mode;
-		real_t *solution_h = m_cholmod_solution_h.GetRealData() + m_cholmod_solution_h.GetStride() * mode;
-		real_t *fixed_values = m_modes.data() + m_vars_fixed * mode;
+#if WITH_SUITESPARSE
+		real_t *solution_e = m_cholmod_solution_e_pot.GetRealData() + m_cholmod_solution_e_pot.GetStride() * mode;
+		real_t *solution_h = m_cholmod_solution_h_pot.GetRealData() + m_cholmod_solution_h_pot.GetStride() * mode;
+#else
+		real_t *solution_e = m_eigen_solution_epot.data() + m_eigen_solution_epot.outerStride() * mode;
+		real_t *solution_h = m_eigen_solution_mpot.data() + m_eigen_solution_mpot.outerStride() * mode;
+#endif
+		real_t *fixed_values = m_modes.data() + m_modes.outerStride() * mode;
 		std::vector<std::vector<real_t>> dielectric_values(m_dielectrics.size() + 1);
 		std::vector<std::vector<int32_t>> dielectric_count(m_dielectrics.size() + 1);
 		for(size_t i = 0; i < dielectric_values.size(); ++i) {
@@ -1056,7 +1138,11 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 			}
 		}
 	} else {
+#if WITH_SUITESPARSE
 		real_t *solution_values = m_cholmod_solution_surf.GetRealData() + m_cholmod_solution_surf.GetStride() * mode;
+#else
+		real_t *solution_values = m_eigen_solution_surf.data() + m_eigen_solution_surf.outerStride() * mode;
+#endif
 		real_t max_value = 0.0;
 		for(size_t i = 0; i < m_vars_surf; ++i) {
 			max_value = std::max(max_value, fabs(solution_values[i]));

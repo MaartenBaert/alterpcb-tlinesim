@@ -20,6 +20,8 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#if WITH_SUITESPARSE
+
 #include "Basics.h"
 #include "SparseMatrix.h"
 
@@ -56,8 +58,10 @@ public:
 
 	void Reset();
 	void Reset(size_t rows, size_t cols, size_t coefs, bool sorted, bool packed, int stype, int xtype);
-	void Reset(SymmetricSparseMatrix<real_t> &matrix);
-	void Reset(SymmetricSparseMatrix<complex_t> &matrix);
+	void Reset(const SymmetricSparseMatrix<real_t> &matrix);
+	void Reset(const SymmetricSparseMatrix<complex_t> &matrix);
+
+	void SaveMatrixMarket(const std::string &filename);
 
 public:
 	inline cholmod_sparse* GetSparse() { return m_sparse; }
@@ -113,3 +117,5 @@ public:
 	inline cholmod_factor* GetFactor() { return m_factor; }
 
 };
+
+#endif

@@ -21,6 +21,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Basics.h"
+#include "Eigen.h"
 #include "GenericMesh.h"
 #include "VData.h"
 #include "VDataReader.h"
@@ -87,4 +88,4 @@ void RegisterTLineTypes();
 std::string CanonicalName(const std::string& name);
 const MaterialConductor* FindConductor(VDataDictReader &root, const char *key, MaterialDatabase *material_database);
 const MaterialDielectric* FindDielectric(VDataDictReader &root, const char *key, MaterialDatabase *material_database);
-void TLineSolveModes(TLineContext &context, const std::vector<real_t> &modes, const std::vector<real_t> &mode_scale);
+void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes);
