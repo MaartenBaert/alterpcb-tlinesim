@@ -306,7 +306,7 @@ inline void ReadNameOrNumber(ReadContext &context, VData &data) {
 				if(limit) {
 					if(!point && dec.expo < INT32_MAX)
 						++dec.expo;
-				} else if(dec.mant > (DECIMAL_MANT_MAX - 10) / 10) {
+				} else if(dec.mant > (UINT64_MAX - 10) / 10) {
 					if(c2 >= '5')
 						++dec.mant;
 					if(!point && dec.expo < INT32_MAX)
@@ -440,8 +440,8 @@ inline void WriteFloat(WriteContext &context, real_t value) {
 			int32_t expo = dec.expo - VDATA_DECIMAL_SHIFT + (int32_t) (context.format.precision - 1);
 			assert(expo >= -360 && expo <= 360);
 			int32_t decimals;
-			char buffer[DECIMAL_BUFFER_SIZE];
-			char *ptr = buffer + DECIMAL_BUFFER_SIZE;
+			char buffer[25];
+			char *ptr = buffer + sizeof(buffer);
 			if(expo >= -3 && expo <= 8) {
 				decimals = (int32_t) context.format.precision - 1 - expo;
 			} else {
@@ -488,7 +488,7 @@ inline void WriteFloat(WriteContext &context, real_t value) {
 			if(dec.negative)
 				*(--ptr) = '-';
 			assert(ptr >= buffer);
-			WriteData(context, ptr, buffer + DECIMAL_BUFFER_SIZE - ptr);
+			WriteData(context, ptr, buffer + sizeof(buffer) - ptr);
 			break;
 		}
 		case FLOATTYPE_INF: {

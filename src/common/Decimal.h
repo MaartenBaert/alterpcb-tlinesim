@@ -35,8 +35,5 @@ struct Decimal {
 	uint64_t mant;
 };
 
-constexpr size_t DECIMAL_BUFFER_SIZE = 25;
-constexpr uint64_t DECIMAL_MANT_MAX = UINT64_C(13446744073709551615);
-
 Decimal ToDecimal(double value, uint32_t precision);
 double FromDecimal(Decimal dec);
