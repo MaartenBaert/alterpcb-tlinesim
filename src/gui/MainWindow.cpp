@@ -242,7 +242,7 @@ MainWindow::MainWindow() {
 		m_combobox_modes = new QComboBox(groupbox_viewer);
 		m_combobox_modes->setMinimumWidth(120);
 
-		connect(m_slider_zoom, SIGNAL(sliderMoved(int)), this, SLOT(OnZoomChange()));
+		connect(m_slider_zoom, SIGNAL(valueChanged(int)), this, SLOT(OnZoomChange()));
 		connect(m_combobox_image_type, SIGNAL(activated(int)), this, SLOT(OnImageTypeChange()));
 		connect(m_checkbox_mesh_overlay, SIGNAL(clicked(bool)), this, SLOT(OnMeshOverlayChange()));
 		connect(m_combobox_modes, SIGNAL(activated(int)), this, SLOT(OnModeChange()));
