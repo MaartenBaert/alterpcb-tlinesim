@@ -38,10 +38,10 @@ class GenericMesh {
 
 private:
 	bool m_initialized, m_solved;
-
-protected:
 	Eigen::MatrixXr m_modes;
 	real_t m_frequency;
+
+protected:
 	Eigen::MatrixXr m_inductance_matrix, m_capacitance_matrix, m_resistance_matrix, m_conductance_matrix;
 
 private:
@@ -66,7 +66,9 @@ public:
 public:
 	inline bool IsInitialized() { return m_initialized; }
 	inline bool IsSolved() { return m_solved; }
+
 	inline size_t GetModeCount() { return m_modes.cols(); }
+	inline const Eigen::MatrixXr& GetModes() { return m_modes; }
 	inline real_t GetFrequency() { return m_frequency; }
 
 	inline const Eigen::MatrixXr& GetInductanceMatrix() { return m_inductance_matrix; }
@@ -77,6 +79,7 @@ public:
 	inline const Eigen::MatrixXc& GetCharacteristicImpedanceMatrix() { return m_characteristic_impedance_matrix; }
 	inline const Eigen::VectorXc& GetCharacteristicImpedances() { return m_characteristic_impedances; }
 	inline const Eigen::VectorXc& GetPropagationConstants() { return m_propagation_constants; }
+
 	inline const Eigen::MatrixXc& GetEigenmodes() { return m_eigenmodes; }
 	inline const Eigen::VectorXc& GetEigenmodePropagationConstants() { return m_eigenmode_propagation_constants; }
 

@@ -108,7 +108,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 	if(type != MESHIMAGETYPE_MESH) {
 		if(!IsSolved())
 			throw std::runtime_error("GridMesh2D error: The mesh must be solved first.");
-		if(mode >= (size_t) m_modes.cols())
+		if(mode >= GetModeCount())
 			throw std::runtime_error("GridMesh2D error: Invalid mode index.");
 	}
 
@@ -461,14 +461,14 @@ void GridMesh2D::BuildMatrices() {
 	m_conductor_properties.clear();
 	m_conductor_properties.resize(m_conductors.size());
 	for(size_t i = 0; i < m_conductors.size(); ++i) {
-		GetConductorProperties(m_conductor_properties[i], m_conductors[i].m_material, m_frequency);
+		GetConductorProperties(m_conductor_properties[i], m_conductors[i].m_material, GetFrequency());
 	}
 
 	// load dielectric properties
 	m_dielectric_properties.clear();
 	m_dielectric_properties.resize(m_dielectrics.size());
 	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
-		GetDielectricProperties(m_dielectric_properties[i], m_dielectrics[i].m_material, m_frequency);
+		GetDielectricProperties(m_dielectric_properties[i], m_dielectrics[i].m_material, GetFrequency());
 	}
 
 	// build matrices
@@ -478,7 +478,7 @@ void GridMesh2D::BuildMatrices() {
 	m_matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_real, m_vars_fixed, 5);
 	m_matrix_surf_curr.Reset(m_vars_surf, m_vars_surf, 2);
 	m_matrix_surf_loss.Reset(m_vars_surf, m_vars_surf, 2);
-	real_t omega = 2.0 * M_PI * m_frequency;
+	real_t omega = 2.0 * M_PI * GetFrequency();
 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
@@ -498,7 +498,7 @@ void GridMesh2D::BuildMatrices() {
 			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
 
 			// get dielectric properties
-			std::complex<real_t> permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
+			complex_t permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
 			if(cell.m_dielectric != INDEX_NONE) {
 				permittivity_x = m_dielectric_properties[cell.m_dielectric].m_permittivity_x;
 				permittivity_y = m_dielectric_properties[cell.m_dielectric].m_permittivity_y;
@@ -512,25 +512,25 @@ void GridMesh2D::BuildMatrices() {
 			real_t scale_x_eloss = -1.0 / 6.0 * permittivity_x.imag() * omega * delta_y / delta_x;
 			real_t scale_y_eloss = -1.0 / 6.0 * permittivity_y.imag() * omega * delta_x / delta_y;
 
-			// calculate E coefficients
+			// calculate electric potential coefficients
 			real_t coef_s_epot = scale_x_epot + scale_y_epot;
 			real_t coef_x_epot = scale_y_epot - 2.0 * scale_x_epot;
 			real_t coef_y_epot = scale_x_epot - 2.0 * scale_y_epot;
 			real_t coef_d_epot = -(scale_x_epot + scale_y_epot);
 
-			// calculate H coefficients
+			// calculate magnetic potential coefficients
 			real_t coef_s_mpot = scale_x_mpot + scale_y_mpot;
 			real_t coef_x_mpot = scale_y_mpot - 2.0 * scale_x_mpot;
 			real_t coef_y_mpot = scale_x_mpot - 2.0 * scale_y_mpot;
 			real_t coef_d_mpot = -(scale_x_mpot + scale_y_mpot);
 
-			// calculate loss coefficients
+			// calculate electric loss coefficients
 			real_t coef_s_eloss = scale_x_eloss + scale_y_eloss;
 			real_t coef_x_eloss = scale_y_eloss - 2.0 * scale_x_eloss;
 			real_t coef_y_eloss = scale_x_eloss - 2.0 * scale_y_eloss;
 			real_t coef_d_eloss = -(scale_x_eloss + scale_y_eloss);
 
-			// add to E matrix
+			// add to electric potential matrix
 			m_matrix_epot.Insert(node00.m_var, node00.m_var, coef_s_epot);
 			m_matrix_epot.Insert(node01.m_var, node01.m_var, coef_s_epot);
 			m_matrix_epot.Insert(node10.m_var, node10.m_var, coef_s_epot);
@@ -542,7 +542,7 @@ void GridMesh2D::BuildMatrices() {
 			m_matrix_epot.Insert(node00.m_var, node11.m_var, coef_d_epot);
 			m_matrix_epot.Insert(node01.m_var, node10.m_var, coef_d_epot);
 
-			// add to H matrix
+			// add to magnetic potential matrix
 			m_matrix_mpot.Insert(node00.m_var, node00.m_var, coef_s_mpot);
 			m_matrix_mpot.Insert(node01.m_var, node01.m_var, coef_s_mpot);
 			m_matrix_mpot.Insert(node10.m_var, node10.m_var, coef_s_mpot);
@@ -554,7 +554,7 @@ void GridMesh2D::BuildMatrices() {
 			m_matrix_mpot.Insert(node00.m_var, node11.m_var, coef_d_mpot);
 			m_matrix_mpot.Insert(node01.m_var, node10.m_var, coef_d_mpot);
 
-			// add to E loss matrix
+			// add to electric loss matrix
 			m_matrix_eloss.Insert(node00.m_var, node00.m_var, coef_s_eloss);
 			m_matrix_eloss.Insert(node01.m_var, node01.m_var, coef_s_eloss);
 			m_matrix_eloss.Insert(node10.m_var, node10.m_var, coef_s_eloss);
@@ -673,16 +673,16 @@ void GridMesh2D::SolveMatrices() {
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// solve electric potential matrix
-	m_eigen_rhs.resize(m_vars_real, m_modes.cols());
+	m_eigen_rhs.resize(m_vars_real, GetModeCount());
 	m_matrix_epot.CalculateRHS(DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
-							   DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+							   DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 	m_eigen_solution_epot = m_eigen_chol.solve(m_eigen_rhs);
 
 	// calculate the charge matrix (residual of electric potential matrix)
-	charge_matrix.resize(m_modes.cols(), m_modes.cols());
+	charge_matrix.resize(GetModeCount(), GetModeCount());
 	m_matrix_epot.CalculateResidual(DenseViewC(charge_matrix.data(), charge_matrix.outerStride()),
 									DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
-									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+									DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 
 	// factorize magnetic potential matrix
 	m_eigen_sparse.resize(m_matrix_mpot.GetMatrixA().GetRows(), m_matrix_mpot.GetMatrixA().GetCols());
@@ -696,22 +696,22 @@ void GridMesh2D::SolveMatrices() {
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// solve magnetic potential matrix
-	m_eigen_rhs.resize(m_vars_real, m_modes.cols());
+	m_eigen_rhs.resize(m_vars_real, GetModeCount());
 	m_matrix_mpot.CalculateRHS(DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
-							   DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+							   DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 	m_eigen_solution_mpot = m_eigen_chol.solve(m_eigen_rhs);
 
 	// calculate the current matrix (residual of magnetic potential matrix)
-	current_matrix.resize(m_modes.cols(), m_modes.cols());
+	current_matrix.resize(GetModeCount(), GetModeCount());
 	m_matrix_mpot.CalculateResidual(DenseViewC(current_matrix.data(), current_matrix.outerStride()),
 									DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()),
-									DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+									DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 
 	// calculate dielectric losses
-	dielectric_loss_matrix.resize(m_modes.cols(), m_modes.cols());
+	dielectric_loss_matrix.resize(GetModeCount(), GetModeCount());
 	m_matrix_eloss.CalculateQuadratic(DenseViewC(dielectric_loss_matrix.data(), dielectric_loss_matrix.outerStride()),
 									  DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
-									  DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+									  DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 
 	// factorize current matrix
 	m_eigen_sparse_surf.resize(m_matrix_surf_curr.GetRows(), m_matrix_surf_curr.GetCols());
@@ -725,19 +725,19 @@ void GridMesh2D::SolveMatrices() {
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// calculate surface currents
-	m_eigen_rhs_surf.resize(m_vars_surf, m_modes.cols());
+	m_eigen_rhs_surf.resize(m_vars_surf, GetModeCount());
 	m_matrix_surf_resid.GetMatrixA().LeftMultiply(DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
-												  DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()), m_modes.cols());
+												  DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()), GetModeCount());
 	m_matrix_surf_resid.GetMatrixB().LeftMultiplyAdd(DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
-													 DenseViewC(m_modes.data(), m_modes.outerStride()), m_modes.cols());
+													 DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
 	m_eigen_solution_surf = m_eigen_chol_surf.solve(m_eigen_rhs_surf);
 
 	// calculate resistive losses
-	resistive_loss_matrix.resize(m_modes.cols(), m_modes.cols());
+	resistive_loss_matrix.resize(GetModeCount(), GetModeCount());
 	m_matrix_surf_loss.LeftRightMultiply(DenseViewC(resistive_loss_matrix.data(), resistive_loss_matrix.outerStride()),
 										 DenseViewC(m_eigen_solution_surf.data(), m_eigen_solution_surf.outerStride()).TransposedView(),
 										 DenseViewC(m_eigen_solution_surf.data(), m_eigen_solution_surf.outerStride()),
-										 m_modes.cols(), m_modes.cols());
+										 GetModeCount(), GetModeCount());
 
 	/*std::cerr << "charges =\n" << charge_matrix << std::endl;
 	std::cerr << "currents =\n" << current_matrix << std::endl;
@@ -787,13 +787,13 @@ void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, Me
 
 void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type) {
 	assert(IsInitialized() && IsSolved());
-	assert(mode < (size_t) m_modes.cols());
+	assert(mode < GetModeCount());
 	assert(type == MESHIMAGETYPE_EPOT || type == MESHIMAGETYPE_MPOT);
 	node_values.clear();
 	node_values.resize(m_nodes.size(), 0.0);
 	Eigen::MatrixXr &solution = (type == MESHIMAGETYPE_EPOT)? m_eigen_solution_epot : m_eigen_solution_mpot;
 	real_t *solution_values = solution.data() + solution.outerStride() * mode;
-	real_t *fixed_values = m_modes.data() + m_modes.outerStride() * mode;
+	const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * mode;
 	for(size_t i = 0; i < m_nodes.size(); ++i) {
 		size_t var = m_nodes[i].m_var;
 		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
@@ -802,14 +802,14 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, Me
 
 void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type) {
 	assert(IsInitialized() && IsSolved());
-	assert(mode < (size_t) m_modes.cols());
+	assert(mode < GetModeCount());
 	assert(type == MESHIMAGETYPE_ENERGY || type == MESHIMAGETYPE_CURRENT);
 	cellnode_values.clear();
 	cellnode_values.resize(m_cells.size());
 	if(type == MESHIMAGETYPE_ENERGY) {
 		real_t *solution_epot = m_eigen_solution_epot.data() + m_eigen_solution_epot.outerStride() * mode;
 		real_t *solution_mpot = m_eigen_solution_mpot.data() + m_eigen_solution_mpot.outerStride() * mode;
-		real_t *fixed_values = m_modes.data() + m_modes.outerStride() * mode;
+		const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * mode;
 		std::vector<std::vector<real_t>> dielectric_values(m_dielectrics.size() + 1);
 		std::vector<std::vector<int32_t>> dielectric_count(m_dielectrics.size() + 1);
 		for(size_t i = 0; i < dielectric_values.size(); ++i) {
@@ -833,16 +833,16 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 				//Node &node01 = GetNode(ix + 1, iy    );
 				//Node &node10 = GetNode(ix    , iy + 1);
 				//Node &node11 = GetNode(ix + 1, iy + 1);
-				real_t node00_value_e = (node00.m_var < INDEX_OFFSET)? solution_epot[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
-				real_t node01_value_e = (node01.m_var < INDEX_OFFSET)? solution_epot[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
-				real_t node10_value_e = (node10.m_var < INDEX_OFFSET)? solution_epot[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
-				real_t node11_value_e = (node11.m_var < INDEX_OFFSET)? solution_epot[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
+				real_t node00_value_epot = (node00.m_var < INDEX_OFFSET)? solution_epot[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
+				real_t node01_value_epot = (node01.m_var < INDEX_OFFSET)? solution_epot[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
+				real_t node10_value_epot = (node10.m_var < INDEX_OFFSET)? solution_epot[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
+				real_t node11_value_epot = (node11.m_var < INDEX_OFFSET)? solution_epot[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
 				real_t node00_value_mpot = (node00.m_var < INDEX_OFFSET)? solution_mpot[node00.m_var] : fixed_values[node00.m_var - INDEX_OFFSET];
 				real_t node01_value_mpot = (node01.m_var < INDEX_OFFSET)? solution_mpot[node01.m_var] : fixed_values[node01.m_var - INDEX_OFFSET];
 				real_t node10_value_mpot = (node10.m_var < INDEX_OFFSET)? solution_mpot[node10.m_var] : fixed_values[node10.m_var - INDEX_OFFSET];
 				real_t node11_value_mpot = (node11.m_var < INDEX_OFFSET)? solution_mpot[node11.m_var] : fixed_values[node11.m_var - INDEX_OFFSET];
-				real_t ex0 = node01_value_e - node00_value_e, ex1 = node11_value_e - node10_value_e;
-				real_t ey0 = node10_value_e - node00_value_e, ey1 = node11_value_e - node01_value_e;
+				real_t ex0 = node01_value_epot - node00_value_epot, ex1 = node11_value_epot - node10_value_epot;
+				real_t ey0 = node10_value_epot - node00_value_epot, ey1 = node11_value_epot - node01_value_epot;
 				real_t hx0 = node01_value_mpot - node00_value_mpot, hx1 = node11_value_mpot - node10_value_mpot;
 				real_t hy0 = node10_value_mpot - node00_value_mpot, hy1 = node11_value_mpot - node01_value_mpot;
 				real_t scale_x = 1.0 / sqr(m_grid_x[ix + 1] - m_grid_x[ix]);

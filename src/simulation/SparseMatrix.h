@@ -613,8 +613,8 @@ public:
 	// size of residual = (num, num), size of solution = (cols1, num), size of fixed = (cols2, num).
 	template<typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
 	void CalculateResidual(DenseViewBase<F1, ROWMAJOR1> residual, DenseViewBase<F2, ROWMAJOR2> solution, DenseViewBase<F3, ROWMAJOR3> fixed, size_t num) const {
-		std::unique_ptr<F3[]> temp(new F3[GetRows2() * num]);
-		DenseViewBase<F3, ROWMAJOR3> temp_view(temp.get(), (ROWMAJOR3)? num : GetRows2());
+		std::unique_ptr<F1[]> temp(new F1[GetRows2() * num]);
+		DenseViewBase<F1, ROWMAJOR3> temp_view(temp.get(), (ROWMAJOR3)? num : GetRows2());
 		if(UPPER) {
 			m_matrix_bc.RightMultiply(temp_view.TransposedView(), solution.TransposedView(), num); // use B
 		} else {
@@ -623,7 +623,7 @@ public:
 		m_matrix_d.LeftMultiplyAdd(temp_view, fixed, num);
 		for(size_t i = 0; i < num; ++i) {
 			for(size_t j = 0; j < num; ++j) {
-				F2 sum = F2();
+				F1 sum = F1();
 				for(size_t k = 0; k < GetRows2(); ++k) {
 					sum += fixed(k, i) * temp_view(k, j);
 				}
@@ -636,10 +636,10 @@ public:
 	// size of output = (num, num), size of solution = (cols1, num), size of fixed = (cols2, num).
 	template<typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
 	void CalculateQuadratic(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> solution, DenseViewBase<F3, ROWMAJOR3> fixed, size_t num) {
-		std::unique_ptr<F2[]> temp1(new F2[GetRows1() * num]);
-		std::unique_ptr<F3[]> temp2(new F3[GetRows2() * num]);
-		DenseViewBase<F2, ROWMAJOR2> temp1_view(temp1.get(), (ROWMAJOR2)? num : GetRows1());
-		DenseViewBase<F3, ROWMAJOR3> temp2_view(temp2.get(), (ROWMAJOR3)? num : GetRows2());
+		std::unique_ptr<F1[]> temp1(new F1[GetRows1() * num]);
+		std::unique_ptr<F1[]> temp2(new F1[GetRows2() * num]);
+		DenseViewBase<F1, ROWMAJOR2> temp1_view(temp1.get(), (ROWMAJOR2)? num : GetRows1());
+		DenseViewBase<F1, ROWMAJOR3> temp2_view(temp2.get(), (ROWMAJOR3)? num : GetRows2());
 		m_matrix_a.LeftMultiply(temp1_view, solution, num);
 		if(UPPER) {
 			m_matrix_bc.LeftMultiplyAdd(temp1_view, fixed, num); // use B
@@ -651,7 +651,7 @@ public:
 		m_matrix_d.LeftMultiplyAdd(temp2_view, fixed, num);
 		for(size_t i = 0; i < num; ++i) {
 			for(size_t j = 0; j < num; ++j) {
-				F2 sum = F2();
+				F1 sum = F1();
 				for(size_t k = 0; k < GetRows1(); ++k) {
 					sum += solution(k, i) * temp1_view(k, j);
 				}
