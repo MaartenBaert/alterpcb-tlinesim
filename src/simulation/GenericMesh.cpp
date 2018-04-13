@@ -91,20 +91,18 @@ void GenericMesh::SolveEigenModes() {
 	std::cerr << "eigenvectors =\n" << eigvec << std::endl;
 	std::cerr << std::endl;
 
+	// make sure we get the correct complex square root (positive imaginary part)
+	Eigen::VectorXc eigval_sqrt = (-eigval).cwiseSqrt() * complex_t(0.0, 1.0);
+
 	// calculate impedances, admittance and (approximated) characteristic impedance
-	Eigen::MatrixXc matrix_zy_invsqrt = eigvec * eigval.cwiseInverse().cwiseSqrt().asDiagonal() * eigvec.inverse();
+	Eigen::MatrixXc matrix_zy_invsqrt = eigvec * eigval_sqrt.cwiseInverse().asDiagonal() * eigvec.inverse();
 	m_characteristic_impedance_matrix = matrix_zy_invsqrt * impedance;
 	Eigen::VectorXc diag_impedance = m_characteristic_impedance_matrix.diagonal();
 	Eigen::VectorXc diag_admittance = m_characteristic_impedance_matrix.inverse().diagonal();
 	m_characteristic_impedances = (diag_impedance.array() / diag_admittance.array()).sqrt().matrix();
 
 	// calculate propagation constants
-	m_propagation_constants = matrix_zy.diagonal().cwiseSqrt();
-	/*m_propagation_constants.resize(m_modes.cols());
-	for(size_t i = 0; i < (size_t) m_modes.cols(); ++i) {
-		Eigen::VectorXc vec = m_modes.col(i);
-		m_propagation_constants[i] = std::sqrt(matrix_zy.diagonal()[i]);
-	}*/
+	m_propagation_constants = (-matrix_zy.diagonal()).cwiseSqrt() * complex_t(0.0, 1.0);
 
 	std::cerr << "m_characteristic_impedance_matrix =\n" << m_characteristic_impedance_matrix << std::endl;
 	std::cerr << "m_characteristic_impedances =\n" << m_characteristic_impedances << std::endl;
@@ -130,7 +128,7 @@ void GenericMesh::SolveEigenModes() {
 		}
 		std::swap(modemap[i], modemap[best_index]);
 		m_eigenmodes.col(i) = eigvec.col(modemap[i]); // / best_value;
-		m_eigenmode_propagation_constants[i] = std::sqrt(eigval(modemap[i]));
+		m_eigenmode_propagation_constants[i] = eigval_sqrt(modemap[i]);
 	}
 
 	std::cerr << "m_eigenmodes =\n" << m_eigenmodes << std::endl;

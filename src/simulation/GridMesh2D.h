@@ -48,19 +48,17 @@ private:
 		inline Port(PortType type) : m_type(type), m_var(INDEX_NONE) {}
 	};
 	struct Conductor {
-		Box2D m_box;
-		real_t m_step_left, m_step_right, m_step_top, m_step_bottom;
+		Box2D m_box, m_step;
 		const MaterialConductor *m_material;
 		size_t m_port;
-		inline Conductor(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialConductor *material, size_t port)
-			: m_box(box), m_step_left(step_left), m_step_right(step_right), m_step_top(step_top), m_step_bottom(step_bottom), m_material(material), m_port(port) {}
+		inline Conductor(const Box2D &box, const Box2D &step, const MaterialConductor *material, size_t port)
+			: m_box(box), m_step(step), m_material(material), m_port(port) {}
 	};
 	struct Dielectric {
-		Box2D m_box;
-		real_t m_step_left, m_step_right, m_step_top, m_step_bottom;
+		Box2D m_box, m_step;
 		const MaterialDielectric *m_material;
-		inline Dielectric(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialDielectric *material)
-			: m_box(box), m_step_left(step_left), m_step_right(step_right), m_step_top(step_top), m_step_bottom(step_bottom), m_material(material) {}
+		inline Dielectric(const Box2D &box, const Box2D &step, const MaterialDielectric *material)
+			: m_box(box), m_step(step), m_material(material) {}
 	};
 	struct GridLine {
 		real_t m_value,  m_step;
@@ -88,6 +86,9 @@ private:
 	Box2D m_world_box, m_world_focus;
 	real_t m_grid_inc, m_grid_epsilon;
 
+	Box2D m_pml_box, m_pml_step;
+	real_t m_pml_attenuation;
+
 	std::vector<Port> m_ports;
 	std::vector<Conductor> m_conductors;
 	std::vector<Dielectric> m_dielectrics;
@@ -100,7 +101,7 @@ private:
 
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
-	SparseBlockMatrixCSU<real_t> m_matrix_epot, m_matrix_mpot, m_matrix_eloss;
+	SparseBlockMatrixCSU<complex_t> m_matrix_epot, m_matrix_mpot;
 	SparseBlockMatrixC<real_t> m_matrix_surf_resid;
 	SparseMatrixCSU<real_t> m_matrix_surf_curr, m_matrix_surf_loss;
 
@@ -117,11 +118,14 @@ public:
 	GridMesh2D(const GridMesh2D&) = delete;
 	GridMesh2D& operator=(const GridMesh2D&) = delete;
 
+	void SetPML(const Box2D &box, real_t step, real_t attenuation);
+	void SetPML(const Box2D &box, const Box2D &step, real_t attenuation);
+
 	size_t AddPort(PortType type);
 	void AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, size_t port);
-	void AddConductor(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialConductor *material, size_t port);
+	void AddConductor(const Box2D &box, const Box2D &step, const MaterialConductor *material, size_t port);
 	void AddDielectric(const Box2D &box, real_t step, const MaterialDielectric *material);
-	void AddDielectric(const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom, const MaterialDielectric *material);
+	void AddDielectric(const Box2D &box, const Box2D &step, const MaterialDielectric *material);
 
 	virtual Box2D GetWorldBox2D() override;
 	virtual Box2D GetWorldFocus2D() override;
@@ -155,7 +159,7 @@ private:
 	inline Cell& GetCell(size_t ix, size_t iy) { return m_cells[GetCellIndex(ix, iy)]; }
 
 private:
-	static void GridAddBox(std::vector<GridLine> &grid_x, std::vector<GridLine> &grid_y, const Box2D &box, real_t step_left, real_t step_right, real_t step_top, real_t step_bottom);
+	static void GridAddBox(std::vector<GridLine> &grid_x, std::vector<GridLine> &grid_y, const Box2D &box, const Box2D &step);
 	static void GridRefine(std::vector<real_t> &m_cholmod_result, std::vector<GridLine> &grid, real_t inc, real_t epsilon);
 	static void GridRefine2(std::vector<real_t> &m_cholmod_result, real_t x1, real_t x2, real_t step1, real_t step2, real_t inc);
 	static void GridMidpoints(std::vector<real_t> &m_cholmod_result, const std::vector<real_t> &grid);

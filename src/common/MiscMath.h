@@ -41,8 +41,12 @@ template<> inline double clamp<double>(double v, double lo, double hi) {
 }
 
 template<typename F>
-inline F sqr(F x) {
+inline F square(F x) {
 	return x * x;
+}
+template<typename F>
+inline F cube(F x) {
+	return x * x * x;
 }
 
 template<typename F>

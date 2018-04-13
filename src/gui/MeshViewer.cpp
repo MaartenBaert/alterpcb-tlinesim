@@ -27,11 +27,11 @@ inline Box2D AdjustAspectRatio(const Box2D &view, real_t w, real_t h) {
 	if((view.x2 - view.x1) * h > (view.y2 - view.y1) * w) {
 		real_t center = (view.y1 + view.y2) * 0.5;
 		real_t offset = (view.x2 - view.x1) * 0.5 * h / w;
-		return Box2D(view.x1, center - offset, view.x2, center + offset);
+		return Box2D(view.x1, view.x2, center - offset, center + offset);
 	} else {
 		real_t center = (view.x1 + view.x2) * 0.5;
 		real_t offset = (view.y2 - view.y1) * 0.5 * w / h;
-		return Box2D(center - offset, view.y1, center + offset, view.y2);
+		return Box2D(center - offset, center + offset, view.y1, view.y2);
 	}
 }
 
@@ -113,8 +113,8 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	Box2D view_focus = AdjustAspectRatio(world_focus, (real_t) w, (real_t) h);
 	Box2D view = {
 		view_focus.x1 + (view_box.x1 - view_focus.x1) * scale,
-		view_focus.y1 + (view_box.y1 - view_focus.y1) * scale,
 		view_focus.x2 + (view_box.x2 - view_focus.x2) * scale,
+		view_focus.y1 + (view_box.y1 - view_focus.y1) * scale,
 		view_focus.y2 + (view_box.y2 - view_focus.y2) * scale,
 	};
 	std::swap(view.y1, view.y2); // Y-axis is upside down

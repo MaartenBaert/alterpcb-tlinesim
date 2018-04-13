@@ -44,35 +44,65 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	real_t space_y = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track_box = {
 		-0.5 * track_width,
-		substrate_thickness,
 		0.5 * track_width,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D ground1_box = {
 		track_box.x1 - ground_spacing - space_x,
-		substrate_thickness,
 		track_box.x1 - ground_spacing,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D ground2_box = ground1_box.MirroredX();
 	Box2D world_box = {
 		ground1_box.x1,
-		0.0,
 		ground2_box.x2,
+		0.0,
 		track_box.y2 + space_y,
 	};
 	Box2D world_focus = {
 		ground1_box.x2,
-		0.0,
 		ground2_box.x1,
+		0.0,
 		track_box.y2,
 	};
-	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
-	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
-	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
-	Box2D solder_mask_box2 = {track_box.x1 - solder_mask_thickness_1, track_box.y1, track_box.x2 + solder_mask_thickness_1, track_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box3 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box4 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_box.x1,
+		substrate_box.x2,
+		substrate_box.y2,
+		substrate_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track_box.x1 - solder_mask_thickness_1,
+		track_box.x2 + solder_mask_thickness_1,
+		track_box.y1,
+		track_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box3 = {
+		ground1_box.x1,
+		ground1_box.x2 + solder_mask_thickness_1,
+		ground1_box.y1,
+		ground1_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box4 = {
+		ground2_box.x1 - solder_mask_thickness_1,
+		ground2_box.x2,
+		ground2_box.y1,
+		ground2_box.y2 + solder_mask_thickness_1,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(ground_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
@@ -83,8 +113,8 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
-	mesh->AddConductor(ground1_box, step0, step1, step1, step1, track_material, port_ground);
-	mesh->AddConductor(ground2_box, step1, step0, step1, step1, track_material, port_ground);
+	mesh->AddConductor(ground1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
+	mesh->AddConductor(ground2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
@@ -118,37 +148,72 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
-		substrate_thickness,
 		-0.5 * track_spacing,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D track2_box = track1_box.MirroredX();
 	Box2D ground1_box = {
 		track1_box.x1 - ground_spacing - space_x,
-		substrate_thickness,
 		track1_box.x1 - ground_spacing,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D ground2_box = ground1_box.MirroredX();
 	Box2D world_box = {
 		ground1_box.x1,
-		0.0,
 		ground2_box.x2,
+		0.0,
 		track1_box.y2 + space_y,
 	};
 	Box2D world_focus = {
 		ground1_box.x2,
-		0.0,
 		ground2_box.x1,
+		0.0,
 		track1_box.y2,
 	};
-	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
-	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
-	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
-	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box4 = {ground1_box.x1, ground1_box.y1, ground1_box.x2 + solder_mask_thickness_1, ground1_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box5 = {ground2_box.x1 - solder_mask_thickness_1, ground2_box.y1, ground2_box.x2, ground2_box.y2 + solder_mask_thickness_1};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_box.x1,
+		substrate_box.x2,
+		substrate_box.y2,
+		substrate_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track1_box.x1 - solder_mask_thickness_1,
+		track1_box.x2 + solder_mask_thickness_1,
+		track1_box.y1,
+		track1_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box3 = {
+		track2_box.x1 - solder_mask_thickness_1,
+		track2_box.x2 + solder_mask_thickness_1,
+		track2_box.y1,
+		track2_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box4 = {
+		ground1_box.x1,
+		ground1_box.x2 + solder_mask_thickness_1,
+		ground1_box.y1,
+		ground1_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box5 = {
+		ground2_box.x1 - solder_mask_thickness_1,
+		ground2_box.x2,
+		ground2_box.y1,
+		ground2_box.y2 + solder_mask_thickness_1,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(std::min(track_spacing, ground_spacing), substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
@@ -161,8 +226,8 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
 	mesh->AddConductor(track2_box, step1, track_material, port_signal2);
-	mesh->AddConductor(ground1_box, step0, step1, step1, step1, track_material, port_ground);
-	mesh->AddConductor(ground2_box, step1, step0, step1, step1, track_material, port_ground);
+	mesh->AddConductor(ground1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
+	mesh->AddConductor(ground2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);

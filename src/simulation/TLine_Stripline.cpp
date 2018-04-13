@@ -41,26 +41,46 @@ void TLine_Stripline_Single(TLineContext &context) {
 	real_t space_x = (track_width + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track_box = {
 		-0.5 * track_width,
-		substrate_thickness_2,
 		0.5 * track_width,
+		substrate_thickness_2,
 		substrate_thickness_2 + track_thickness,
 	};
 	Box2D world_box = {
 		track_box.x1 - space_x,
-		0.0,
 		track_box.x2 + space_x,
+		0.0,
 		substrate_thickness_2 + track_thickness + substrate_thickness_1,
 	};
 	Box2D world_focus = {
 		track_box.x1,
-		world_box.y1,
 		track_box.x2,
+		world_box.y1,
 		world_box.y2,
 	};
-	Box2D ground1_box = {world_box.x1, world_box.y1, world_box.x2, world_box.y1};
-	Box2D ground2_box = {world_box.x1, world_box.y2, world_box.x2, world_box.y2};
-	Box2D substrate1_box = {world_box.x1, substrate_thickness_2 + track_thickness * 0.5, world_box.x2, substrate_thickness_2 + track_thickness + substrate_thickness_1};
-	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness_2 + track_thickness * 0.5};
+	Box2D ground1_box = {
+		world_box.x1,
+		world_box.x2,
+		world_box.y1,
+		world_box.y1,
+	};
+	Box2D ground2_box = {
+		world_box.x1,
+		world_box.x2,
+		world_box.y2,
+		world_box.y2,
+	};
+	Box2D substrate1_box = {
+		world_box.x1,
+		world_box.x2,
+		substrate_thickness_2 + track_thickness * 0.5,
+		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+	};
+	Box2D substrate2_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness_2 + track_thickness * 0.5,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(substrate_thickness_1, substrate_thickness_2) * GridMesh2D::DEFAULT_GRID_STEP;
 
@@ -99,27 +119,47 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
-		substrate_thickness_2,
 		-0.5 * track_spacing,
+		substrate_thickness_2,
 		substrate_thickness_2 + track_thickness,
 	};
 	Box2D track2_box = track1_box.MirroredX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
-		0.0,
 		track2_box.x2 + space_x,
+		0.0,
 		substrate_thickness_2 + track_thickness + substrate_thickness_1,
 	};
 	Box2D world_focus = {
 		track1_box.x1,
-		world_box.y1,
 		track2_box.x2,
+		world_box.y1,
 		world_box.y2,
 	};
-	Box2D ground1_box = {world_box.x1, world_box.y1, world_box.x2, world_box.y1};
-	Box2D ground2_box = {world_box.x1, world_box.y2, world_box.x2, world_box.y2};
-	Box2D substrate1_box = {world_box.x1, substrate_thickness_2 + track_thickness * 0.5, world_box.x2, substrate_thickness_2 + track_thickness + substrate_thickness_1};
-	Box2D substrate2_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness_2 + track_thickness * 0.5};
+	Box2D ground1_box = {
+		world_box.x1,
+		world_box.x2,
+		world_box.y1,
+		world_box.y1,
+	};
+	Box2D ground2_box = {
+		world_box.x1,
+		world_box.x2,
+		world_box.y2,
+		world_box.y2,
+	};
+	Box2D substrate1_box = {
+		world_box.x1,
+		world_box.x2,
+		substrate_thickness_2 + track_thickness * 0.5,
+		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+	};
+	Box2D substrate2_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness_2 + track_thickness * 0.5,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_thickness_1, substrate_thickness_2)) * GridMesh2D::DEFAULT_GRID_STEP;
 

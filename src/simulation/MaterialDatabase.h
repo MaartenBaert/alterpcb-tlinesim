@@ -24,6 +24,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 constexpr real_t VACUUM_PERMITTIVITY = 8.854187817620389e-12;
 constexpr real_t VACUUM_PERMEABILITY = 1.2566370614359173e-6;
+constexpr real_t SPEED_OF_LIGHT = 299792458.0;
 
 struct MaterialConductor {
 	std::string m_name;

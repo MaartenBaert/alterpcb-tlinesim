@@ -43,26 +43,46 @@ void TLine_Microstrip_Single(TLineContext &context) {
 	real_t space_y = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track_box = {
 		-0.5 * track_width,
-		substrate_thickness,
 		0.5 * track_width,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D world_box = {
 		track_box.x1 - space_x,
-		0.0,
 		track_box.x2 + space_x,
+		0.0,
 		track_box.y2 + space_y,
 	};
 	Box2D world_focus = {
 		track_box.x1,
-		0.0,
 		track_box.x2,
+		0.0,
 		track_box.y2,
 	};
-	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
-	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
-	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
-	Box2D solder_mask_box2 = {track_box.x1 - solder_mask_thickness_1, track_box.y1, track_box.x2 + solder_mask_thickness_1, track_box.y2 + solder_mask_thickness_1};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_box.x1,
+		substrate_box.x2,
+		substrate_box.y2,
+		substrate_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track_box.x1 - solder_mask_thickness_1,
+		track_box.x2 + solder_mask_thickness_1,
+		track_box.y1,
+		track_box.y2 + solder_mask_thickness_1,
+	};
 
 	real_t step0 = REAL_MAX, step1 = substrate_thickness * GridMesh2D::DEFAULT_GRID_STEP;
 
@@ -103,28 +123,53 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	real_t space_y = (track_width * 2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
-		substrate_thickness,
 		-0.5 * track_spacing,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D track2_box = track1_box.MirroredX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
-		0.0,
 		track2_box.x2 + space_x,
+		0.0,
 		track1_box.y2 + space_y,
 	};
 	Box2D world_focus = {
 		track1_box.x1,
-		0.0,
 		track2_box.x2,
+		0.0,
 		track1_box.y2,
 	};
-	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
-	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
-	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
-	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_box.x1,
+		substrate_box.x2,
+		substrate_box.y2,
+		substrate_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track1_box.x1 - solder_mask_thickness_1,
+		track1_box.x2 + solder_mask_thickness_1,
+		track1_box.y1,
+		track1_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box3 = {
+		track2_box.x1 - solder_mask_thickness_1,
+		track2_box.x2 + solder_mask_thickness_1,
+		track2_box.y1,
+		track2_box.y2 + solder_mask_thickness_1,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
@@ -166,41 +211,74 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat() * 1e-3;
 	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
 
-	real_t space_x = (track_width_1 + track_width_2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
-	real_t space_y = (track_width_1 + track_width_2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
+	//real_t space_x = (track_width_1 + track_width_2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	//real_t space_y = (track_width_1 + track_width_2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
+	real_t space = track_width_1 + track_width_2 + track_spacing + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2);
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width_1,
-		substrate_thickness,
 		-0.5 * track_spacing,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D track2_box = {
 		0.5 * track_spacing,
-		substrate_thickness,
 		0.5 * track_spacing + track_width_2,
+		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
 	Box2D world_box = {
-		track1_box.x1 - space_x,
+		track1_box.x1 - space * 3.0,
+		track2_box.x2 + space * 3.0,
 		0.0,
-		track2_box.x2 + space_x,
-		track1_box.y2 + space_y,
+		track1_box.y2 + space * 4.0,
 	};
 	Box2D world_focus = {
 		track1_box.x1,
-		0.0,
 		track2_box.x2,
+		0.0,
 		track1_box.y2,
 	};
-	Box2D ground_box = {world_box.x1, 0.0, world_box.x2, 0.0};
-	Box2D substrate_box = {world_box.x1, 0.0, world_box.x2, substrate_thickness};
-	Box2D solder_mask_box1 = {substrate_box.x2, substrate_box.y2, substrate_box.x1, substrate_box.y2 + solder_mask_thickness_2};
-	Box2D solder_mask_box2 = {track1_box.x1 - solder_mask_thickness_1, track1_box.y1, track1_box.x2 + solder_mask_thickness_1, track1_box.y2 + solder_mask_thickness_1};
-	Box2D solder_mask_box3 = {track2_box.x1 - solder_mask_thickness_1, track2_box.y1, track2_box.x2 + solder_mask_thickness_1, track2_box.y2 + solder_mask_thickness_1};
+	Box2D pml_box = {
+		track1_box.x1 - space * 1.0,
+		track2_box.x2 + space * 1.0,
+		0.0,
+		track1_box.y2 + space * 2.0,
+	};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_box.x1,
+		substrate_box.x2,
+		substrate_box.y2,
+		substrate_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track1_box.x1 - solder_mask_thickness_1,
+		track1_box.x2 + solder_mask_thickness_1,
+		track1_box.y1,
+		track1_box.y2 + solder_mask_thickness_1,
+	};
+	Box2D solder_mask_box3 = {
+		track2_box.x1 - solder_mask_thickness_1,
+		track2_box.x2 + solder_mask_thickness_1,
+		track2_box.y1,
+		track2_box.y2 + solder_mask_thickness_1,
+	};
 
 	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
+	mesh->SetPML(pml_box, Box2D(space, space, REAL_MAX, space), 1.0);
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
