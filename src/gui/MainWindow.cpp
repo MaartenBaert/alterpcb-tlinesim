@@ -49,7 +49,7 @@ static real_t FloatFromString(const std::string &str) {
 }
 
 static void MakeSweep(std::vector<real_t> &results, real_t min, real_t max, real_t step) {
-	size_t num = std::max<ptrdiff_t>(rints(std::max(0.0, max - min) / step + 0.5 + 1e-12), 1);
+	size_t num = (size_t) std::max<ptrdiff_t>(rintp(std::max(0.0, max - min) / step + 0.5 + 1e-12), 1);
 	results.clear();
 	results.resize(num);
 	for(size_t i = 0; i < num; ++i) {
@@ -466,7 +466,7 @@ void MainWindow::SimulateParameterSweep() {
 	MakeSweep(sweep_values, value_min, value_max, value_step);
 
 	// prepare input and output
-	size_t param_index = m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
+	size_t param_index = (size_t) m_combobox_parameter_sweep_parameter->itemData(m_combobox_parameter_sweep_parameter->currentIndex()).toInt();
 	std::vector<real_t> combined_results;
 	combined_results.resize(TLINERESULT_COUNT * tline_type.m_modes.size() * sweep_values.size());
 
@@ -478,7 +478,7 @@ void MainWindow::SimulateParameterSweep() {
 		for(size_t i = 0; i < sweep_values.size(); ++i) {
 			context.m_parameters[param_index].Value() = FloatScale(sweep_values[i]);
 			tline_type.m_simulate(context);
-			std::copy(context.m_results.begin(), context.m_results.end(), combined_results.begin() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
+			std::copy_n(context.m_results.data(), context.m_results.size(), combined_results.data() + TLINERESULT_COUNT * tline_type.m_modes.size() * i);
 			task_progress = (int) i + 1;
 			if(task_canceled) {
 				throw std::runtime_error("Parameter sweep canceled by user.");
@@ -525,7 +525,7 @@ void MainWindow::SimulateParameterTune() {
 	context.m_frequencies = {FloatFromString(m_lineedit_frequency->text().toStdString()) * 1e9};
 
 	// get parameter
-	size_t param_index = m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toInt();
+	size_t param_index = (size_t) m_combobox_parameter_tune_parameter->itemData(m_combobox_parameter_tune_parameter->currentIndex()).toInt();
 
 	// get target result
 	size_t result_index = clamp<size_t>(m_combobox_parameter_tune_target_result->currentIndex(), 0, TLINERESULT_COUNT * tline_type.m_modes.size() - 1);

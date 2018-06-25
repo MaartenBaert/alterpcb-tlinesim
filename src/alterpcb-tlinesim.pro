@@ -10,7 +10,7 @@ TEMPLATE = app
 DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
 LIBS += -lcholmod
 
-QMAKE_CXXFLAGS += -std=c++11 -Wconversion
+QMAKE_CXXFLAGS += -std=c++11 -Wconversion -Wsign-conversion -Wfloat-conversion
 QMAKE_CXXFLAGS_RELEASE -= -O2 -g
 QMAKE_CXXFLAGS_RELEASE += -O3 -DNDEBUG
 
@@ -46,14 +46,16 @@ HEADERS += \
 	gui/QLineEditSmall.h \
 	gui/QProgressDialogThreaded.h \
 	gui/Qt.h \
+	simulation/CholmodSolver.h \
+	simulation/Eigen.h \
+	simulation/EigenSparse.h \
 	simulation/FindRoot.h \
 	simulation/GenericMesh.h \
 	simulation/GridMesh2D.h \
 	simulation/MaterialDatabase.h \
-	simulation/SparseMatrix.h \
-	simulation/TLineTypes.h \
 	simulation/MatrixMarket.h \
-	simulation/Eigen.h
+	simulation/SparseMatrix.h \
+	simulation/TLineTypes.h
 
 SOURCES += \
 	Main.cpp \
@@ -71,10 +73,10 @@ SOURCES += \
 	gui/MeshViewer.cpp \
 	gui/QLineEditSmall.cpp \
 	gui/QProgressDialogThreaded.cpp \
+	simulation/CholmodSolver.cpp \
 	simulation/GenericMesh.cpp \
 	simulation/GridMesh2D.cpp \
 	simulation/MaterialDatabase.cpp \
-	simulation/SparseMatrix.cpp \
 	simulation/TLineTypes.cpp \
 	simulation/TLine_CoplanarWaveguide.cpp \
 	simulation/TLine_Microstrip.cpp \

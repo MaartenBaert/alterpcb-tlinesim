@@ -203,7 +203,7 @@ private:
 	template<typename K>
 	hash_t Hash2(const K &key) const noexcept {
 		hash_t hash = MurmurHash::HashFinish(m_hasher.Hash(HASH_SEED2, key));
-		return MurmurHash::HashTruncate(hash, m_hash_bits) | (1 << m_hash_bits);
+		return MurmurHash::HashTruncate(hash, m_hash_bits) | ((hash_t) 1 << m_hash_bits);
 	}
 
 	template<typename K>

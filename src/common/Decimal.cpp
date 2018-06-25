@@ -579,7 +579,7 @@ double FromDecimal(Decimal dec) {
 			// check if the exponent is too low
 			constexpr int32_t EXPO_MIN = -308 - 18, EXPO_MAX = 308 - 18;
 			if(dec.expo < EXPO_MIN) {
-				uint32_t shift = EXPO_MIN - dec.expo;
+				uint32_t shift = (uint32_t) (EXPO_MIN - dec.expo);
 				if(shift > 19) {
 					return (dec.negative)? DOUBLE_ZERO_NEG : DOUBLE_ZERO_POS;
 				}
@@ -600,7 +600,7 @@ double FromDecimal(Decimal dec) {
 
 			// Convert to base 2 using the lookup tables. The exponent is approximated and will be corrected later.
 			// We intentionally round down (floor) to compensate for the 0.5 LSB positive bias of the final division.
-			uint32_t expo10_biased = dec.expo - EXPO_MIN;
+			uint32_t expo10_biased = (uint32_t) (dec.expo - EXPO_MIN);
 			uint32_t expo2_biased = LUT_FROMDECIMAL_EXPO[expo10_biased];
 			uint64_t mult = LUT_FROMDECIMAL_MULT[expo10_biased];
 			uint64_t mant2 = FixMul64F(dec.mant, mult);

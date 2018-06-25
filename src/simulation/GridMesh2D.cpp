@@ -30,10 +30,59 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include <iostream>
 
-#include <Eigen/Dense>
-
 #define SIMULATION_VERBOSE 1
 #define SIMULATION_SAVE_MATRIXMARKET 1
+
+template<class EigenSparseMatrix>
+void EigenSparseFree(EigenSparseMatrix &matrix) {
+	matrix.resize(0, 0);
+	matrix.data().squeeze();
+}
+
+template<class SparseMatrix, typename F>
+inline void BuildMatrix_Symm1(SparseMatrix &matrix, size_t i0, size_t i1, F cs, F cx) {
+	matrix.Insert(i0, i0, cs * 0.5);
+	matrix.Insert(i1, i1, cs * 0.5);
+	matrix.Insert(i0, i1, cx);
+}
+
+template<class SparseMatrix, typename F>
+inline void BuildMatrix_Symm2(
+		SparseMatrix &matrix, size_t i00, size_t i01, size_t i10, size_t i11,
+		F cs, F cx, F cy, F cd) {
+	matrix.Insert(i00, i00, cs * 0.5);
+	matrix.Insert(i01, i01, cs * 0.5);
+	matrix.Insert(i10, i10, cs * 0.5);
+	matrix.Insert(i11, i11, cs * 0.5);
+	matrix.Insert(i00, i01, cx);
+	matrix.Insert(i10, i11, cx);
+	matrix.Insert(i00, i10, cy);
+	matrix.Insert(i01, i11, cy);
+	matrix.Insert(i00, i11, cd);
+	matrix.Insert(i01, i10, cd);
+}
+
+template<class SparseMatrix, typename F>
+inline void BuildMatrix_Asymm2_Sub(
+		SparseMatrix &matrix, size_t i, size_t j00, size_t j01, size_t j10, size_t j11,
+		F cs, F cx, F cy, F cd) {
+	if(i != INDEX_NONE) {
+		matrix.Insert(i, j00, cs);
+		matrix.Insert(i, j01, cx);
+		matrix.Insert(i, j10, cy);
+		matrix.Insert(i, j11, cd);
+	}
+}
+
+template<typename F>
+inline void BuildMatrix_Asymm2(
+		SparseBlockMatrixC<F> &matrix, size_t i00, size_t i01, size_t i10, size_t i11,
+		size_t j00, size_t j01, size_t j10, size_t j11, F cs, F cx, F cy, F cd) {
+	BuildMatrix_Asymm2_Sub(matrix, i00, j00, j01, j10, j11, cs, cx, cy, cd);
+	BuildMatrix_Asymm2_Sub(matrix, i01, j01, j00, j11, j10, cs, cx, cy, cd);
+	BuildMatrix_Asymm2_Sub(matrix, i10, j10, j11, j00, j01, cs, cx, cy, cd);
+	BuildMatrix_Asymm2_Sub(matrix, i11, j11, j10, j01, j00, cs, cx, cy, cd);
+}
 
 GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon) {
 	if(!FinitePositive(grid_inc))
@@ -295,13 +344,16 @@ void GridMesh2D::DoSolve() {
 }
 
 void GridMesh2D::DoCleanup() {
-	m_matrix_epot.Free();
-	m_matrix_mpot.Free();
-	m_matrix_surf_curr.Free();
-	m_eigen_sparse.resize(0, 0);
-	m_eigen_sparse.data().squeeze();
-	m_eigen_sparse_surf.resize(0, 0);
-	m_eigen_sparse_surf.data().squeeze();
+	EigenSparseFree(m_matrix_epot[0]);
+	EigenSparseFree(m_matrix_epot[1]);
+	EigenSparseFree(m_matrix_epot[2]);
+	EigenSparseFree(m_matrix_mpot[0]);
+	EigenSparseFree(m_matrix_mpot[1]);
+	EigenSparseFree(m_matrix_mpot[2]);
+	EigenSparseFree(m_matrix_surf_resid[0]);
+	EigenSparseFree(m_matrix_surf_resid[1]);
+	EigenSparseFree(m_matrix_surf_curr);
+	EigenSparseFree(m_matrix_surf_loss);
 	// TODO: m_eigen_chol
 	// TODO: m_eigen_chol_surf;
 	m_eigen_rhs.resize(0, 0);
@@ -352,10 +404,10 @@ void GridMesh2D::InitCells() {
 	// apply conductors
 	for(size_t conductor_index = 0; conductor_index < m_conductors.size(); ++conductor_index) {
 		Conductor &conductor = m_conductors[conductor_index];
-		size_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x1) - m_midpoints_x.begin();
-		size_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x2) - m_midpoints_x.begin();
-		size_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y1) - m_midpoints_y.begin();
-		size_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y2) - m_midpoints_y.begin();
+		size_t ix1 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x1) - m_midpoints_x.begin());
+		size_t ix2 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), conductor.m_box.x2) - m_midpoints_x.begin());
+		size_t iy1 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y1) - m_midpoints_y.begin());
+		size_t iy2 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), conductor.m_box.y2) - m_midpoints_y.begin());
 		for(size_t iy = iy1; iy <= iy2; ++iy) {
 			for(size_t ix = ix1; ix <= ix2; ++ix) {
 				Node &node = GetNode(ix, iy);
@@ -388,10 +440,10 @@ void GridMesh2D::InitCells() {
 	// apply dielectrics
 	for(size_t dielectric_index = 0; dielectric_index < m_dielectrics.size(); ++dielectric_index) {
 		Dielectric &dielectric = m_dielectrics[dielectric_index];
-		size_t ix1 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x1) - m_midpoints_x.begin();
-		size_t ix2 = std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x2) - m_midpoints_x.begin();
-		size_t iy1 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y1) - m_midpoints_y.begin();
-		size_t iy2 = std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y2) - m_midpoints_y.begin();
+		size_t ix1 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x1) - m_midpoints_x.begin());
+		size_t ix2 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), dielectric.m_box.x2) - m_midpoints_x.begin());
+		size_t iy1 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y1) - m_midpoints_y.begin());
+		size_t iy2 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), dielectric.m_box.y2) - m_midpoints_y.begin());
 		for(size_t iy = iy1; iy < iy2; ++iy) {
 			for(size_t ix = ix1; ix < ix2; ++ix) {
 				Cell &cell = GetCell(ix, iy);
@@ -493,12 +545,17 @@ void GridMesh2D::BuildMatrices() {
 	complex_t pml_mult_y1 = m_pml_attenuation / ((m_pml_box.y1 - m_world_box.y1) * complex_t(1.0, -2.0 * GetFrequency() * (m_pml_box.y1 - m_world_box.y1) / SPEED_OF_LIGHT));
 	complex_t pml_mult_y2 = m_pml_attenuation / ((m_world_box.y2 - m_pml_box.y2) * complex_t(1.0, -2.0 * GetFrequency() * (m_world_box.y2 - m_pml_box.y2) / SPEED_OF_LIGHT));
 
+	// allocate matrices
+	SparseBlockMatrixCSL<complex_t> matrix_epot, matrix_mpot;
+	SparseBlockMatrixC<real_t> matrix_surf_resid;
+	SparseMatrixCSL<real_t> matrix_surf_curr, matrix_surf_loss;
+	matrix_epot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
+	matrix_mpot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
+	matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_real, m_vars_fixed, 5);
+	matrix_surf_curr.Reset(m_vars_surf, m_vars_surf, 2);
+	matrix_surf_loss.Reset(m_vars_surf, m_vars_surf, 2);
+
 	// build matrices
-	m_matrix_epot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
-	m_matrix_mpot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
-	m_matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_real, m_vars_fixed, 5);
-	m_matrix_surf_curr.Reset(m_vars_surf, m_vars_surf, 2);
-	m_matrix_surf_loss.Reset(m_vars_surf, m_vars_surf, 2);
 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
@@ -553,55 +610,17 @@ void GridMesh2D::BuildMatrices() {
 			complex_t coef_y_mpot = scale_x_mpot - 2.0 * scale_y_mpot;
 			complex_t coef_d_mpot = -(scale_x_mpot + scale_y_mpot);
 
-			// add to electric potential matrix
-			m_matrix_epot.Insert(node00.m_var, node00.m_var, coef_s_epot * 0.5);
-			m_matrix_epot.Insert(node01.m_var, node01.m_var, coef_s_epot * 0.5);
-			m_matrix_epot.Insert(node10.m_var, node10.m_var, coef_s_epot * 0.5);
-			m_matrix_epot.Insert(node11.m_var, node11.m_var, coef_s_epot * 0.5);
-			m_matrix_epot.Insert(node00.m_var, node01.m_var, coef_x_epot);
-			m_matrix_epot.Insert(node10.m_var, node11.m_var, coef_x_epot);
-			m_matrix_epot.Insert(node00.m_var, node10.m_var, coef_y_epot);
-			m_matrix_epot.Insert(node01.m_var, node11.m_var, coef_y_epot);
-			m_matrix_epot.Insert(node00.m_var, node11.m_var, coef_d_epot);
-			m_matrix_epot.Insert(node01.m_var, node10.m_var, coef_d_epot);
-
-			// add to magnetic potential matrix
-			m_matrix_mpot.Insert(node00.m_var, node00.m_var, coef_s_mpot * 0.5);
-			m_matrix_mpot.Insert(node01.m_var, node01.m_var, coef_s_mpot * 0.5);
-			m_matrix_mpot.Insert(node10.m_var, node10.m_var, coef_s_mpot * 0.5);
-			m_matrix_mpot.Insert(node11.m_var, node11.m_var, coef_s_mpot * 0.5);
-			m_matrix_mpot.Insert(node00.m_var, node01.m_var, coef_x_mpot);
-			m_matrix_mpot.Insert(node10.m_var, node11.m_var, coef_x_mpot);
-			m_matrix_mpot.Insert(node00.m_var, node10.m_var, coef_y_mpot);
-			m_matrix_mpot.Insert(node01.m_var, node11.m_var, coef_y_mpot);
-			m_matrix_mpot.Insert(node00.m_var, node11.m_var, coef_d_mpot);
-			m_matrix_mpot.Insert(node01.m_var, node10.m_var, coef_d_mpot);
+			// add to potential matrices
+			BuildMatrix_Symm2(matrix_epot, node00.m_var, node01.m_var, node10.m_var, node11.m_var,
+							  coef_s_epot, coef_x_epot, coef_y_epot, coef_d_epot);
+			BuildMatrix_Symm2(matrix_mpot, node00.m_var, node01.m_var, node10.m_var, node11.m_var,
+							  coef_s_mpot, coef_x_mpot, coef_y_mpot, coef_d_mpot);
 
 			// add to surface residual matrix
-			if(node00.m_var_surf != INDEX_NONE) {
-				m_matrix_surf_resid.Insert(node00.m_var_surf, node00.m_var, coef_s_mpot.real());
-				m_matrix_surf_resid.Insert(node00.m_var_surf, node01.m_var, coef_x_mpot.real());
-				m_matrix_surf_resid.Insert(node00.m_var_surf, node10.m_var, coef_y_mpot.real());
-				m_matrix_surf_resid.Insert(node00.m_var_surf, node11.m_var, coef_d_mpot.real());
-			}
-			if(node01.m_var_surf != INDEX_NONE) {
-				m_matrix_surf_resid.Insert(node01.m_var_surf, node00.m_var, coef_x_mpot.real());
-				m_matrix_surf_resid.Insert(node01.m_var_surf, node01.m_var, coef_s_mpot.real());
-				m_matrix_surf_resid.Insert(node01.m_var_surf, node10.m_var, coef_d_mpot.real());
-				m_matrix_surf_resid.Insert(node01.m_var_surf, node11.m_var, coef_y_mpot.real());
-			}
-			if(node10.m_var_surf != INDEX_NONE) {
-				m_matrix_surf_resid.Insert(node10.m_var_surf, node00.m_var, coef_y_mpot.real());
-				m_matrix_surf_resid.Insert(node10.m_var_surf, node01.m_var, coef_d_mpot.real());
-				m_matrix_surf_resid.Insert(node10.m_var_surf, node10.m_var, coef_s_mpot.real());
-				m_matrix_surf_resid.Insert(node10.m_var_surf, node11.m_var, coef_x_mpot.real());
-			}
-			if(node11.m_var_surf != INDEX_NONE) {
-				m_matrix_surf_resid.Insert(node11.m_var_surf, node00.m_var, coef_d_mpot.real());
-				m_matrix_surf_resid.Insert(node11.m_var_surf, node01.m_var, coef_y_mpot.real());
-				m_matrix_surf_resid.Insert(node11.m_var_surf, node10.m_var, coef_x_mpot.real());
-				m_matrix_surf_resid.Insert(node11.m_var_surf, node11.m_var, coef_s_mpot.real());
-			}
+			BuildMatrix_Asymm2(matrix_surf_resid,
+							   node00.m_var_surf, node01.m_var_surf, node10.m_var_surf, node11.m_var_surf,
+							   node00.m_var, node01.m_var, node10.m_var, node11.m_var,
+							   coef_s_mpot.real(), coef_x_mpot.real(), coef_y_mpot.real(), coef_d_mpot.real());
 
 			// process conductor surfaces
 			Edge &edgeh0 = GetEdgeH(ix, iy);
@@ -611,58 +630,54 @@ void GridMesh2D::BuildMatrices() {
 			if(edgeh0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node01.m_var_surf != INDEX_NONE);
-				real_t coef = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
-				m_matrix_surf_curr.Insert(node00.m_var_surf, node00.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node01.m_var_surf, node01.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node00.m_var_surf, node01.m_var_surf, coef);
-				m_matrix_surf_loss.Insert(node00.m_var_surf, node00.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node01.m_var_surf, node01.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node00.m_var_surf, node01.m_var_surf, coef_loss);
+				real_t coef_curr = 1.0 / 6.0 * delta_x;
+				real_t coef_loss = coef_curr * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
+				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_curr, coef_curr);
+				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgeh1.m_conductor != INDEX_NONE) {
 				assert(node10.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
-				real_t coef = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
-				m_matrix_surf_curr.Insert(node10.m_var_surf, node10.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node11.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node10.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf_loss.Insert(node10.m_var_surf, node10.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node11.m_var_surf, node11.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node10.m_var_surf, node11.m_var_surf, coef_loss);
+				real_t coef_curr = 1.0 / 6.0 * delta_x;
+				real_t coef_loss = coef_curr * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
+				BuildMatrix_Symm1(matrix_surf_curr, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
+				BuildMatrix_Symm1(matrix_surf_loss, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgev0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node10.m_var_surf != INDEX_NONE);
-				real_t coef = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
-				m_matrix_surf_curr.Insert(node00.m_var_surf, node00.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node10.m_var_surf, node10.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node00.m_var_surf, node10.m_var_surf, coef);
-				m_matrix_surf_loss.Insert(node00.m_var_surf, node00.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node10.m_var_surf, node10.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node00.m_var_surf, node10.m_var_surf, coef_loss);
+				real_t coef_curr = 1.0 / 6.0 * delta_y;
+				real_t coef_loss = coef_curr * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
+				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_curr, coef_curr);
+				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgev1.m_conductor != INDEX_NONE) {
 				assert(node01.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
-				real_t coef = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
-				m_matrix_surf_curr.Insert(node01.m_var_surf, node01.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node11.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf_curr.Insert(node01.m_var_surf, node11.m_var_surf, coef);
-				m_matrix_surf_loss.Insert(node01.m_var_surf, node01.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node11.m_var_surf, node11.m_var_surf, coef_loss);
-				m_matrix_surf_loss.Insert(node01.m_var_surf, node11.m_var_surf, coef_loss);
+				real_t coef_curr = 1.0 / 6.0 * delta_y;
+				real_t coef_loss = coef_curr * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
+				BuildMatrix_Symm1(matrix_surf_curr, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
+				BuildMatrix_Symm1(matrix_surf_loss, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 
 		}
 	}
 
+	// convert to Eigen sparse matrices
+	matrix_epot.GetMatrixA().ToEigen(m_matrix_epot[0]);
+	matrix_epot.GetMatrixBC().ToEigen(m_matrix_epot[1]);
+	matrix_epot.GetMatrixD().ToEigen(m_matrix_epot[2]);
+	matrix_mpot.GetMatrixA().ToEigen(m_matrix_mpot[0]);
+	matrix_mpot.GetMatrixBC().ToEigen(m_matrix_mpot[1]);
+	matrix_mpot.GetMatrixD().ToEigen(m_matrix_mpot[2]);
+	matrix_surf_resid.GetMatrixA().ToEigen(m_matrix_surf_resid[0]);
+	matrix_surf_resid.GetMatrixB().ToEigen(m_matrix_surf_resid[1]);
+	matrix_surf_curr.ToEigen(m_matrix_surf_curr);
+	matrix_surf_loss.ToEigen(m_matrix_surf_loss);
+
 #if SIMULATION_SAVE_MATRIXMARKET
-	SaveMatrixMarket(m_matrix_epot.GetMatrixA(), "matrix_epot.mtx");
-	SaveMatrixMarket(m_matrix_mpot.GetMatrixA(), "matrix_mpot.mtx");
+	MatrixMarket::Save("matrix_epot.mtx", m_matrix_epot[0], true);
+	MatrixMarket::Save("matrix_mpot.mtx", m_matrix_mpot[0], true);
 #endif
 
 }
@@ -673,103 +688,62 @@ void GridMesh2D::SolveMatrices() {
 	real_t omega = 2.0 * M_PI * GetFrequency();
 
 	// factorize electric potential matrix
-	m_eigen_sparse.resize(m_matrix_epot.GetMatrixA().GetRows(), m_matrix_epot.GetMatrixA().GetCols());
-	m_eigen_sparse.resizeNonZeros(m_matrix_epot.GetMatrixA().GetCoefficients());
-	m_matrix_epot.GetMatrixA().ToCSC<SparseFilterReal<real_t>>(m_eigen_sparse.outerIndexPtr(), m_eigen_sparse.innerIndexPtr(), m_eigen_sparse.valuePtr());
 	if(m_eigen_chol.permutationP().size() == 0) {
-		m_eigen_chol.analyzePattern(m_eigen_sparse);
+		m_eigen_chol.analyzePattern(m_matrix_epot[0].real());
 	}
-	m_eigen_chol.factorize(m_eigen_sparse);
+	m_eigen_chol.factorize(m_matrix_epot[0].real());
 	if(m_eigen_chol.info() != Eigen::Success)
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// solve electric potential matrix
-	m_eigen_rhs.resize(m_vars_real, GetModeCount());
-	m_matrix_epot.CalculateRHS<SparseFilterReal<real_t>>(
-				DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
+	m_eigen_rhs = -m_matrix_epot[1].real().transpose() * GetModes();
 	m_eigen_solution_epot = m_eigen_chol.solve(m_eigen_rhs);
 
 	// factorize magnetic potential matrix
-	m_eigen_sparse.resize(m_matrix_mpot.GetMatrixA().GetRows(), m_matrix_mpot.GetMatrixA().GetCols());
-	m_eigen_sparse.resizeNonZeros(m_matrix_mpot.GetMatrixA().GetCoefficients());
-	m_matrix_mpot.GetMatrixA().ToCSC<SparseFilterReal<real_t>>(m_eigen_sparse.outerIndexPtr(), m_eigen_sparse.innerIndexPtr(), m_eigen_sparse.valuePtr());
 	if(m_eigen_chol.permutationP().size() == 0) {
-		m_eigen_chol.analyzePattern(m_eigen_sparse);
+		m_eigen_chol.analyzePattern(m_matrix_mpot[0].real());
 	}
-	m_eigen_chol.factorize(m_eigen_sparse);
+	m_eigen_chol.factorize(m_matrix_mpot[0].real());
 	if(m_eigen_chol.info() != Eigen::Success)
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// solve magnetic potential matrix
-	m_eigen_rhs.resize(m_vars_real, GetModeCount());
-	m_matrix_mpot.CalculateRHS<SparseFilterReal<real_t>>(
-				DenseViewC(m_eigen_rhs.data(), m_eigen_rhs.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
+	m_eigen_rhs = -m_matrix_mpot[1].real().transpose() * GetModes();
 	m_eigen_solution_mpot = m_eigen_chol.solve(m_eigen_rhs);
 
-	// calculate the charge matrix (residual of electric potential matrix)
-	Eigen::MatrixXr charge_matrix(GetModeCount(), GetModeCount());
-	m_matrix_epot.CalculateResidual<SparseFilterReal<real_t>>(
-				DenseViewC(charge_matrix.data(), charge_matrix.outerStride()),
-				DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
+	// calculate residuals
+	Eigen::MatrixXr charge_matrix = GetModes().transpose() * (m_matrix_epot[1].real() * m_eigen_solution_epot + m_matrix_epot[2].real().selfadjointView<Eigen::Lower>() * GetModes());
+	Eigen::MatrixXr current_matrix = GetModes().transpose() * (m_matrix_mpot[1].real() * m_eigen_solution_mpot + m_matrix_mpot[2].real().selfadjointView<Eigen::Lower>() * GetModes());
 
-	// calculate the current matrix (residual of magnetic potential matrix)
-	Eigen::MatrixXr current_matrix(GetModeCount(), GetModeCount());
-	m_matrix_mpot.CalculateResidual<SparseFilterReal<real_t>>(
-				DenseViewC(current_matrix.data(), current_matrix.outerStride()),
-				DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
-
-	// calculate electric losses
-	Eigen::MatrixXr electric_loss_matrix(GetModeCount(), GetModeCount());
-	m_matrix_epot.CalculateQuadratic<SparseFilterImag<real_t>>(
-				DenseViewC(electric_loss_matrix.data(), electric_loss_matrix.outerStride()),
-				DenseViewC(m_eigen_solution_epot.data(), m_eigen_solution_epot.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
-
-	// calculate magnetic losses
-	Eigen::MatrixXr magnetic_loss_matrix(GetModeCount(), GetModeCount());
-	m_matrix_mpot.CalculateQuadratic<SparseFilterImag<real_t>>(
-				DenseViewC(magnetic_loss_matrix.data(), magnetic_loss_matrix.outerStride()),
-				DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
+	// calculate losses
+	Eigen::MatrixXr electric_loss_matrix =
+			m_eigen_solution_epot.transpose() * (m_matrix_epot[0].imag().selfadjointView<Eigen::Lower>() * m_eigen_solution_epot + m_matrix_epot[1].imag().transpose() * GetModes()) +
+			GetModes().transpose() * (m_matrix_epot[1].imag() * m_eigen_solution_epot + m_matrix_epot[2].imag().selfadjointView<Eigen::Lower>() * GetModes());
+	Eigen::MatrixXr magnetic_loss_matrix =
+			m_eigen_solution_mpot.transpose() * (m_matrix_mpot[0].imag().selfadjointView<Eigen::Lower>() * m_eigen_solution_mpot + m_matrix_mpot[1].imag().transpose() * GetModes()) +
+			GetModes().transpose() * (m_matrix_mpot[1].imag() * m_eigen_solution_mpot + m_matrix_mpot[2].imag().selfadjointView<Eigen::Lower>() * GetModes());
 
 	// factorize current matrix
-	m_eigen_sparse_surf.resize(m_matrix_surf_curr.GetRows(), m_matrix_surf_curr.GetCols());
-	m_eigen_sparse_surf.resizeNonZeros(m_matrix_surf_curr.GetCoefficients());
-	m_matrix_surf_curr.ToCSC(m_eigen_sparse_surf.outerIndexPtr(), m_eigen_sparse_surf.innerIndexPtr(), m_eigen_sparse_surf.valuePtr());
 	if(m_eigen_chol_surf.permutationP().size() == 0) {
-		m_eigen_chol_surf.analyzePattern(m_eigen_sparse_surf);
+		m_eigen_chol_surf.analyzePattern(m_matrix_surf_curr);
 	}
-	m_eigen_chol_surf.factorize(m_eigen_sparse_surf);
+	m_eigen_chol_surf.factorize(m_matrix_surf_curr);
 	if(m_eigen_chol_surf.info() != Eigen::Success)
 		throw std::runtime_error("Sparse matrix factorization failed!");
 
 	// calculate surface currents
-	m_eigen_rhs_surf.resize(m_vars_surf, GetModeCount());
-	m_matrix_surf_resid.GetMatrixA().LeftMultiply(
-				DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
-				DenseViewC(m_eigen_solution_mpot.data(), m_eigen_solution_mpot.outerStride()), GetModeCount());
-	m_matrix_surf_resid.GetMatrixB().LeftMultiplyAdd(
-				DenseViewC(m_eigen_rhs_surf.data(), m_eigen_rhs_surf.outerStride()),
-				DenseViewC(GetModes().data(), GetModes().outerStride()), GetModes().cols());
+	m_eigen_rhs_surf = m_matrix_surf_resid[0] * m_eigen_solution_mpot + m_matrix_surf_resid[1] * GetModes();
 	m_eigen_solution_surf = m_eigen_chol_surf.solve(m_eigen_rhs_surf);
 
 	// calculate surface losses
-	Eigen::MatrixXr surface_loss_matrix(GetModeCount(), GetModeCount());
-	m_matrix_surf_loss.LeftRightMultiply(
-				DenseViewC(surface_loss_matrix.data(), surface_loss_matrix.outerStride()),
-				DenseViewC(m_eigen_solution_surf.data(), m_eigen_solution_surf.outerStride()).TransposedView(),
-				DenseViewC(m_eigen_solution_surf.data(), m_eigen_solution_surf.outerStride()),
-				GetModeCount(), GetModeCount());
+	Eigen::MatrixXr surface_loss_matrix = m_eigen_solution_surf.transpose() * m_matrix_surf_loss.selfadjointView<Eigen::Lower>() * m_eigen_solution_surf;
 
-	/*std::cerr << "charges =\n" << charge_matrix << std::endl;
+	std::cerr << "charges =\n" << charge_matrix << std::endl;
 	std::cerr << "currents =\n" << current_matrix << std::endl;
-	std::cerr << "dielectric_losses =\n" << dielectric_loss_matrix << std::endl;
-	std::cerr << "resistive_losses =\n" << resistive_loss_matrix << std::endl;
-	std::cerr << std::endl;*/
+	std::cerr << "electric_loss_matrix =\n" << electric_loss_matrix << std::endl;
+	std::cerr << "magnetic_loss_matrix =\n" << magnetic_loss_matrix << std::endl;
+	std::cerr << "surface_loss_matrix =\n" << surface_loss_matrix << std::endl;
+	std::cerr << std::endl;
 
 	// calculate L, C, R and G
 	m_inductance_matrix = current_matrix.inverse();
@@ -818,8 +792,8 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, Me
 	node_values.clear();
 	node_values.resize(m_nodes.size(), 0.0);
 	Eigen::MatrixXr &solution = (type == MESHIMAGETYPE_EPOT)? m_eigen_solution_epot : m_eigen_solution_mpot;
-	real_t *solution_values = solution.data() + solution.outerStride() * mode;
-	const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * mode;
+	real_t *solution_values = solution.data() + solution.outerStride() * (ptrdiff_t) mode;
+	const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * (ptrdiff_t) mode;
 	for(size_t i = 0; i < m_nodes.size(); ++i) {
 		size_t var = m_nodes[i].m_var;
 		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
@@ -833,9 +807,9 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 	cellnode_values.clear();
 	cellnode_values.resize(m_cells.size());
 	if(type == MESHIMAGETYPE_ENERGY) {
-		real_t *solution_epot = m_eigen_solution_epot.data() + m_eigen_solution_epot.outerStride() * mode;
-		real_t *solution_mpot = m_eigen_solution_mpot.data() + m_eigen_solution_mpot.outerStride() * mode;
-		const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * mode;
+		real_t *solution_epot = m_eigen_solution_epot.data() + m_eigen_solution_epot.outerStride() * (ptrdiff_t) mode;
+		real_t *solution_mpot = m_eigen_solution_mpot.data() + m_eigen_solution_mpot.outerStride() * (ptrdiff_t) mode;
+		const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * (ptrdiff_t) mode;
 		std::vector<std::vector<real_t>> dielectric_values(m_dielectrics.size() + 1);
 		std::vector<std::vector<int32_t>> dielectric_count(m_dielectrics.size() + 1);
 		for(size_t i = 0; i < dielectric_values.size(); ++i) {
@@ -918,7 +892,7 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 			}
 		}
 	} else {
-		real_t *solution_values = m_eigen_solution_surf.data() + m_eigen_solution_surf.outerStride() * mode;
+		real_t *solution_values = m_eigen_solution_surf.data() + m_eigen_solution_surf.outerStride() * (ptrdiff_t) mode;
 		real_t max_value = 0.0;
 		for(size_t i = 0; i < m_vars_surf; ++i) {
 			max_value = std::max(max_value, fabs(solution_values[i]));
@@ -1050,7 +1024,7 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 	// first half
 	if(delta1 != 0.0) {
 		real_t st1 = step1 / delta1;
-		size_t n1 = std::max<ptrdiff_t>(1, rints(log2(st1 / (1.0 + (st1 - 1.0) * frac)) / log2frac + 1.5));
+		size_t n1 = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st1 / (1.0 + (st1 - 1.0) * frac)) / log2frac + 1.5));
 		real_t vmin1 = exp2(log2frac * (real_t) n1);
 		for(size_t i = n1 - 1; i > 0; --i) {
 			result.push_back(x1 + delta1 * (exp2(log2frac * (real_t) i) - vmin1) / (1.0 - vmin1));
@@ -1061,7 +1035,7 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 	// second half
 	if(delta2 != 0.0) {
 		real_t st2 = step2 / delta2;
-		size_t n2 = std::max<ptrdiff_t>(1, rints(log2(st2 / (1.0 + (st2 - 1.0) * frac)) / log2frac + 1.5));
+		size_t n2 = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st2 / (1.0 + (st2 - 1.0) * frac)) / log2frac + 1.5));
 		real_t vmin2 = exp2(log2frac * (real_t) n2);
 		for(size_t i = 1; i < n2; ++i) {
 			result.push_back(x2 - delta2 * (exp2(log2frac * (real_t) i) - vmin2) / (1.0 - vmin2));
@@ -1086,7 +1060,7 @@ void GridMesh2D::PrepareNodeImage(std::vector<size_t> &index, std::vector<real_t
 	auto range_begin = grid.begin() + 1, range_end = grid.end() - 1;
 	for(size_t i = 0; i < size; ++i) {
 		real_t value = value1 + (value2 - value1) * ((real_t) i + 0.5) / (real_t) size;
-		size_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
+		size_t j = (size_t) (std::upper_bound(range_begin, range_end, value) - range_begin);
 		index[i] = j;
 		frac[i] = (value - grid[j]) / (grid[j + 1] - grid[j]);
 	}
@@ -1099,7 +1073,7 @@ void GridMesh2D::PrepareCellImage(std::vector<size_t> &index, std::vector<real_t
 	auto range_begin = midpoints.begin() + 1, range_end = midpoints.end() - 1;
 	for(size_t i = 0; i < size; ++i) {
 		real_t value = value1 + (value2 - value1) * ((real_t) i + 0.5) / (real_t) size;
-		size_t j = std::upper_bound(range_begin, range_end, value) - range_begin;
+		size_t j = (size_t) (std::upper_bound(range_begin, range_end, value) - range_begin);
 		index[i] = j;
 		frac[i] = clamp((value - grid[j + 1]) * scale + 0.5, 0.0, 1.0);
 	}

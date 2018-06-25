@@ -22,13 +22,11 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 #include "Eigen.h"
+#include "EigenSparse.h"
 #include "GenericMesh.h"
 #include "MaterialDatabase.h"
 #include "SparseMatrix.h"
 #include "Vector.h"
-
-#include <Eigen/SparseCore>
-#include <Eigen/SparseCholesky>
 
 class GridMesh2D : public GenericMesh {
 
@@ -80,8 +78,6 @@ private:
 		inline Cell() : m_conductor(INDEX_NONE), m_dielectric(INDEX_NONE) {}
 	};
 
-	typedef Eigen::SparseMatrix<real_t> EigenSparseMatrix;
-
 private:
 	Box2D m_world_box, m_world_focus;
 	real_t m_grid_inc, m_grid_epsilon;
@@ -101,12 +97,10 @@ private:
 
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
-	SparseBlockMatrixCSU<complex_t> m_matrix_epot, m_matrix_mpot;
-	SparseBlockMatrixC<real_t> m_matrix_surf_resid;
-	SparseMatrixCSU<real_t> m_matrix_surf_curr, m_matrix_surf_loss;
+	Eigen::SparseMatrix<complex_t> m_matrix_epot[3], m_matrix_mpot[3];
+	Eigen::SparseMatrix<real_t> m_matrix_surf_resid[2], m_matrix_surf_curr, m_matrix_surf_loss;
 
-	EigenSparseMatrix m_eigen_sparse, m_eigen_sparse_surf;
-	Eigen::SimplicialLDLT<EigenSparseMatrix, Eigen::Upper> m_eigen_chol, m_eigen_chol_surf;
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<real_t>, Eigen::Lower> m_eigen_chol, m_eigen_chol_surf;
 	Eigen::MatrixXr m_eigen_rhs, m_eigen_rhs_surf;
 	Eigen::MatrixXr m_eigen_solution_epot, m_eigen_solution_mpot, m_eigen_solution_surf;
 

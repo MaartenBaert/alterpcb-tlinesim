@@ -22,14 +22,14 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
-template<typename T>
-inline T clamp(T v, T lo, T hi) {
+template<typename T, typename U>
+inline T clamp(U v, T lo, T hi) {
 	assert(lo <= hi);
-	if(v < lo)
+	if(v < (U) lo)
 		return lo;
-	if(v > hi)
+	if(v > (U) hi)
 		return hi;
-	return v;
+	return (T) v;
 }
 template<> inline float clamp<float>(float v, float lo, float hi) {
 	assert(!(lo > hi)); // nan ok
@@ -62,7 +62,7 @@ inline int rinti(F x) {
 	return (sizeof(long int) >= sizeof(int))? (int) lrint(x) : (int) llrint(x);
 }
 template<typename F>
-inline ptrdiff_t rints(F x) {
+inline ptrdiff_t rintp(F x) {
 	return (sizeof(long int) >= sizeof(ptrdiff_t))? (ptrdiff_t) lrint(x) : (ptrdiff_t) llrint(x);
 }
 

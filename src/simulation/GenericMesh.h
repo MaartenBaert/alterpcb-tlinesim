@@ -67,7 +67,7 @@ public:
 	inline bool IsInitialized() { return m_initialized; }
 	inline bool IsSolved() { return m_solved; }
 
-	inline size_t GetModeCount() { return m_modes.cols(); }
+	inline size_t GetModeCount() { return (size_t) m_modes.cols(); }
 	inline const Eigen::MatrixXr& GetModes() { return m_modes; }
 	inline real_t GetFrequency() { return m_frequency; }
 

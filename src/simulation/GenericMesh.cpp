@@ -19,11 +19,11 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "GenericMesh.h"
+
+#include "EigenSparse.h"
 #include "StringHelper.h"
 
 #include <iostream>
-
-#include <Eigen/Dense>
 
 GenericMesh::GenericMesh() {
 	m_initialized = false;
@@ -112,7 +112,7 @@ void GenericMesh::SolveEigenModes() {
 	// reorder eigenmodes to match user-provided modes and calculate eigenmode propagation constants
 	m_eigenmodes.resize(m_modes.cols(), m_modes.cols());
 	m_eigenmode_propagation_constants.resize(m_modes.cols());
-	std::vector<size_t> modemap(m_modes.cols());
+	std::vector<size_t> modemap((size_t) m_modes.cols());
 	for(size_t i = 0; i < (size_t) m_modes.cols(); ++i) {
 		modemap[i] = i;
 	}
@@ -120,15 +120,15 @@ void GenericMesh::SolveEigenModes() {
 		size_t best_index = i;
 		complex_t best_value = complex_t(0.0, 0.0);
 		for(size_t j = i; j < (size_t) m_modes.cols(); ++j) {
-			complex_t value = eigvec(i, modemap[j]);
+			complex_t value = eigvec((Eigen::Index) i, (Eigen::Index) modemap[j]);
 			if(std::norm(value) > std::norm(best_value)) {
 				best_index = j;
 				best_value = value;
 			}
 		}
 		std::swap(modemap[i], modemap[best_index]);
-		m_eigenmodes.col(i) = eigvec.col(modemap[i]); // / best_value;
-		m_eigenmode_propagation_constants[i] = eigval_sqrt(modemap[i]);
+		m_eigenmodes.col((Eigen::Index) i) = eigvec.col((Eigen::Index) modemap[i]); // / best_value;
+		m_eigenmode_propagation_constants[(Eigen::Index) i] = eigval_sqrt((Eigen::Index) modemap[i]);
 	}
 
 	std::cerr << "m_eigenmodes =\n" << m_eigenmodes << std::endl;

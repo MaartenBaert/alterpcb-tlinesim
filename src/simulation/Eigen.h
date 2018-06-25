@@ -22,6 +22,13 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+
 #include <Eigen/Core>
 
 namespace Eigen {
@@ -54,3 +61,7 @@ EIGEN_MAKE_TYPEDEFS_ALL_SIZES(complex_t, c)
 #undef EIGEN_MAKE_FIXED_TYPEDEFS
 
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif

@@ -59,8 +59,7 @@ struct VDataDictHasher {
 };
 
 // C++11 allows us to put non-POD types in unions, but we have to call the constructors and destructors manually.
-// The alternative is to create a union of char arrays with sizes corresponding to the correct types. Both versions
-// would do exactly the same thing, but this is cleaner.
+// This is equivalent to using a char array and placement new for manual memory management, but cleaner.
 class VData {
 
 public:
@@ -89,7 +88,7 @@ public:
 	inline VData(int32_t value) : m_type(VDATA_INT), m_value_int(value) {}
 	inline VData(uint32_t value) : m_type(VDATA_INT), m_value_int(value) {}
 	inline VData(int64_t value) : m_type(VDATA_INT), m_value_int(value) {}
-	inline VData(uint64_t value) : m_type(VDATA_INT), m_value_int(value) {}
+	inline VData(uint64_t value) : m_type(VDATA_INT), m_value_int((int64_t) value) {} // overflow possible
 	inline VData(float value) : m_type(VDATA_FLOAT), m_value_float(value) {}
 	inline VData(double value) : m_type(VDATA_FLOAT), m_value_float(value) {}
 	inline VData(const std::string &value) : m_type(VDATA_STRING), m_value_string(value) {}
@@ -127,6 +126,7 @@ public:
 			case VDATA_DICT: ConstructDict(other.m_value_dict); break;
 		}
 	}
+
 	inline VData(VData &&other) {
 		switch(other.m_type) {
 			case VDATA_NULL: ConstructNull(); break;
@@ -154,6 +154,7 @@ public:
 		}
 		return *this;
 	}
+
 	inline VData& operator=(VData &&other) {
 		if(this != &other) {
 			Destruct();
@@ -183,7 +184,7 @@ public:
 	inline VData& operator=(int32_t value) { Destruct(); ConstructInt(value); return *this; }
 	inline VData& operator=(uint32_t value) { Destruct(); ConstructInt(value); return *this; }
 	inline VData& operator=(int64_t value) { Destruct(); ConstructInt(value); return *this; }
-	inline VData& operator=(uint64_t value) { Destruct(); ConstructInt(value); return *this; }
+	inline VData& operator=(uint64_t value) { Destruct(); ConstructInt((int64_t) value); return *this; } // overflow possible
 	inline VData& operator=(float value) { Destruct(); ConstructFloat(value); return *this; }
 	inline VData& operator=(double value) { Destruct(); ConstructFloat(value); return *this; }
 	inline VData& operator=(const std::string &value) { Destruct(); ConstructString(value); return *this; }
@@ -263,10 +264,12 @@ private:
 		new(&m_value_list) Cow<List>(other);
 		m_type = VDATA_LIST;
 	}
+
 	inline void ConstructList(Cow<List> &&other) {
 		new(&m_value_list) Cow<List>(std::move(other));
 		m_type = VDATA_LIST;
 	}
+
 	template<typename... Args>
 	inline void ConstructList(Args&&... args) {
 		new(&m_value_list) Cow<List>(std::make_shared<List>(std::forward<Args>(args)...));
@@ -277,10 +280,12 @@ private:
 		new(&m_value_list) Cow<Dict>(other);
 		m_type = VDATA_DICT;
 	}
+
 	inline void ConstructDict(Cow<Dict> &&other) {
 		new(&m_value_list) Cow<Dict>(std::move(other));
 		m_type = VDATA_DICT;
 	}
+
 	template<typename... Args>
 	inline void ConstructDict(Args&&... args) {
 		new(&m_value_list) Cow<Dict>(std::make_shared<Dict>(std::forward<Args>(args)...));

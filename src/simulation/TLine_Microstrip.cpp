@@ -278,7 +278,7 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, substrate_thickness) * GridMesh2D::DEFAULT_GRID_STEP;
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
-	mesh->SetPML(pml_box, Box2D(space, space, REAL_MAX, space), 1.0);
+	//mesh->SetPML(pml_box, Box2D(space, space, REAL_MAX, space), 1.0);
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);

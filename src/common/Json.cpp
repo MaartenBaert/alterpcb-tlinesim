@@ -116,11 +116,11 @@ inline void WriteLine(WriteContext &context, bool space) {
 inline uint32_t ReadHex(ReadContext &context) {
 	char c = ReadChar(context);
 	if(c >= '0' && c <= '9')
-		return c - '0';
+		return (uint32_t) (c - '0');
 	if(c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
+		return (uint32_t) (c - 'a' + 10);
 	if(c >= 'A' && c <= 'F')
-		return c - 'A' + 10;
+		return (uint32_t) (c - 'A' + 10);
 	context.Error(1, "Expected hexadecimal value");
 	return 0; // this is never reached
 }
@@ -200,7 +200,7 @@ inline void ReadString(ReadContext &context, std::string &str) {
 
 inline void WriteString(WriteContext &context, const std::string &str) {
 	WriteChar(context, '"');
-	for(unsigned char c : str) {
+	for(char c : str) {
 		if(c == '"') {
 			WriteChar(context, '\\');
 			WriteChar(context, '"');
@@ -222,8 +222,8 @@ inline void WriteString(WriteContext &context, const std::string &str) {
 		} else if(c == '\t') {
 			WriteChar(context, '\\');
 			WriteChar(context, '\t');
-		} else if(c < 32 || c == 127) {
-			char code[6] = {'\\', 'u', '0', '0', LUT_HEX[c >> 4], LUT_HEX[c & 0xf]};
+		} else if((unsigned char) c < 32 || c == 127) {
+			char code[6] = {'\\', 'u', '0', '0', LUT_HEX[(unsigned char) c >> 4], LUT_HEX[(unsigned char) c & 0xf]};
 			WriteData(context, code, 6);
 		} else {
 			WriteChar(context, c);
@@ -378,12 +378,12 @@ inline void ReadNameOrNumber(ReadContext &context, VData &data) {
 				if(expo > (uint32_t) dec.expo - (uint32_t) INT32_MIN)
 					dec.expo = INT32_MIN;
 				else
-					dec.expo -= expo;
+					dec.expo -= (int32_t) expo;
 			} else {
 				if(expo > (uint32_t) INT32_MAX - (uint32_t) dec.expo)
 					dec.expo = INT32_MAX;
 				else
-					dec.expo += expo;
+					dec.expo += (int32_t) expo;
 			}
 
 			// convert to floating point
@@ -408,7 +408,7 @@ inline void WriteInt(WriteContext &context, int64_t value) {
 
 	// check the sign
 	bool negative = (value < 0);
-	uint64_t value2 = (negative)? -value : value;
+	uint64_t value2 = (uint64_t) ((negative)? -value : value);
 
 	// convert to string
 	char buf[20], *buf2 = buf + sizeof(buf);
@@ -449,7 +449,7 @@ inline void WriteFloat(WriteContext &context, real_t value) {
 				engshift = (context.format.engineering)? (expo + 360) % 3 : 0; // mod does not work properly for negative numbers
 				expo -= engshift;
 				bool expo_negative = (expo < 0);
-				uint32_t expo_abs = (expo_negative)? -expo : expo;
+				uint32_t expo_abs = (uint32_t) ((expo_negative)? -expo : expo);
 				do {
 					*(--ptr) = (char) ('0' + (uint32_t) (expo_abs % 10));
 					expo_abs /= 10;

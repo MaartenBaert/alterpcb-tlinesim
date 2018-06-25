@@ -22,10 +22,10 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 #include "HashTable.h"
-//#include "Eigen.h"
+#include "Eigen.h"
+#include "EigenSparse.h"
 
 #include <type_traits>
-#include <vector>
 
 // This file contains a sparse block matrix implementation optimized for the construction of FEM problems.
 // The matrix is partitioned as follows:
@@ -62,43 +62,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 // The lower and upper triangular parts are assumed to be identical (i.e. not complex conjugates).
 // The 'size1' and 'size2' parameters determine the size of the ABCD partitions as explained above.
 
-template<typename F>
-struct SparseFilterNone {
-	typedef F ResultType;
-	static F Filter(F value) {
-		return value;
-	}
-};
-
-template<typename F>
-struct SparseFilterReal {
-	typedef F ResultType;
-	static F Filter(std::complex<F> value) {
-		return value.real();
-	}
-};
-
-template<typename F>
-struct SparseFilterImag {
-	typedef F ResultType;
-	static F Filter(std::complex<F> value) {
-		return value.imag();
-	}
-};
-
-/*enum SparseFilterType {
-	SPARSEFILTER_NONE,
-	SPARSEFILTER_REAL,
-	SPARSEFILTER_IMAG,
-};
-
-// Filter function to extract real/imaginary parts of a value.
-template<SparseFilterType FILTER, typename F1, typename F2> F1 SparseValueFilter(F2 value);
-template<typename F1, typename F2> F1 SparseValueFilter<SPARSEFILTER_NONE, F1, F2>(F2 value) { return F1(value); }
-template<typename F1, typename F2> F1 SparseValueFilter<SPARSEFILTER_REAL, F1, F2>(F2 value) { return F1(std::real(value)); }
-template<typename F1, typename F2> F1 SparseValueFilter<SPARSEFILTER_IMAG, F1, F2>(F2 value) { return F1(std::imag(value)); }
-*/
-
 // Insertion sort for data stored in two separate arrays. Useful for sorting coefficients in CSR/CSC format.
 template<typename A, typename B>
 void InsertionSortPairs(A *data_a, B *data_b, size_t size) {
@@ -118,49 +81,6 @@ void InsertionSortPairs(A *data_a, B *data_b, size_t size) {
 			data_b[j] = value_b;
 		}
 	}
-}
-
-template<typename F, bool ROWMAJOR>
-class DenseViewBase {
-
-private:
-	F *m_data;
-	size_t m_stride;
-
-public:
-	DenseViewBase(F *data, size_t stride) : m_data(data), m_stride(stride) {}
-
-	void SetZero(size_t rows, size_t cols) {
-		std::fill_n(m_data, (ROWMAJOR)? rows * m_stride : cols * m_stride, F());
-	}
-
-	void Negate(size_t rows, size_t cols) {
-		size_t n = (ROWMAJOR)? rows * m_stride : cols * m_stride;
-		for(size_t i = 0; i < n; ++i) {
-			m_data[i] = -m_data[i];
-		}
-	}
-
-	DenseViewBase<F, !ROWMAJOR> TransposedView() {
-		return DenseViewBase<F, !ROWMAJOR>(m_data, m_stride);
-	}
-
-public:
-	inline F* GetData() { return m_data; }
-	inline size_t GetStride() { return m_stride; }
-	inline size_t GetTotalSize(size_t rows, size_t cols) { return (ROWMAJOR)? rows * m_stride : cols * m_stride; }
-	inline F& operator()(size_t row, size_t col) { return m_data[(ROWMAJOR)? col + row * m_stride : row + col * m_stride]; }
-
-};
-
-template<typename F>
-inline DenseViewBase<F, false> DenseViewC(F *data, size_t stride) {
-	return DenseViewBase<F, false>(data, stride);
-}
-
-template<typename F>
-inline DenseViewBase<F, true> DenseViewR(F *data, size_t stride) {
-	return DenseViewBase<F, true>(data, stride);
 }
 
 template<typename F, bool ROWMAJOR, bool SYMMETRIC, bool UPPER>
@@ -272,179 +192,9 @@ public:
 		}
 	}
 
-	// Add to dense matrix.
-	template<class Filter=SparseFilterNone<F>, typename F1, bool ROWMAJOR1>
-	void DenseAdd(DenseViewBase<F1, ROWMAJOR1> output) const {
-		for(size_t outer = 0; outer < m_outer_size; ++outer) {
-			const BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-			for(size_t i = 0; i < m_bulk_size; ++i) {
-				const BulkEntry &entry = bulk[i];
-				if(entry.inner == INDEX_NONE)
-					break;
-				size_t row = Row(outer, entry.inner), col = Col(outer, entry.inner);
-				typename Filter::ResultType value = Filter::Filter(entry.value);
-				output(row, col) += value;
-				if(SYMMETRIC) {
-					output(col, row) += value;
-				}
-			}
-		}
-		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
-			const TableEntry &entry = m_table_data[i];
-			size_t row = Row(entry.outer, entry.inner), col = Col(entry.outer, entry.inner);
-			typename Filter::ResultType value = Filter::Filter(entry.value);
-			output(row, col) += value;
-			if(SYMMETRIC) {
-				output(col, row) += value;
-			}
-		}
-	}
-
-	// Subtract from dense matrix.
-	template<class Filter=SparseFilterNone<F>, typename F1, bool ROWMAJOR1>
-	void DenseSubtract(DenseViewBase<F1, ROWMAJOR1> output) const {
-		for(size_t outer = 0; outer < m_outer_size; ++outer) {
-			const BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-			for(size_t i = 0; i < m_bulk_size; ++i) {
-				const BulkEntry &entry = bulk[i];
-				if(entry.inner == INDEX_NONE)
-					break;
-				size_t row = Row(outer, entry.inner), col = Col(outer, entry.inner);
-				typename Filter::ResultType value = Filter::Filter(entry.value);
-				output(row, col) -= value;
-				if(SYMMETRIC) {
-					output(col, row) -= value;
-				}
-			}
-		}
-		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
-			const TableEntry &entry = m_table_data[i];
-			size_t row = Row(entry.outer, entry.inner), col = Col(entry.outer, entry.inner);
-			typename Filter::ResultType value = Filter::Filter(entry.value);
-			output(row, col) -= value;
-			if(SYMMETRIC) {
-				output(col, row) -= value;
-			}
-		}
-	}
-
-	// Left or right matrix multiplication + addition.
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2, bool RIGHT>
-	void MultiplyAddBase(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		for(size_t outer = 0; outer < m_outer_size; ++outer) {
-			const BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-			for(size_t i = 0; i < m_bulk_size; ++i) {
-				const BulkEntry &entry = bulk[i];
-				if(entry.inner == INDEX_NONE)
-					break;
-				size_t row = Row(outer, entry.inner), col = Col(outer, entry.inner);
-				typename Filter::ResultType value = Filter::Filter(entry.value);
-				if(RIGHT) {
-					for(size_t j = 0; j < num; ++j) {
-						output(j, col) += value * input(j, row);
-						if(SYMMETRIC) {
-							output(j, row) += value * input(j, col);
-						}
-					}
-				} else {
-					for(size_t j = 0; j < num; ++j) {
-						output(row, j) += value * input(col, j);
-						if(SYMMETRIC) {
-							output(col, j) += value * input(row, j);
-						}
-					}
-				}
-			}
-		}
-		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
-			const TableEntry &entry = m_table_data[i];
-			size_t row = Row(entry.outer, entry.inner), col = Col(entry.outer, entry.inner);
-			typename Filter::ResultType value = Filter::Filter(entry.value);
-			if(RIGHT) {
-				for(size_t j = 0; j < num; ++j) {
-					output(j, col) += value * input(j, row);
-					if(SYMMETRIC) {
-						output(j, row) += value * input(j, col);
-					}
-				}
-			} else {
-				for(size_t j = 0; j < num; ++j) {
-					output(row, j) += value * input(col, j);
-					if(SYMMETRIC) {
-						output(col, j) += value * input(row, j);
-					}
-				}
-			}
-		}
-	}
-
-	// Left or right matrix multiplication.
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2, bool RIGHT>
-	void MultiplyBase(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		if(RIGHT) {
-			output.SetZero(num, GetCols());
-		} else {
-			output.SetZero(GetRows(), num);
-		}
-		MultiplyAddBase<Filter, F1, F2, ROWMAJOR1, ROWMAJOR2, RIGHT>(output, input, num);
-	}
-
-	// Calculates output += A * input (convenience function).
-	// size of output = (rows, num), size of input = (cols, num).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
-	void LeftMultiplyAdd(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		MultiplyAddBase<Filter, F1, F2, ROWMAJOR1, ROWMAJOR2, false>(output, input, num);
-	}
-
-	// Calculates output += input * A (convenience function).
-	// size of output = (num, cols), size of input = (num, rows).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
-	void RightMultiplyAdd(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		MultiplyAddBase<Filter, F1, F2, ROWMAJOR1, ROWMAJOR2, true>(output, input, num);
-	}
-
-	// Calculates output = A * input (convenience function).
-	// size of output = (rows, num), size of input = (cols, num).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
-	void LeftMultiply(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		MultiplyBase<Filter, F1, F2, ROWMAJOR1, ROWMAJOR2, false>(output, input, num);
-	}
-
-	// Calculates output = input * A (convenience function).
-	// size of output = (num, cols), size of input = (num, rows).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
-	void RightMultiply(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input, size_t num) const {
-		MultiplyBase<Filter, F1, F2, ROWMAJOR1, ROWMAJOR2, true>(output, input, num);
-	}
-
-	// Calculates output = input1 * A * input2 (convenience function).
-	// size of output = (num1, num2), size of input1 = (num1, rows), size of input2 = (cols, num2).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
-	void LeftRightMultiply(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> input1, DenseViewBase<F3, ROWMAJOR3> input2, size_t num1, size_t num2) {
-		std::unique_ptr<F2[]> temp(new F2[GetRows() * num2]);
-		DenseViewBase<F2, ROWMAJOR2> temp_view(temp.get(), (ROWMAJOR2)? num2 : GetRows());
-		LeftMultiply<Filter>(temp_view, input2, num2);
-		for(size_t i = 0; i < num1; ++i) {
-			for(size_t j = 0; j < num2; ++j) {
-				F2 sum = F2();
-				for(size_t k = 0; k < GetRows(); ++k) {
-					sum += input1(i, k) * temp_view(k, j);
-				}
-				output(i, j) = sum;
-			}
-		}
-	}
-
-	// Convert to dense matrix.
-	template<class Filter=SparseFilterNone<F>, typename F1, bool ROWMAJOR1>
-	void ToDense(DenseViewBase<F1, ROWMAJOR1> output) const {
-		output.SetZero(GetRows(), GetCols());
-		DenseAdd<Filter>(output);
-	}
-
 	// Convert to compressed sparse row/column format.
 	// For symmetric matrices, only the lower or upper part will be stored, but the diagonal values will be doubled.
-	template<class Filter=SparseFilterNone<F>, typename I, typename F1, bool TRANSPOSE>
+	template<typename I, typename F1, bool TRANSPOSE>
 	void ToCompressedSparse(I *offsets, I *indices, F1 *values) const {
 
 		// count coefficients per row/column
@@ -479,36 +229,48 @@ public:
 				const BulkEntry &entry = bulk[i];
 				if(entry.inner == INDEX_NONE)
 					break;
-				size_t j = --offsets[(TRANSPOSE)? entry.inner : outer];
+				size_t j = (size_t) --offsets[(TRANSPOSE)? entry.inner : outer];
 				indices[j] = I((TRANSPOSE)? outer : entry.inner);
-				values[j] = Filter::Filter((outer == entry.inner)? entry.value + entry.value : entry.value);
+				values[j] = (SYMMETRIC && outer == entry.inner)? entry.value + entry.value : entry.value;
 			}
 		}
 		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
 			const TableEntry &entry = m_table_data[i];
-			size_t j = --offsets[(TRANSPOSE)? entry.inner : entry.outer];
+			size_t j = (size_t) --offsets[(TRANSPOSE)? entry.inner : entry.outer];
 			indices[j] = I((TRANSPOSE)? entry.outer : entry.inner);
-			values[j] = Filter::Filter((entry.outer == entry.inner)? entry.value + entry.value : entry.value);
+			values[j] = (SYMMETRIC && entry.outer == entry.inner)? entry.value + entry.value : entry.value;
 		}
 
 		// sort by index within each column
 		for(size_t i = 0; i < ((TRANSPOSE)? m_inner_size : m_outer_size); ++i) {
 			I begin = offsets[i], end = offsets[i + 1];
-			InsertionSortPairs(indices + begin, values + begin, end - begin);
+			InsertionSortPairs(indices + begin, values + begin, (size_t) (end - begin));
 		}
 
 	}
 
 	// Convert to compressed sparse column format (convenience function).
-	template<class Filter=SparseFilterNone<F>, typename I, typename F1>
+	template<typename I, typename F1>
 	void ToCSC(I *offsets, I *indices, F1 *values) const {
-		ToCompressedSparse<Filter, I, F1, ROWMAJOR>(offsets, indices, values);
+		ToCompressedSparse<I, F1, ROWMAJOR>(offsets, indices, values);
 	}
 
 	// Convert to compressed sparse row format (convenience function).
-	template<class Filter=SparseFilterNone<F>, typename I, typename F1>
+	template<typename I, typename F1>
 	void ToCSR(I *offsets, I *indices, F1 *values) const {
-		ToCompressedSparse<Filter, I, F1, !ROWMAJOR>(offsets, indices, values);
+		ToCompressedSparse<I, F1, !ROWMAJOR>(offsets, indices, values);
+	}
+
+	// Convert to Eigen sparse matrix.
+	template<class EigenSparseMatrix>
+	void ToEigen(EigenSparseMatrix &output) const {
+		output.resize((Eigen::Index) GetRows(), (Eigen::Index) GetCols());
+		output.resizeNonZeros((Eigen::Index) GetCoefficients());
+		if(output.IsRowMajor) {
+			ToCSR(output.outerIndexPtr(), output.innerIndexPtr(), output.valuePtr());
+		} else {
+			ToCSC(output.outerIndexPtr(), output.innerIndexPtr(), output.valuePtr());
+		}
 	}
 
 public:
@@ -635,72 +397,6 @@ public:
 			}
 		} else {
 			m_matrix_d.template Insert<false>(row - INDEX_OFFSET, col - INDEX_OFFSET, value);
-		}
-	}
-
-	// Calculates rhs = -B * fixed.
-	// size of rhs = (rows1, num), size of fixed = (cols2, num).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, bool ROWMAJOR1, bool ROWMAJOR2>
-	void CalculateRHS(DenseViewBase<F1, ROWMAJOR1> rhs, DenseViewBase<F2, ROWMAJOR2> fixed, size_t num) const {
-		if(UPPER) {
-			m_matrix_bc.template LeftMultiply<Filter>(rhs, fixed, num); // use B
-		} else {
-			m_matrix_bc.template RightMultiply<Filter>(rhs.TransposedView(), fixed.TransposedView(), num); // use C
-		}
-		rhs.Negate(GetRows1(), num);
-	}
-
-	// Calculates residual = fixed' * C * solution + fixed' * D * fixed.
-	// size of residual = (num, num), size of solution = (cols1, num), size of fixed = (cols2, num).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
-	void CalculateResidual(DenseViewBase<F1, ROWMAJOR1> residual, DenseViewBase<F2, ROWMAJOR2> solution, DenseViewBase<F3, ROWMAJOR3> fixed, size_t num) const {
-		std::unique_ptr<F1[]> temp(new F1[GetRows2() * num]);
-		DenseViewBase<F1, ROWMAJOR3> temp_view(temp.get(), (ROWMAJOR3)? num : GetRows2());
-		if(UPPER) {
-			m_matrix_bc.template RightMultiply<Filter>(temp_view.TransposedView(), solution.TransposedView(), num); // use B
-		} else {
-			m_matrix_bc.template LeftMultiply<Filter>(temp_view, solution, num); // use C
-		}
-		m_matrix_d.template LeftMultiplyAdd<Filter>(temp_view, fixed, num);
-		for(size_t i = 0; i < num; ++i) {
-			for(size_t j = 0; j < num; ++j) {
-				F1 sum = F1();
-				for(size_t k = 0; k < GetRows2(); ++k) {
-					sum += fixed(k, i) * temp_view(k, j);
-				}
-				residual(i, j) = sum;
-			}
-		}
-	}
-
-	// Calculates output = solution' * A * solution + solution' * B * fixed + fixed' * C * solution + fixed' * D * fixed
-	// size of output = (num, num), size of solution = (cols1, num), size of fixed = (cols2, num).
-	template<class Filter=SparseFilterNone<F>, typename F1, typename F2, typename F3, bool ROWMAJOR1, bool ROWMAJOR2, bool ROWMAJOR3>
-	void CalculateQuadratic(DenseViewBase<F1, ROWMAJOR1> output, DenseViewBase<F2, ROWMAJOR2> solution, DenseViewBase<F3, ROWMAJOR3> fixed, size_t num) {
-		std::unique_ptr<F1[]> temp1(new F1[GetRows1() * num]);
-		std::unique_ptr<F1[]> temp2(new F1[GetRows2() * num]);
-		DenseViewBase<F1, ROWMAJOR2> temp1_view(temp1.get(), (ROWMAJOR2)? num : GetRows1());
-		DenseViewBase<F1, ROWMAJOR3> temp2_view(temp2.get(), (ROWMAJOR3)? num : GetRows2());
-		m_matrix_a.template LeftMultiply<Filter>(temp1_view, solution, num);
-		if(UPPER) {
-			m_matrix_bc.template LeftMultiplyAdd<Filter>(temp1_view, fixed, num); // use B
-			m_matrix_bc.template RightMultiply<Filter>(temp2_view.TransposedView(), solution.TransposedView(), num); // use B
-		} else {
-			m_matrix_bc.template RightMultiplyAdd<Filter>(temp1_view.TransposedView(), fixed.TransposedView(), num); // use C
-			m_matrix_bc.template LeftMultiply<Filter>(temp2_view, solution, num); // use C
-		}
-		m_matrix_d.template LeftMultiplyAdd<Filter>(temp2_view, fixed, num);
-		for(size_t i = 0; i < num; ++i) {
-			for(size_t j = 0; j < num; ++j) {
-				F1 sum = F1();
-				for(size_t k = 0; k < GetRows1(); ++k) {
-					sum += solution(k, i) * temp1_view(k, j);
-				}
-				for(size_t k = 0; k < GetRows2(); ++k) {
-					sum += fixed(k, i) * temp2_view(k, j);
-				}
-				output(i, j) = sum;
-			}
 		}
 	}
 

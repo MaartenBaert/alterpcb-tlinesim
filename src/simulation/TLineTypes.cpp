@@ -102,7 +102,7 @@ void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes) {
 	context.m_output_mesh->Initialize();
 
 	context.m_results.clear();
-	context.m_results.resize(TLINERESULT_COUNT * modes.cols() * context.m_frequencies.size());
+	context.m_results.resize(TLINERESULT_COUNT * (size_t) modes.cols() * context.m_frequencies.size());
 	for(size_t i = 0; i < context.m_frequencies.size(); ++i) {
 
 		// solve
@@ -112,15 +112,15 @@ void TLineSolveModes(TLineContext &context, const Eigen::MatrixXr &modes) {
 		for(size_t j = 0; j < (size_t) modes.cols(); ++j) {
 
 			// process results
-			real_t ind = context.m_output_mesh->GetInductanceMatrix()(j, j);
-			real_t cap = context.m_output_mesh->GetCapacitanceMatrix()(j, j);
-			real_t res = context.m_output_mesh->GetResistanceMatrix()(j, j);
-			real_t cond = context.m_output_mesh->GetConductanceMatrix()(j, j);
-			complex_t z0 = context.m_output_mesh->GetCharacteristicImpedances()[j];
-			complex_t gamma = context.m_output_mesh->GetPropagationConstants()[j];
+			real_t ind = context.m_output_mesh->GetInductanceMatrix()((Eigen::Index) j, (Eigen::Index) j);
+			real_t cap = context.m_output_mesh->GetCapacitanceMatrix()((Eigen::Index) j, (Eigen::Index) j);
+			real_t res = context.m_output_mesh->GetResistanceMatrix()((Eigen::Index) j, (Eigen::Index) j);
+			real_t cond = context.m_output_mesh->GetConductanceMatrix()((Eigen::Index) j, (Eigen::Index) j);
+			complex_t z0 = context.m_output_mesh->GetCharacteristicImpedances()[(Eigen::Index) j];
+			complex_t gamma = context.m_output_mesh->GetPropagationConstants()[(Eigen::Index) j];
 
 			// generate outputs
-			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * (modes.cols() * i + j);
+			real_t *output_values = context.m_results.data() + TLINERESULT_COUNT * ((size_t) modes.cols() * i + j);
 			output_values[TLINERESULT_IMPEDANCE] = z0.real();
 			output_values[TLINERESULT_VELOCITY] = omega / gamma.imag();
 			output_values[TLINERESULT_WAVELENGTH] = 2.0 * M_PI / gamma.imag() * 1e3;
