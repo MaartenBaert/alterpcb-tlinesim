@@ -105,6 +105,176 @@ void TLine_Microstrip_Single(TLineContext &context) {
 
 }
 
+void TLine_Microstrip_TwoSubstrate(TLineContext &context) {
+
+	VDataDictReader root(context.m_parameters);
+
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
+	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
+	real_t substrate_thickness_1 = root.GetMember("substrate_thickness_1").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
+	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
+	real_t solder_mask_thickness_1 = root.GetMember("solder_mask_thickness_1").AsFloat() * 1e-3;
+	real_t solder_mask_thickness_2 = root.GetMember("solder_mask_thickness_2").AsFloat() * 1e-3;
+	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
+
+    real_t substrate_thickness = substrate_thickness_1 + substrate_thickness_2;
+	real_t space_x = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 15.0;
+	real_t space_y = (track_width + track_thickness + substrate_thickness + std::max(solder_mask_thickness_1, solder_mask_thickness_2)) * 25.0;
+	Box2D track_box = {
+		-0.5 * track_width,
+		0.5 * track_width,
+		substrate_thickness,
+		substrate_thickness + track_thickness,
+	};
+	Box2D world_box = {
+		track_box.x1 - space_x,
+		track_box.x2 + space_x,
+		0.0,
+		track_box.y2 + space_y,
+	};
+	Box2D world_focus = {
+		track_box.x1,
+		track_box.x2,
+		0.0,
+		track_box.y2,
+	};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_2_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness_2,
+	};
+	Box2D substrate_1_box = {
+		world_box.x1,
+		world_box.x2,
+		substrate_thickness_2,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box1 = {
+		substrate_1_box.x1,
+		substrate_1_box.x2,
+		substrate_1_box.y2,
+		substrate_1_box.y2 + solder_mask_thickness_2,
+	};
+	Box2D solder_mask_box2 = {
+		track_box.x1 - solder_mask_thickness_1,
+		track_box.x2 + solder_mask_thickness_1,
+		track_box.y1,
+		track_box.y2 + solder_mask_thickness_1,
+	};
+
+	real_t step0 = REAL_MAX, step1 = substrate_thickness * GridMesh2D::DEFAULT_GRID_STEP;
+
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
+
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+
+	mesh->AddConductor(ground_box, step0, track_material, port_ground);
+	mesh->AddConductor(track_box, step1, track_material, port_signal);
+	mesh->AddDielectric(substrate_1_box, step0, substrate_material_1);
+	mesh->AddDielectric(substrate_2_box, step0, substrate_material_2);
+	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
+	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
+
+	context.m_output_mesh = std::move(mesh);
+
+	Eigen::MatrixXr modes(2, 1);
+	modes.col(0) << 0.0, 1.0;
+	TLineSolveModes(context, modes);
+
+}
+
+void TLine_Microstrip_Buried(TLineContext &context) {
+
+	VDataDictReader root(context.m_parameters);
+
+	real_t track_width = root.GetMember("track_width").AsFloat() * 1e-3;
+	real_t track_thickness = root.GetMember("track_thickness").AsFloat() * 1e-3;
+	const MaterialConductor *track_material = FindConductor(root, "track_material", context.m_material_database);
+	real_t substrate_thickness_1 = root.GetMember("substrate_thickness_1").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
+	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
+	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
+	real_t solder_mask_thickness = root.GetMember("solder_mask_thickness").AsFloat() * 1e-3;
+	const MaterialDielectric *solder_mask_material = FindDielectric(root, "solder_mask_material", context.m_material_database);
+
+    real_t substrate_thickness = substrate_thickness_1 + substrate_thickness_2;
+	real_t space_x = (track_width + track_thickness + substrate_thickness + solder_mask_thickness) * 15.0;
+	real_t space_y = (track_width + track_thickness + substrate_thickness + solder_mask_thickness) * 25.0;
+	Box2D track_box = {
+		-0.5 * track_width,
+		0.5 * track_width,
+		substrate_thickness_2,
+		substrate_thickness_2 + track_thickness,
+	};
+	Box2D world_box = {
+		track_box.x1 - space_x,
+		track_box.x2 + space_x,
+		0.0,
+		track_box.y2 + space_y,
+	};
+	Box2D world_focus = {
+		track_box.x1,
+		track_box.x2,
+		0.0,
+		track_box.y2,
+	};
+	Box2D ground_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		0.0,
+	};
+	Box2D substrate_2_box = {
+		world_box.x1,
+		world_box.x2,
+		0.0,
+		substrate_thickness_2,
+	};
+	Box2D substrate_1_box = {
+		world_box.x1,
+		world_box.x2,
+		substrate_thickness_2,
+		substrate_thickness,
+	};
+	Box2D solder_mask_box = {
+		substrate_1_box.x1,
+		substrate_1_box.x2,
+		substrate_1_box.y2,
+		substrate_1_box.y2 + solder_mask_thickness,
+	};
+
+	real_t step0 = REAL_MAX, step1 = substrate_thickness * GridMesh2D::DEFAULT_GRID_STEP;
+
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, substrate_thickness * 1.0e-6));
+
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+
+	mesh->AddConductor(ground_box, step0, track_material, port_ground);
+	mesh->AddConductor(track_box, step1, track_material, port_signal);
+	mesh->AddDielectric(substrate_1_box, step0, substrate_material_1);
+	mesh->AddDielectric(substrate_2_box, step0, substrate_material_2);
+	mesh->AddDielectric(solder_mask_box, step0, solder_mask_material);
+
+	context.m_output_mesh = std::move(mesh);
+
+	Eigen::MatrixXr modes(2, 1);
+	modes.col(0) << 0.0, 1.0;
+	TLineSolveModes(context, modes);
+
+}
+
 void TLine_Microstrip_Differential(TLineContext &context) {
 
 	VDataDictReader root(context.m_parameters);
@@ -329,6 +499,45 @@ void RegisterTLine_Microstrip() {
 		},
 		{"Single-ended"},
 		&TLine_Microstrip_Single,
+	});
+
+	g_tline_types.push_back(TLineType{
+		"Microstrip (two substrates)",
+		"A single track above a ground plane with two different dielectrics. This is common in multi-layer PCBs. "
+		"Microstrips require very little space but are more susceptible to crosstalk than most other types of transmission lines.",
+		{
+			{"Track Width"            , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
+			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , default_track_thickness        , true , 0},
+			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material         , false, 1},
+			{"Substrate Thickness 1"  , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material 1"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Substrate Thickness 2"  , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material 2"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Solder Mask Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_1, true , 0},
+			{"Solder Mask Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_2, true , 0},
+			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_solder_mask_material   , false, 0},
+		},
+		{"Single-ended"},
+		&TLine_Microstrip_TwoSubstrate,
+	});
+
+	g_tline_types.push_back(TLineType{
+		"Microstrip (buried)",
+		"A single track above a ground plane embedded between two dielectics. This is common in multi-layer PCBs. "
+		"Microstrips require very little space but are more susceptible to crosstalk than most other types of transmission lines.",
+		{
+			{"Track Width"            , TLINE_PARAMETERTYPE_REAL               , default_track_width            , true , 0},
+			{"Track Thickness"        , TLINE_PARAMETERTYPE_REAL               , default_track_thickness        , true , 0},
+			{"Track Material"         , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material         , false, 1},
+			{"Substrate Thickness 1"  , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material 1"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Substrate Thickness 2"  , TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness    , true , 0},
+			{"Substrate Material 2"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material     , false, 1},
+			{"Solder Mask Thickness"  , TLINE_PARAMETERTYPE_REAL               , default_solder_mask_thickness_2, true , 0},
+			{"Solder Mask Material"   , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_solder_mask_material   , false, 0},
+		},
+		{"Single-ended"},
+		&TLine_Microstrip_Buried,
 	});
 
 	g_tline_types.push_back(TLineType{
