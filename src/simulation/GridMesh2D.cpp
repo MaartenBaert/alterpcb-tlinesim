@@ -794,9 +794,14 @@ void GridMesh2D::GetNodeValues(std::vector<real_t> &node_values, size_t mode, Me
 	Eigen::MatrixXr &solution = (type == MESHIMAGETYPE_EPOT)? m_eigen_solution_epot : m_eigen_solution_mpot;
 	real_t *solution_values = solution.data() + solution.outerStride() * (ptrdiff_t) mode;
 	const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * (ptrdiff_t) mode;
+	real_t max_value = 0.0;
+	for(size_t i = 0; i < m_vars_fixed; ++i) {
+		max_value = std::max(max_value, fabs(fixed_values[i]));
+	}
+	real_t scale = 1.0 / max_value;
 	for(size_t i = 0; i < m_nodes.size(); ++i) {
 		size_t var = m_nodes[i].m_var;
-		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] : fixed_values[var - INDEX_OFFSET];
+		node_values[i] = (var < INDEX_OFFSET)? solution_values[var] * scale : fixed_values[var - INDEX_OFFSET] * scale;
 	}
 }
 
