@@ -22,6 +22,24 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
+template<typename T>
+inline T vmin(T v) {
+	return v;
+}
+template<typename T, typename... Args>
+inline T vmin(T v1, T v2, Args&&... args) {
+	return vmin(std::min(v1, v2), std::forward<Args>(args)...);
+}
+
+template<typename T>
+inline T vmax(T v) {
+	return v;
+}
+template<typename T, typename... Args>
+inline T vmax(T v1, T v2, Args&&... args) {
+	return vmax(std::max(v1, v2), std::forward<Args>(args)...);
+}
+
 template<typename T, typename U>
 inline T clamp(U v, T lo, T hi) {
 	assert(lo <= hi);
@@ -31,11 +49,11 @@ inline T clamp(U v, T lo, T hi) {
 		return hi;
 	return (T) v;
 }
-template<> inline float clamp<float>(float v, float lo, float hi) {
+template<> inline float clamp<float, float>(float v, float lo, float hi) {
 	assert(!(lo > hi)); // nan ok
 	return std::min(std::max(v, lo), hi);
 }
-template<> inline double clamp<double>(double v, double lo, double hi) {
+template<> inline double clamp<double, double>(double v, double lo, double hi) {
 	assert(!(lo > hi)); // nan ok
 	return std::min(std::max(v, lo), hi);
 }
