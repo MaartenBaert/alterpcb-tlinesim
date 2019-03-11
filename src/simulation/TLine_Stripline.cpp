@@ -37,19 +37,21 @@ void TLine_Stripline_Single(TLineContext &context) {
 	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
 	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
+	bool reverse_buildup = root.GetMember("reverse_buildup").AsBool();
 
+	real_t substrate_thickness_total = substrate_thickness_1 + substrate_thickness_2;
 	real_t space_x = (track_width + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track_box = {
 		-0.5 * track_width,
 		0.5 * track_width,
-		substrate_thickness_2,
-		substrate_thickness_2 + track_thickness,
+		substrate_thickness_2 - ((reverse_buildup)? track_thickness : 0.0),
+		substrate_thickness_2 + ((reverse_buildup)? 0.0 : track_thickness),
 	};
 	Box2D world_box = {
 		track_box.x1 - space_x,
 		track_box.x2 + space_x,
 		0.0,
-		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+		substrate_thickness_total,
 	};
 	Box2D world_focus = {
 		track_box.x1,
@@ -72,19 +74,20 @@ void TLine_Stripline_Single(TLineContext &context) {
 	Box2D substrate1_box = {
 		world_box.x1,
 		world_box.x2,
-		substrate_thickness_2 + track_thickness * 0.5,
-		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+		substrate_thickness_2,
+		substrate_thickness_total,
 	};
 	Box2D substrate2_box = {
 		world_box.x1,
 		world_box.x2,
 		0.0,
-		substrate_thickness_2 + track_thickness * 0.5,
+		substrate_thickness_2,
 	};
 
-	real_t step0 = REAL_MAX, step1 = std::min(substrate_thickness_1, substrate_thickness_2) * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t critical_dimension = vmin(track_width, substrate_thickness_1, substrate_thickness_2);
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_thickness_1, substrate_thickness_2) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -115,20 +118,22 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	const MaterialDielectric *substrate_material_1 = FindDielectric(root, "substrate_material_1", context.m_material_database);
 	real_t substrate_thickness_2 = root.GetMember("substrate_thickness_2").AsFloat() * 1e-3;
 	const MaterialDielectric *substrate_material_2 = FindDielectric(root, "substrate_material_2", context.m_material_database);
+	bool reverse_buildup = root.GetMember("reverse_buildup").AsBool();
 
+	real_t substrate_thickness_total = substrate_thickness_1 + substrate_thickness_2;
 	real_t space_x = (track_width * 2 + track_spacing + track_thickness + substrate_thickness_1 + substrate_thickness_2) * 10.0;
 	Box2D track1_box = {
 		-0.5 * track_spacing - track_width,
 		-0.5 * track_spacing,
-		substrate_thickness_2,
-		substrate_thickness_2 + track_thickness,
+		substrate_thickness_2 - ((reverse_buildup)? track_thickness : 0.0),
+		substrate_thickness_2 + ((reverse_buildup)? 0.0 : track_thickness),
 	};
 	Box2D track2_box = track1_box.MirroredX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
 		track2_box.x2 + space_x,
 		0.0,
-		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+		substrate_thickness_total,
 	};
 	Box2D world_focus = {
 		track1_box.x1,
@@ -151,19 +156,20 @@ void TLine_Stripline_Differential(TLineContext &context) {
 	Box2D substrate1_box = {
 		world_box.x1,
 		world_box.x2,
-		substrate_thickness_2 + track_thickness * 0.5,
-		substrate_thickness_2 + track_thickness + substrate_thickness_1,
+		substrate_thickness_2,
+		substrate_thickness_total,
 	};
 	Box2D substrate2_box = {
 		world_box.x1,
 		world_box.x2,
 		0.0,
-		substrate_thickness_2 + track_thickness * 0.5,
+		substrate_thickness_2,
 	};
 
-	real_t step0 = REAL_MAX, step1 = std::min(track_spacing, std::min(substrate_thickness_1, substrate_thickness_2)) * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness_1, substrate_thickness_2);
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, std::min(substrate_thickness_1, substrate_thickness_2) * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -203,7 +209,8 @@ void RegisterTLine_Stripline() {
 		{
 			{"Track Width"          , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
 			{"Track Thickness"      , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
-			{"Track Material"       , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
+			{"Track Material"       , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 0},
+			{"Reverse Buildup"      , TLINE_PARAMETERTYPE_BOOL               , false                      , false, 1},
 			{"Substrate Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
 			{"Substrate Material 1" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
 			{"Substrate Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
@@ -220,10 +227,11 @@ void RegisterTLine_Stripline() {
 		"Ground vias should be placed on both sides of the tracks at regular intervals (less than 1/10th of the wavelength) to ensure correct behavior. "
 		"Isolation can be improved by adding more vias.",
 		{
-			{"Track Width"        , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
-			{"Track Spacing"      , TLINE_PARAMETERTYPE_REAL               , default_track_spacing      , true , 0},
-			{"Track Thickness"    , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
-			{"Track Material"     , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 1},
+			{"Track Width"          , TLINE_PARAMETERTYPE_REAL               , default_track_width        , true , 0},
+			{"Track Spacing"        , TLINE_PARAMETERTYPE_REAL               , default_track_spacing      , true , 0},
+			{"Track Thickness"      , TLINE_PARAMETERTYPE_REAL               , default_track_thickness    , true , 0},
+			{"Track Material"       , TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR , default_track_material     , false, 0},
+			{"Reverse Buildup"      , TLINE_PARAMETERTYPE_BOOL               , false                      , false, 1},
 			{"Substrate Thickness 1", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
 			{"Substrate Material 1" , TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC, default_substrate_material , false, 1},
 			{"Substrate Thickness 2", TLINE_PARAMETERTYPE_REAL               , default_substrate_thickness, true , 0},
