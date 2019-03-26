@@ -318,7 +318,7 @@ void MainWindow::LoadMaterials() {
 		m_material_database->Finish();
 	}
 	catch(const std::runtime_error &e) {
-		statusBar()->showMessage(QString("Error: Could not load material database: ") + e.what());
+		QMessageBox::critical(this, WINDOW_CAPTION, QString("Error: Could not load material database: ") + e.what(), QMessageBox::Ok);
 		return;
 	}
 }

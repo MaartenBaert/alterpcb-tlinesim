@@ -35,6 +35,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <QApplication>
 #include <QFileDialog>
 #include <QMainWindow>
+#include <QMessageBox>
 #include <QProgressDialog>
 
 #include <QButtonGroup>
