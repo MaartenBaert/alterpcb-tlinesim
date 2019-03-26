@@ -22,6 +22,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AboutDialog.h"
 #include "Basics.h"
+#include "FixedScrollArea.h"
 #include "VData.h"
 #include "Qt.h"
 
@@ -51,7 +52,7 @@ private:
 	QComboBox *m_combobox_tline_types;
 	QPlainTextEdit *m_textedit_description;
 
-	QScrollArea *m_scrollarea_parameters;
+	FixedScrollArea *m_scrollarea_parameters;
 	std::vector<QWidget*> m_widget_parameters;
 
 	QComboBox *m_combobox_simulation_type;
@@ -77,7 +78,7 @@ private:
 	QComboBox *m_combobox_parameter_tune_parameter, *m_combobox_parameter_tune_target_result;
 	QLineEdit *m_lineedit_parameter_tune_target_value;
 
-	QScrollArea *m_scrollarea_results;
+	FixedScrollArea *m_scrollarea_results;
 	std::vector<QLineEdit*> m_lineedit_results;
 
 	MeshViewer *m_meshviewer;

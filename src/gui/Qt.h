@@ -52,6 +52,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QStatusBar>
 #include <QTextBrowser>
 

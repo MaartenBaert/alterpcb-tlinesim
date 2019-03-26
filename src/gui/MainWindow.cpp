@@ -85,7 +85,7 @@ MainWindow::MainWindow() {
 	}
 	QGroupBox *groupbox_parameters = new QGroupBox("Parameters", this);
 	{
-		m_scrollarea_parameters = new QScrollArea(groupbox_parameters);
+		m_scrollarea_parameters = new FixedScrollArea(groupbox_parameters);
 		m_scrollarea_parameters->setWidgetResizable(true);
 		m_scrollarea_parameters->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 		m_scrollarea_parameters->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -211,7 +211,7 @@ MainWindow::MainWindow() {
 	}
 	QGroupBox *groupbox_results = new QGroupBox("Results", this);
 	{
-		m_scrollarea_results = new QScrollArea(groupbox_results);
+		m_scrollarea_results = new FixedScrollArea(groupbox_results);
 		m_scrollarea_results->setWidgetResizable(true);
 		m_scrollarea_results->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 		m_scrollarea_results->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
@@ -268,15 +268,19 @@ MainWindow::MainWindow() {
 	}
 
 	QHBoxLayout *layout = new QHBoxLayout(centralwidget);
-	layout->addWidget(groupbox_viewer, 1);
 	{
 		QVBoxLayout *layout2 = new QVBoxLayout();
 		layout->addLayout(layout2);
 		layout2->addWidget(groupbox_type);
 		layout2->addWidget(groupbox_parameters, 1);
+	}
+	{
+		QVBoxLayout *layout2 = new QVBoxLayout();
+		layout->addLayout(layout2);
 		layout2->addWidget(groupbox_simulation);
 		layout2->addWidget(groupbox_results, 1);
 	}
+	layout->addWidget(groupbox_viewer, 1);
 
 	{
 		setStatusBar(new QStatusBar(this));
@@ -296,7 +300,7 @@ MainWindow::MainWindow() {
 	OnMeshOverlayChange();
 	OnModeChange();
 
-	show();
+	showMaximized();
 
 }
 

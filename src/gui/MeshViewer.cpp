@@ -81,7 +81,7 @@ QSize MeshViewer::minimumSizeHint() const {
 }
 
 QSize MeshViewer::sizeHint() const {
-	return QSize(800, 800);
+	return QSize(500, 500);
 }
 
 void MeshViewer::paintEvent(QPaintEvent* event) {

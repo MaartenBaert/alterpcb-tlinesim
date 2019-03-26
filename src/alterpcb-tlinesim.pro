@@ -38,6 +38,7 @@ HEADERS += \
 	common/Vector.h \
 	gui/AboutDialog.h \
 	gui/ApplicationDirs.h \
+	gui/FixedScrollArea.h \
 	gui/GlobalDirs.h \
 	gui/Icons.h \
 	gui/LayoutHelper.h \
@@ -68,6 +69,7 @@ SOURCES += \
 	common/VData.cpp \
 	gui/AboutDialog.cpp \
 	gui/ApplicationDirs.cpp \
+	gui/FixedScrollArea.cpp \
 	gui/Icons.cpp \
 	gui/MainWindow.cpp \
 	gui/MeshViewer.cpp \
