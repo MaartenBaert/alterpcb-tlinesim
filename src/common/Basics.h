@@ -48,7 +48,3 @@ static_assert(sizeof(void*) == sizeof(size_t), "Size of size_t does not match po
 static_assert(sizeof(void*) == sizeof(ptrdiff_t), "Size of ptrdiff_t does not match pointer size!");
 
 #define UNUSED(x) ((void) (x))
-
-#if defined(__GNUC__) && !defined(__clang__)
-#define MAY_ALIAS __attribute((__may_alias__))
-#endif
