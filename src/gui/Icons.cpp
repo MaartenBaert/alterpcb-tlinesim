@@ -34,6 +34,6 @@ void LoadIcons() {
 	}
 	QString icondir = g_application_data_dir + "/icons";
 
-	g_icon_simulation = QIcon(icondir + "/icon-simulation.png");
+	g_icon_simulation = QIcon(icondir + "/icon-simulation.svg");
 
 }

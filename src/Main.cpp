@@ -34,10 +34,9 @@ int main(int argc, char* argv[]) {
 
 	// create application
 	QApplication app(argc, argv);
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-	QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
-	QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
-#endif
+	QCoreApplication::setOrganizationName("AlterPCB");
+	QCoreApplication::setApplicationName("AlterPCB Transmission Line Simulator");
+	QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
 	InitApplicationDirs();
 	LoadIcons();

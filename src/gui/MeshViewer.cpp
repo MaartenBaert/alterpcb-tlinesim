@@ -88,12 +88,15 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	Q_UNUSED(event);
 	QPainter painter(this);
 
-	int w = width(), h = height();
-	if(w <= 0 || h <= 0)
+	// get size
+	qreal fw = (qreal) width() * devicePixelRatioF();
+	qreal fh = (qreal) height() * devicePixelRatioF();
+	int iw = rinti(ceil(fw)), ih = rinti(ceil(fh));
+	if(iw <= 0 || ih <= 0)
 		return;
 
 	// background
-	painter.fillRect(0, 0, w, h, QColor(64, 64, 64));
+	painter.fillRect(0, 0, width(), height(), QColor(64, 64, 64));
 
 	if(m_mesh == NULL)
 		return;
@@ -109,8 +112,8 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	real_t scale = exp10(-m_zoom);
 
 	// calculate view
-	Box2D view_box = AdjustAspectRatio(world_box, (real_t) w, (real_t) h);
-	Box2D view_focus = AdjustAspectRatio(world_focus, (real_t) w, (real_t) h);
+	Box2D view_box = AdjustAspectRatio(world_box, (real_t) fw, (real_t) fh);
+	Box2D view_focus = AdjustAspectRatio(world_focus, (real_t) fw, (real_t) fh);
 	Box2D view = {
 		view_focus.x1 + (view_box.x1 - view_focus.x1) * scale,
 		view_focus.x2 + (view_box.x2 - view_focus.x2) * scale,
@@ -122,18 +125,21 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	// get image data
 	std::vector<real_t> image_value;
 	std::vector<Vector2D> image_gradient;
-	m_mesh->GetImage2D(image_value, image_gradient, (size_t) w, (size_t) h, view, m_image_type, m_mode);
+	m_mesh->GetImage2D(image_value, image_gradient, (size_t) iw, (size_t) ih, view, m_image_type, m_mode);
 
-	// convert to image
-	QImage image(w, h, QImage::Format_RGB32);
+	// create image
+	QImage image(iw, ih, QImage::Format_RGB32);
+	image.setDevicePixelRatio(devicePixelRatioF());
+
+	// generate image
 	if(m_image_type == MESHIMAGETYPE_MESH) {
 
 		// color plot
 		const ColorMap &cmap = COLORMAP_GRAYSCALE;
-		for(size_t j = 0; j < (size_t) h; ++j) {
+		for(size_t j = 0; j < (size_t) ih; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * (size_t) w;
-			for(size_t i = 0; i < (size_t) w; ++i) {
+			real_t *row_value = image_value.data() + j * (size_t) iw;
+			for(size_t i = 0; i < (size_t) iw; ++i) {
 				row[i] = cmap(row_value[i]).ToUint32();
 			}
 		}
@@ -144,18 +150,18 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 		std::vector<real_t> image_mesh_value;
 		std::vector<Vector2D> image_mesh_gradient;
 		if(m_mesh_overlay) {
-			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) w, (size_t) h, view, MESHIMAGETYPE_MESH, m_mode);
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) iw, (size_t) ih, view, MESHIMAGETYPE_MESH, m_mode);
 		}
 
 		// color + contour plot
-		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
+		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) fw;
 		const ColorMap &cmap = COLORMAP_MAGMA;
-		for(size_t j = 0; j < (size_t) h; ++j) {
+		for(size_t j = 0; j < (size_t) ih; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * (size_t) w;
-			Vector2D *row_gradient = image_gradient.data() + j * (size_t) w;
-			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) w;
-			for(size_t i = 0; i < (size_t) w; ++i) {
+			real_t *row_value = image_value.data() + j * (size_t) iw;
+			Vector2D *row_gradient = image_gradient.data() + j * (size_t) iw;
+			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) iw;
+			for(size_t i = 0; i < (size_t) iw; ++i) {
 				real_t value = row_value[i];
 				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contour_scale;
 				real_t temp = value * contours + 0.5;
@@ -175,19 +181,19 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 		std::vector<real_t> image_mesh_value;
 		std::vector<Vector2D> image_mesh_gradient;
 		if(m_mesh_overlay) {
-			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) w, (size_t) h, view, MESHIMAGETYPE_MESH, m_mode);
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) iw, (size_t) ih, view, MESHIMAGETYPE_MESH, m_mode);
 		}
 
 		// color + contour plot
 		real_t log_scale = 1.0 / log(1e4);
-		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) w;
+		real_t contours = 20.0, contour_scale = contours * (view.x2 - view.x1) / (real_t) fw;
 		const ColorMap &cmap = COLORMAP_MAGMA;
-		for(size_t j = 0; j < (size_t) h; ++j) {
+		for(size_t j = 0; j < (size_t) ih; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * (size_t) w;
-			Vector2D *row_gradient = image_gradient.data() + j * (size_t) w;
-			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) w;
-			for(size_t i = 0; i < (size_t) w; ++i) {
+			real_t *row_value = image_value.data() + j * (size_t) iw;
+			Vector2D *row_gradient = image_gradient.data() + j * (size_t) iw;
+			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) iw;
+			for(size_t i = 0; i < (size_t) iw; ++i) {
 				real_t value = log(fabs(row_value[i])) * log_scale + 1.0;
 				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
 				real_t temp = value * contours + 0.5;
@@ -207,17 +213,17 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 		std::vector<real_t> image_mesh_value;
 		std::vector<Vector2D> image_mesh_gradient;
 		if(m_mesh_overlay) {
-			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) w, (size_t) h, view, MESHIMAGETYPE_MESH, m_mode);
+			m_mesh->GetImage2D(image_mesh_value, image_mesh_gradient, (size_t) iw, (size_t) ih, view, MESHIMAGETYPE_MESH, m_mode);
 		}
 
 		// color plot
 		real_t log_scale = 1.0 / log(1e4);
 		const ColorMap &cmap = COLORMAP_MAGMA;
-		for(size_t j = 0; j < (size_t) h; ++j) {
+		for(size_t j = 0; j < (size_t) ih; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * (size_t) w;
-			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) w;
-			for(size_t i = 0; i < (size_t) w; ++i) {
+			real_t *row_value = image_value.data() + j * (size_t) iw;
+			real_t *row_mesh_value = image_mesh_value.data() + j * (size_t) iw;
+			for(size_t i = 0; i < (size_t) iw; ++i) {
 				real_t value = row_value[i];
 				Color plot_color = cmap(log(fabs(value)) * log_scale + 1.0);
 				if(m_mesh_overlay) {
@@ -230,10 +236,10 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 	}
 
 	// draw image
-	int cut_x1 = clamp<int>(rinti((real_t) w * (world_box.x1 - view.x1) / (view.x2 - view.x1)), 0, w);
-	int cut_x2 = clamp<int>(rinti((real_t) w * (world_box.x2 - view.x1) / (view.x2 - view.x1)), 0, w);
-	int cut_y1 = clamp<int>(rinti((real_t) h * (world_box.y2 - view.y1) / (view.y2 - view.y1)), 0, h);
-	int cut_y2 = clamp<int>(rinti((real_t) h * (world_box.y1 - view.y1) / (view.y2 - view.y1)), 0, h);
-	painter.drawImage(cut_x1, cut_y1, image, cut_x1, cut_y1, cut_x2 - cut_x1, cut_y2 - cut_y1);
+	qreal cut_x1 = fw * clamp<qreal>((world_box.x1 - view.x1) / (view.x2 - view.x1), 0.0, 1.0);
+	qreal cut_x2 = fw * clamp<qreal>((world_box.x2 - view.x1) / (view.x2 - view.x1), 0.0, 1.0);
+	qreal cut_y1 = fh * clamp<qreal>((world_box.y2 - view.y1) / (view.y2 - view.y1), 0.0, 1.0);
+	qreal cut_y2 = fh * clamp<qreal>((world_box.y1 - view.y1) / (view.y2 - view.y1), 0.0, 1.0);
+	painter.drawImage(QPointF(cut_x1, cut_y1), image, QRectF(cut_x1, cut_y1, cut_x2 - cut_x1, cut_y2 - cut_y1));
 
 }
