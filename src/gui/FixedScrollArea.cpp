@@ -41,7 +41,11 @@ QSize FixedScrollArea::sizeHint() const {
 		sz.setWidth(sz.width() + verticalScrollBar()->sizeHint().width());
 	if(horizontalScrollBarPolicy() == Qt::ScrollBarAlwaysOn)
 		sz.setHeight(sz.height() + horizontalScrollBar()->sizeHint().height());
-	return sz.boundedTo(QSize(36 * h, 24 * h));
+	if(verticalScrollBarPolicy() != Qt::ScrollBarAlwaysOff)
+		sz.setWidth(qMin(sz.width(), 36 * h));
+	if(horizontalScrollBarPolicy() != Qt::ScrollBarAlwaysOff)
+		sz.setHeight(qMin(sz.height(), 24 * h));
+	return sz;
 }
 
 QSize FixedScrollArea::minimumSizeHint() const {
@@ -57,5 +61,9 @@ QSize FixedScrollArea::minimumSizeHint() const {
 		sz.setWidth(sz.width() + verticalScrollBar()->sizeHint().width());
 	if(horizontalScrollBarPolicy() == Qt::ScrollBarAlwaysOn)
 		sz.setHeight(sz.height() + horizontalScrollBar()->sizeHint().height());
-	return sz.boundedTo(QSize(36 * h, 24 * h));
+	if(verticalScrollBarPolicy() != Qt::ScrollBarAlwaysOff)
+		sz.setWidth(qMin(sz.width(), 36 * h));
+	if(horizontalScrollBarPolicy() != Qt::ScrollBarAlwaysOff)
+		sz.setHeight(qMin(sz.height(), 24 * h));
+	return sz;
 }
