@@ -74,7 +74,7 @@ MainWindow::MainWindow() {
 			m_combobox_tline_types->addItem(QString::fromStdString(type.m_name));
 		}
 		m_textedit_description = new QPlainTextEdit(groupbox_type);
-		m_textedit_description->setFixedHeight(80);
+		m_textedit_description->setFixedHeight(fontMetrics().height() * 5);
 		m_textedit_description->setReadOnly(true);
 
 		connect(m_combobox_tline_types, SIGNAL(currentIndexChanged(int)), this, SLOT(OnUpdateTLineType()));
@@ -240,7 +240,7 @@ MainWindow::MainWindow() {
 		m_checkbox_mesh_overlay->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
 		m_combobox_modes = new QComboBox(groupbox_viewer);
-		m_combobox_modes->setMinimumWidth(120);
+		m_combobox_modes->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 
 		connect(m_slider_zoom, SIGNAL(valueChanged(int)), this, SLOT(OnZoomChange()));
 		connect(m_combobox_image_type, SIGNAL(activated(int)), this, SLOT(OnImageTypeChange()));
