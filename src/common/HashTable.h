@@ -154,7 +154,7 @@ public:
 			hash2 = Hash2(key);
 		}
 		m_data.emplace_back(std::forward<Args>(args)...);
-		size_t res = (size_t) (m_data.size() - 1);
+		size_t res = m_data.size() - 1;
 		AddHash(hash1, hash2, res);
 		return std::make_pair(res, true);
 	}
@@ -179,7 +179,7 @@ public:
 	size_t EmplaceBack(Args&&... args) {
 		MaybeRehash();
 		m_data.emplace_back(std::forward<Args>(args)...);
-		size_t res = (size_t) (m_data.size() - 1);
+		size_t res = m_data.size() - 1;
 		AddHash(Hash1(m_data[res]), Hash2(m_data[res]), res);
 		return res;
 	}
@@ -248,7 +248,7 @@ private:
 
 public:
 	inline size_t GetSize() const {
-		return (size_t) m_data.size();
+		return m_data.size();
 	}
 	inline T& operator[](size_t i) {
 		assert(i < m_data.size());
