@@ -63,6 +63,7 @@ struct TLineParameter {
 struct TLineContext {
 	MaterialDatabase *m_material_database;
 	std::vector<real_t> m_frequencies;
+	real_t m_mesh_detail;
 	VData::Dict m_parameters;
 	std::vector<real_t> m_results;
 	std::unique_ptr<GenericMesh> m_output_mesh;

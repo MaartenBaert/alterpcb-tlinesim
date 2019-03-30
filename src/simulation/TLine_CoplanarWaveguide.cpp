@@ -105,9 +105,9 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, ground_spacing, substrate_thickness);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -217,9 +217,9 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, ground_spacing, substrate_thickness);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);

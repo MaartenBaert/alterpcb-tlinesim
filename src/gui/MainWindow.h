@@ -42,6 +42,17 @@ private:
 		SIMULATION_COUNT, // must be last
 	};
 
+	enum MeshDetail {
+		MESHDETAIL_VERYLOW,
+		MESHDETAIL_LOWER,
+		MESHDETAIL_LOW,
+		MESHDETAIL_MEDIUM,
+		MESHDETAIL_HIGH,
+		MESHDETAIL_HIGHER,
+		MESHDETAIL_VERYHIGH,
+		MESHDETAIL_COUNT, // must be last
+	};
+
 private:
 	static const QString WINDOW_CAPTION;
 
@@ -77,6 +88,8 @@ private:
 	QLabel *m_label_parameter_tune[3];
 	QComboBox *m_combobox_parameter_tune_parameter, *m_combobox_parameter_tune_target_result;
 	QLineEdit *m_lineedit_parameter_tune_target_value;
+
+	QComboBox *m_combobox_mesh_detail;
 
 	FixedScrollArea *m_scrollarea_results;
 	std::vector<QLineEdit*> m_lineedit_results;

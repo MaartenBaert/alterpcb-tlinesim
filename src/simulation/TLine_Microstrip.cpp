@@ -85,9 +85,9 @@ void TLine_Microstrip_Single(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -174,9 +174,9 @@ void TLine_Microstrip_Single_TwoSubstrates(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness_1, substrate_thickness_2);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -258,9 +258,9 @@ void TLine_Microstrip_Single_Buried(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness_2);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -346,9 +346,9 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -447,9 +447,9 @@ void TLine_Microstrip_Differential_TwoSubstrates(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness_1, substrate_thickness_2);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -537,9 +537,9 @@ void TLine_Microstrip_Differential_Buried(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness_2);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
 	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
@@ -641,9 +641,9 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 	};
 
 	real_t critical_dimension = vmin(track_width_1, track_width_2, track_spacing, substrate_thickness);
-	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP;
+	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 	//mesh->SetPML(pml_box, Box2D(space, space, REAL_MAX, space), 1.0);
 
 	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
