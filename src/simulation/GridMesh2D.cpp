@@ -31,7 +31,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 
 #define SIMULATION_VERBOSE 1
-#define SIMULATION_SAVE_MATRIXMARKET 1
+#define SIMULATION_SAVE_MATRIXMARKET 0
 
 template<class EigenSparseMatrix>
 void EigenSparseFree(EigenSparseMatrix &matrix) {
