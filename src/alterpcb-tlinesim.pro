@@ -8,7 +8,6 @@ TARGET = alterpcb-tlinesim
 TEMPLATE = app
 
 DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
-LIBS += -lcholmod
 
 QMAKE_CXXFLAGS += -std=c++11 -Wconversion -Wsign-conversion -Wfloat-conversion
 QMAKE_CXXFLAGS_RELEASE -= -O2 -g
@@ -47,7 +46,6 @@ HEADERS += \
 	gui/QLineEditSmall.h \
 	gui/QProgressDialogThreaded.h \
 	gui/Qt.h \
-	simulation/CholmodSolver.h \
 	simulation/Eigen.h \
 	simulation/EigenSparse.h \
 	simulation/FindRoot.h \
@@ -75,7 +73,6 @@ SOURCES += \
 	gui/MeshViewer.cpp \
 	gui/QLineEditSmall.cpp \
 	gui/QProgressDialogThreaded.cpp \
-	simulation/CholmodSolver.cpp \
 	simulation/GenericMesh.cpp \
 	simulation/GridMesh2D.cpp \
 	simulation/MaterialDatabase.cpp \
