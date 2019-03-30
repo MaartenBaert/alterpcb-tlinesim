@@ -96,7 +96,7 @@ GridMesh2D::GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t 
 	m_pml_box = m_world_box;
 	m_pml_step = Box2D(REAL_MAX, REAL_MAX, REAL_MAX, REAL_MAX);
 	m_pml_attenuation = 0.0;
-	m_vars_real = 0;
+	m_vars_free = 0;
 	m_vars_fixed = 0;
 	m_vars_surf = 0;
 }
@@ -308,7 +308,7 @@ void GridMesh2D::DoInitialize() {
 			  << " grid=" << m_grid_x.size() << "x" << m_grid_y.size()
 			  << " nodes=" << m_nodes.size()
 			  << " cells=" << m_cells.size()
-			  << " vars=" << m_vars_real << "+" << m_vars_fixed
+			  << " vars=" << m_vars_free << "+" << m_vars_fixed
 			  << std::endl;
 	std::cerr << "GridMesh2D init time:"
 			  << " grid=" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us"
@@ -466,7 +466,7 @@ void GridMesh2D::InitVariables() {
 				break;
 			}
 			case PORTTYPE_FLOATING: {
-				port.m_var = m_vars_real++;
+				port.m_var = m_vars_free++;
 				break;
 			}
 		}
@@ -477,7 +477,7 @@ void GridMesh2D::InitVariables() {
 		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 			Node &node = GetNode(ix, iy);
 			if(node.m_port == INDEX_NONE) {
-				node.m_var = m_vars_real++;
+				node.m_var = m_vars_free++;
 			} else {
 				node.m_var = m_ports[node.m_port].m_var;
 			}
@@ -511,7 +511,7 @@ void GridMesh2D::InitVariables() {
 	}
 
 	// avoid problems later
-	if(m_vars_real == 0)
+	if(m_vars_free == 0)
 		throw std::runtime_error("GridMesh2D error: The mesh has no free variables.");
 	if(m_vars_fixed == 0)
 		throw std::runtime_error("GridMesh2D error: The mesh has no fixed variables.");
@@ -549,9 +549,9 @@ void GridMesh2D::BuildMatrices() {
 	SparseBlockMatrixCSL<complex_t> matrix_epot, matrix_mpot;
 	SparseBlockMatrixC<real_t> matrix_surf_resid;
 	SparseMatrixCSL<real_t> matrix_surf_curr, matrix_surf_loss;
-	matrix_epot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
-	matrix_mpot.Reset(m_vars_real, m_vars_fixed, m_vars_real, m_vars_fixed, 5);
-	matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_real, m_vars_fixed, 5);
+	matrix_epot.Reset(m_vars_free, m_vars_fixed, m_vars_free, m_vars_fixed, 5);
+	matrix_mpot.Reset(m_vars_free, m_vars_fixed, m_vars_free, m_vars_fixed, 5);
+	matrix_surf_resid.Reset(m_vars_surf, 0, m_vars_free, m_vars_fixed, 5);
 	matrix_surf_curr.Reset(m_vars_surf, m_vars_surf, 2);
 	matrix_surf_loss.Reset(m_vars_surf, m_vars_surf, 2);
 

@@ -93,7 +93,7 @@ private:
 	std::vector<Node> m_nodes;
 	std::vector<Edge> m_edges_h, m_edges_v;
 	std::vector<Cell> m_cells;
-	size_t m_vars_real, m_vars_fixed, m_vars_surf;
+	size_t m_vars_free, m_vars_fixed, m_vars_surf;
 
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
