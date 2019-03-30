@@ -35,6 +35,8 @@ std::string GetVersionInfo() {
 	ss << "Compiled with MinGW " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << "\n";
 #elif defined(__GNUC__)
 	ss << "Compiled with GCC " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << "\n";
+#elif defined(_MSC_VER)
+	ss << "Compiled with MSVC " << _MSC_VER << " (" << _MSC_FULL_VER << "." << _MSC_BUILD << ")\n";
 #else
 	ss << "Compiled with unknown compiler.\n";
 #endif
