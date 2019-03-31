@@ -42,8 +42,9 @@ public:
 private:
 	struct Port {
 		PortType m_type;
+		bool m_infinite_area;
 		size_t m_var;
-		inline Port(PortType type) : m_type(type), m_var(INDEX_NONE) {}
+		inline Port(PortType type, bool infinite_area) : m_type(type), m_infinite_area(infinite_area), m_var(INDEX_NONE) {}
 	};
 	struct Conductor {
 		Box2D m_box, m_step;
@@ -97,6 +98,7 @@ private:
 
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
+	Eigen::VectorXr m_vector_dc_resistances;
 	Eigen::SparseMatrix<complex_t> m_matrix_epot[3], m_matrix_mpot[3];
 	Eigen::SparseMatrix<real_t> m_matrix_surf_resid[2], m_matrix_surf_curr, m_matrix_surf_loss;
 
@@ -115,7 +117,7 @@ public:
 	void SetPML(const Box2D &box, real_t step, real_t attenuation);
 	void SetPML(const Box2D &box, const Box2D &step, real_t attenuation);
 
-	size_t AddPort(PortType type);
+	size_t AddPort(PortType type, bool infinite_area);
 	void AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, size_t port);
 	void AddConductor(const Box2D &box, const Box2D &step, const MaterialConductor *material, size_t port);
 	void AddDielectric(const Box2D &box, real_t step, const MaterialDielectric *material);

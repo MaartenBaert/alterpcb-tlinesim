@@ -115,10 +115,10 @@ void GridMesh2D::SetPML(const Box2D &box, const Box2D &step, real_t attenuation)
 	m_pml_attenuation = attenuation;
 }
 
-size_t GridMesh2D::AddPort(GridMesh2D::PortType type) {
+size_t GridMesh2D::AddPort(GridMesh2D::PortType type, bool infinite_area) {
 	if(IsInitialized())
 		throw std::runtime_error("GridMesh2D error: Can't add port after initialization.");
-	m_ports.emplace_back(type);
+	m_ports.emplace_back(type, infinite_area);
 	return m_ports.size() - 1;
 }
 
@@ -546,6 +546,7 @@ void GridMesh2D::BuildMatrices() {
 	complex_t pml_mult_y2 = m_pml_attenuation / ((m_world_box.y2 - m_pml_box.y2) * complex_t(1.0, -2.0 * GetFrequency() * (m_world_box.y2 - m_pml_box.y2) / SPEED_OF_LIGHT));
 
 	// allocate matrices
+	std::vector<real_t> port_dc_conductances(m_ports.size(), 0.0);
 	SparseBlockMatrixCSL<complex_t> matrix_epot, matrix_mpot;
 	SparseBlockMatrixC<real_t> matrix_surf_resid;
 	SparseMatrixCSL<real_t> matrix_surf_curr, matrix_surf_loss;
@@ -559,20 +560,26 @@ void GridMesh2D::BuildMatrices() {
 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 
-			// get cell, skip cells that are inside conductors
+			// get cell
 			Cell &cell = GetCell(ix, iy);
-			if(cell.m_conductor != INDEX_NONE)
+
+			// get cell size
+			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+
+			// skip cells that are inside conductors
+			if(cell.m_conductor != INDEX_NONE) {
+				size_t port = m_conductors[cell.m_conductor].m_port;
+				real_t conductivity = m_conductor_properties[cell.m_conductor].m_conductivity;
+				port_dc_conductances[port] += conductivity * delta_x * delta_y;
 				continue;
+			}
 
 			// get neighboring nodes
 			Node &node00 = GetNode(ix    , iy    );
 			Node &node01 = GetNode(ix + 1, iy    );
 			Node &node10 = GetNode(ix    , iy + 1);
 			Node &node11 = GetNode(ix + 1, iy + 1);
-
-			// get cell size
-			real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-			real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
 
 			// get dielectric properties
 			complex_t permittivity_x(VACUUM_PERMITTIVITY, 0.0), permittivity_y(VACUUM_PERMITTIVITY, 0.0);
@@ -663,6 +670,15 @@ void GridMesh2D::BuildMatrices() {
 		}
 	}
 
+	// convert port DC conductance to resistance
+	m_vector_dc_resistances.resize((Eigen::Index) m_vars_fixed);
+	for(size_t i = 0; i < m_ports.size(); ++i) {
+		size_t var = m_ports[i].m_var;
+		if(var >= INDEX_OFFSET) {
+			m_vector_dc_resistances[(Eigen::Index) (var - INDEX_OFFSET)] = (m_ports[i].m_infinite_area)? 0.0 : 1.0 / port_dc_conductances[i];
+		}
+	}
+
 	// convert to Eigen sparse matrices
 	matrix_epot.GetMatrixA().ToEigen(m_matrix_epot[0]);
 	matrix_epot.GetMatrixBC().ToEigen(m_matrix_epot[1]);
@@ -712,8 +728,10 @@ void GridMesh2D::SolveMatrices() {
 	m_eigen_solution_mpot = m_eigen_chol.solve(m_eigen_rhs);
 
 	// calculate residuals
-	Eigen::MatrixXr charge_matrix = GetModes().transpose() * (m_matrix_epot[1].real() * m_eigen_solution_epot + m_matrix_epot[2].real().selfadjointView<Eigen::Lower>() * GetModes());
-	Eigen::MatrixXr current_matrix = GetModes().transpose() * (m_matrix_mpot[1].real() * m_eigen_solution_mpot + m_matrix_mpot[2].real().selfadjointView<Eigen::Lower>() * GetModes());
+	Eigen::MatrixXr residual_epot = m_matrix_epot[1].real() * m_eigen_solution_epot + m_matrix_epot[2].real().selfadjointView<Eigen::Lower>() * GetModes();
+	Eigen::MatrixXr residual_mpot = m_matrix_mpot[1].real() * m_eigen_solution_mpot + m_matrix_mpot[2].real().selfadjointView<Eigen::Lower>() * GetModes();
+	Eigen::MatrixXr charge_matrix = GetModes().transpose() * residual_epot;
+	Eigen::MatrixXr current_matrix = GetModes().transpose() * residual_mpot;
 
 	// calculate losses
 	Eigen::MatrixXr electric_loss_matrix =
@@ -738,17 +756,23 @@ void GridMesh2D::SolveMatrices() {
 	// calculate surface losses
 	Eigen::MatrixXr surface_loss_matrix = m_eigen_solution_surf.transpose() * m_matrix_surf_loss.selfadjointView<Eigen::Lower>() * m_eigen_solution_surf;
 
+	// calculate DC losses and combine with surface losses
+	Eigen::MatrixXr dc_loss_matrix = residual_mpot.transpose() * m_vector_dc_resistances.asDiagonal() * residual_mpot;
+	Eigen::MatrixXr combined_loss_matrix = surface_loss_matrix.cwiseMax(dc_loss_matrix);
+
 	std::cerr << "charges =\n" << charge_matrix << std::endl;
 	std::cerr << "currents =\n" << current_matrix << std::endl;
 	std::cerr << "electric_loss_matrix =\n" << electric_loss_matrix << std::endl;
 	std::cerr << "magnetic_loss_matrix =\n" << magnetic_loss_matrix << std::endl;
 	std::cerr << "surface_loss_matrix =\n" << surface_loss_matrix << std::endl;
+	std::cerr << "dc_loss_matrix =\n" << dc_loss_matrix << std::endl;
+	std::cerr << "combined_loss_matrix =\n" << combined_loss_matrix << std::endl;
 	std::cerr << std::endl;
 
 	// calculate L, C, R and G
 	m_inductance_matrix = current_matrix.inverse();
 	m_capacitance_matrix = charge_matrix;
-	m_resistance_matrix = m_inductance_matrix.transpose() * (-omega * magnetic_loss_matrix + surface_loss_matrix) * m_inductance_matrix;
+	m_resistance_matrix = m_inductance_matrix.transpose() * (-omega * magnetic_loss_matrix + combined_loss_matrix) * m_inductance_matrix;
 	m_conductance_matrix = -omega * electric_loss_matrix;
 
 }

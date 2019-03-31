@@ -89,8 +89,8 @@ void TLine_Stripline_Single(TLineContext &context) {
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
 
 	mesh->AddConductor(ground1_box, step0, track_material, port_ground);
 	mesh->AddConductor(ground2_box, step0, track_material, port_ground);
@@ -171,9 +171,9 @@ void TLine_Stripline_Differential(TLineContext &context) {
 
 	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
 
 	mesh->AddConductor(ground1_box, step0, track_material, port_ground);
 	mesh->AddConductor(ground2_box, step0, track_material, port_ground);
