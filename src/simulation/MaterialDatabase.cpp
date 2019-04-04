@@ -111,7 +111,7 @@ void GetConductorProperties(MaterialConductorProperties &result, const MaterialC
 	result.m_conductivity = source->m_conductivity;
 	result.m_permeability = VACUUM_PERMEABILITY * std::min(source->m_permeability, std::max(1.0, source->m_permeability_unity_frequency / target_frequency));
 	real_t skin_depth = sqrt(1.0 / (M_PI * target_frequency * result.m_conductivity * result.m_permeability));
-	result.m_surface_resistivity = 1.0 / (result.m_conductivity * skin_depth);
+	result.m_surface_conductivity = result.m_conductivity * skin_depth;
 }
 
 void GetDielectricProperties(MaterialDielectricProperties &result, const MaterialDielectric *source, real_t target_frequency) {

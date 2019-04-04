@@ -638,7 +638,7 @@ void GridMesh2D::BuildMatrices() {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node01.m_var_surf != INDEX_NONE);
 				real_t coef_curr = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef_curr * m_conductor_properties[edgeh0.m_conductor].m_surface_resistivity;
+				real_t coef_loss = coef_curr / m_conductor_properties[edgeh0.m_conductor].m_surface_conductivity;
 				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
@@ -646,7 +646,7 @@ void GridMesh2D::BuildMatrices() {
 				assert(node10.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
 				real_t coef_curr = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef_curr * m_conductor_properties[edgeh1.m_conductor].m_surface_resistivity;
+				real_t coef_loss = coef_curr / m_conductor_properties[edgeh1.m_conductor].m_surface_conductivity;
 				BuildMatrix_Symm1(matrix_surf_curr, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
@@ -654,7 +654,7 @@ void GridMesh2D::BuildMatrices() {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node10.m_var_surf != INDEX_NONE);
 				real_t coef_curr = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef_curr * m_conductor_properties[edgev0.m_conductor].m_surface_resistivity;
+				real_t coef_loss = coef_curr / m_conductor_properties[edgev0.m_conductor].m_surface_conductivity;
 				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
@@ -662,7 +662,7 @@ void GridMesh2D::BuildMatrices() {
 				assert(node01.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
 				real_t coef_curr = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef_curr * m_conductor_properties[edgev1.m_conductor].m_surface_resistivity;
+				real_t coef_loss = coef_curr / m_conductor_properties[edgev1.m_conductor].m_surface_conductivity;
 				BuildMatrix_Symm1(matrix_surf_curr, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
