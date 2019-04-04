@@ -20,7 +20,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ApplicationDirs.h"
 #include "Basics.h"
-#include "CholmodSolver.h"
 #include "Icons.h"
 #include "MainWindow.h"
 #include "StringRegistry.h"
