@@ -1,7 +1,7 @@
 Transmission Line Solver Notes
 ==============================
 
-The solver uses the [finite element method](https://en.wikipedia.org/wiki/Finite_element_method) to solve the [macroscopic formulation of Maxwell's equations](https://en.wikipedia.org/wiki/Maxwell%27s_equations#Macroscopic_formulation) in differential form. The solver does not actually calculate the electric and magnetic field directly, instead it uses the [potential field approach](https://en.wikipedia.org/wiki/Mathematical_descriptions_of_the_electromagnetic_field#Potential_field_approach). This greatly reduces the number of unknowns and also simplifies matrix generation, especially with regard to the handling of conductors and boundary conditions.
+The solver uses the [finite element method](https://en.wikipedia.org/wiki/Finite_element_method) to solve the [macroscopic formulation of Maxwell's equations](https://en.wikipedia.org/wiki/Maxwell%27s_equations#Macroscopic_formulation) in differential form. The [Galerkin method](https://en.wikipedia.org/wiki/Galerkin_method) of [mean weighted residuals](https://en.wikipedia.org/wiki/Method_of_mean_weighted_residuals) is used to discretize the problem. The solver does not actually calculate the electric and magnetic field directly, instead it uses the [potential field approach](https://en.wikipedia.org/wiki/Mathematical_descriptions_of_the_electromagnetic_field#Potential_field_approach). This greatly reduces the number of unknowns and also simplifies matrix generation, especially with regard to the handling of conductors and boundary conditions.
 
 Limitations
 -----------
