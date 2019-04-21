@@ -48,6 +48,7 @@ HEADERS += \
 	gui/Qt.h \
 	simulation/Eigen.h \
 	simulation/EigenSparse.h \
+	simulation/FemMatrix.h \
 	simulation/FindRoot.h \
 	simulation/GenericMesh.h \
 	simulation/GridMesh2D.h \
@@ -73,6 +74,7 @@ SOURCES += \
 	gui/MeshViewer.cpp \
 	gui/QLineEditSmall.cpp \
 	gui/QProgressDialogThreaded.cpp \
+	simulation/FemMatrix.cpp \
 	simulation/GenericMesh.cpp \
 	simulation/GridMesh2D.cpp \
 	simulation/MaterialDatabase.cpp \

@@ -183,12 +183,12 @@ public:
 				entry.value = value;
 				++m_bulk_coefficients;
 				return;
-			}
 		}
-		TableEntry temp = {outer, inner, value};
-		std::pair<size_t, bool> p = m_table_data.TryPushBack(temp);
-		if(!p.second) {
-			m_table_data[p.first].value += value;
+			}
+			TableEntry temp = {outer, inner, value};
+			std::pair<size_t, bool> p = m_table_data.TryPushBack(temp);
+			if(!p.second) {
+				m_table_data[p.first].value += value;
 		}
 	}
 

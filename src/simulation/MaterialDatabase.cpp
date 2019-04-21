@@ -67,8 +67,10 @@ void MaterialDatabase::LoadFile(const std::string &filename) {
 			dielectric.GetMember("name").AsString(),
 			dielectric.GetMember("permittivity_x").AsFloat(),
 			dielectric.GetMember("permittivity_y").AsFloat(),
+			dielectric.GetMember("permittivity_z").AsFloat(),
 			dielectric.GetMember("loss_tangent_x").AsFloat(),
 			dielectric.GetMember("loss_tangent_y").AsFloat(),
+			dielectric.GetMember("loss_tangent_z").AsFloat(),
 			dielectric.GetMember("test_frequency").AsFloat(),
 		});
 	}
@@ -117,4 +119,5 @@ void GetConductorProperties(MaterialConductorProperties &result, const MaterialC
 void GetDielectricProperties(MaterialDielectricProperties &result, const MaterialDielectric *source, real_t target_frequency) {
 	result.m_permittivity_x = VACUUM_PERMITTIVITY * DjordjevicSarkar(source->m_permittivity_x, source->m_loss_tangent_x, source->m_test_frequency, target_frequency);
 	result.m_permittivity_y = VACUUM_PERMITTIVITY * DjordjevicSarkar(source->m_permittivity_y, source->m_loss_tangent_y, source->m_test_frequency, target_frequency);
+	result.m_permittivity_z = VACUUM_PERMITTIVITY * DjordjevicSarkar(source->m_permittivity_z, source->m_loss_tangent_z, source->m_test_frequency, target_frequency);
 }

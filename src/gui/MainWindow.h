@@ -89,6 +89,7 @@ private:
 	QComboBox *m_combobox_parameter_tune_parameter, *m_combobox_parameter_tune_target_result;
 	QLineEdit *m_lineedit_parameter_tune_target_value;
 
+	QComboBox *m_combobox_solver_type;
 	QComboBox *m_combobox_mesh_detail;
 
 	FixedScrollArea *m_scrollarea_results;

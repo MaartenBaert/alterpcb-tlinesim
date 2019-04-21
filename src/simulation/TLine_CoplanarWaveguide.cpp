@@ -54,7 +54,7 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
-	Box2D ground2_box = ground1_box.MirroredX();
+	Box2D ground2_box = ground1_box.MirrorX();
 	Box2D world_box = {
 		ground1_box.x1,
 		ground2_box.x2,
@@ -107,10 +107,10 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	real_t critical_dimension = vmin(track_width, ground_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, ground_box.Center(), true);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, track_box.Center(), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
@@ -153,14 +153,14 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
-	Box2D track2_box = track1_box.MirroredX();
+	Box2D track2_box = track1_box.MirrorX();
 	Box2D ground1_box = {
 		track1_box.x1 - ground_spacing - space_x,
 		track1_box.x1 - ground_spacing,
 		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
-	Box2D ground2_box = ground1_box.MirroredX();
+	Box2D ground2_box = ground1_box.MirrorX();
 	Box2D world_box = {
 		ground1_box.x1,
 		ground2_box.x2,
@@ -219,11 +219,11 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	real_t critical_dimension = vmin(track_width, track_spacing, ground_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, ground_box.Center(), true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, track1_box.Center(), false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, track2_box.Center(), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);

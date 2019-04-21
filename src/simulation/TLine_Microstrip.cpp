@@ -83,20 +83,27 @@ void TLine_Microstrip_Single(TLineContext &context) {
 		track_box.y1,
 		track_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, track_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -172,14 +179,20 @@ void TLine_Microstrip_Single_TwoSubstrates(TLineContext &context) {
 		track_box.y1,
 		track_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness_1, substrate_thickness_2);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, track_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
@@ -187,6 +200,7 @@ void TLine_Microstrip_Single_TwoSubstrates(TLineContext &context) {
 	mesh->AddDielectric(substrate_2_box, step0, substrate_material_2);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -256,20 +270,27 @@ void TLine_Microstrip_Single_Buried(TLineContext &context) {
 		substrate_1_box.y2,
 		substrate_1_box.y2 + solder_mask_thickness,
 	};
+	Box2D integration_line_1 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, substrate_thickness_2);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, track_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
 	mesh->AddDielectric(substrate_1_box, step0, substrate_material_1);
 	mesh->AddDielectric(substrate_2_box, step0, substrate_material_2);
 	mesh->AddDielectric(solder_mask_box, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -301,7 +322,7 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 		substrate_thickness,
 		substrate_thickness + track_thickness,
 	};
-	Box2D track2_box = track1_box.MirroredX();
+	Box2D track2_box = track1_box.MirrorX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
 		track2_box.x2 + space_x,
@@ -344,15 +365,27 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 		track2_box.y1,
 		track2_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		track1_box.x2,
+		track2_box.x1,
+		track1_box.y1,
+		track2_box.y1,
+	};
+	Box2D integration_line_2 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track1_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track1_box.x2, track1_box.y1), false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track2_box.x1, track2_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
@@ -361,6 +394,8 @@ void TLine_Microstrip_Differential(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
+	mesh->AddIntegrationLine(integration_line_2);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -396,7 +431,7 @@ void TLine_Microstrip_Differential_TwoSubstrates(TLineContext &context) {
 		substrate_thickness_total,
 		substrate_thickness_total + track_thickness,
 	};
-	Box2D track2_box = track1_box.MirroredX();
+	Box2D track2_box = track1_box.MirrorX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
 		track2_box.x2 + space_x,
@@ -445,15 +480,27 @@ void TLine_Microstrip_Differential_TwoSubstrates(TLineContext &context) {
 		track2_box.y1,
 		track2_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		track1_box.x2,
+		track2_box.x1,
+		track1_box.y1,
+		track2_box.y1,
+	};
+	Box2D integration_line_2 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track1_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness_1, substrate_thickness_2);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track1_box.x2, track1_box.y1), false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track2_box.x1, track2_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
@@ -463,6 +510,8 @@ void TLine_Microstrip_Differential_TwoSubstrates(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
+	mesh->AddIntegrationLine(integration_line_2);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -498,7 +547,7 @@ void TLine_Microstrip_Differential_Buried(TLineContext &context) {
 		substrate_thickness_2 - ((reverse_buildup)? track_thickness : 0.0),
 		substrate_thickness_2 + ((reverse_buildup)? 0.0 : track_thickness),
 	};
-	Box2D track2_box = track1_box.MirroredX();
+	Box2D track2_box = track1_box.MirrorX();
 	Box2D world_box = {
 		track1_box.x1 - space_x,
 		track2_box.x2 + space_x,
@@ -535,15 +584,27 @@ void TLine_Microstrip_Differential_Buried(TLineContext &context) {
 		substrate_1_box.y2,
 		substrate_1_box.y2 + solder_mask_thickness,
 	};
+	Box2D integration_line_1 = {
+		track1_box.x2,
+		track2_box.x1,
+		track1_box.y1,
+		track2_box.y1,
+	};
+	Box2D integration_line_2 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track1_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, substrate_thickness_2);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track1_box.x2, track1_box.y1), false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track2_box.x1, track2_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
@@ -551,6 +612,8 @@ void TLine_Microstrip_Differential_Buried(TLineContext &context) {
 	mesh->AddDielectric(substrate_1_box, step0, substrate_material_1);
 	mesh->AddDielectric(substrate_2_box, step0, substrate_material_2);
 	mesh->AddDielectric(solder_mask_box, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
+	mesh->AddIntegrationLine(integration_line_2);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -639,16 +702,28 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 		track2_box.y1,
 		track2_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		track1_box.x2,
+		track2_box.x1,
+		track1_box.y1,
+		track2_box.y1,
+	};
+	Box2D integration_line_2 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track1_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width_1, track_width_2, track_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
 
-	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
+	std::unique_ptr<GridMesh2D> mesh(new GridMesh2D(context.m_solver_type, world_box, world_focus, GridMesh2D::DEFAULT_GRID_INC / context.m_mesh_detail, critical_dimension * 1.0e-6));
 	//mesh->SetPML(pml_box, Box2D(space, space, REAL_MAX, space), 1.0);
 
-	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, true);
-	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
-	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, false);
+	size_t port_ground = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(0.0, ground_box.y2), true);
+	size_t port_signal1 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track1_box.x2, track1_box.y1), false);
+	size_t port_signal2 = mesh->AddPort(GridMesh2D::PORTTYPE_FIXED, Vector2D(track2_box.x1, track2_box.y1), false);
 
 	mesh->AddConductor(ground_box, step0, track_material, port_ground);
 	mesh->AddConductor(track1_box, step1, track_material, port_signal1);
@@ -657,6 +732,8 @@ void TLine_Microstrip_Asymmetric(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
+	mesh->AddIntegrationLine(integration_line_2);
 
 	context.m_output_mesh = std::move(mesh);
 

@@ -34,12 +34,26 @@ struct Box2D {
 	real_t x1, x2, y1, y2;
 	inline Box2D() {}
 	inline Box2D(real_t x1, real_t x2, real_t y1, real_t y2) : x1(x1), x2(x2), y1(y1), y2(y2) {}
-	inline Box2D Normalized() const { return Box2D(std::min(x1, x2), std::max(x1, x2), std::min(y1, y2), std::max(y1, y2)); }
-	inline Box2D MirroredX(real_t ref = 0.0) const { return Box2D(2.0 * ref - x2, 2.0 * ref - x1, y1, y2); }
-	inline Box2D MirroredY(real_t ref = 0.0) const { return Box2D(x1, x2, 2.0 * ref - y2, 2.0 * ref - y1); }
-	inline Box2D Clipped(const Box2D &clip) const {
-		Box2D c = clip.Normalized();
-		return Box2D(clamp(x1, c.x1, c.x2), clamp(x2, c.x1, c.x2), clamp(y1, c.y1, c.y2), clamp(y2, c.y1, c.y2));
+	inline Box2D Normalize() const {
+		return Box2D(std::min(x1, x2), std::max(x1, x2), std::min(y1, y2), std::max(y1, y2));
+	}
+	inline Box2D MirrorX(real_t ref = 0.0) const {
+		return Box2D(2.0 * ref - x2, 2.0 * ref - x1, y1, y2);
+	}
+	inline Box2D MirrorY(real_t ref = 0.0) const {
+		return Box2D(x1, x2, 2.0 * ref - y2, 2.0 * ref - y1);
+	}
+	inline Box2D Clip(const Box2D &clip) const {
+		return Box2D(clamp(x1, clip.x1, clip.x2), clamp(x2, clip.x1, clip.x2), clamp(y1, clip.y1, clip.y2), clamp(y2, clip.y1, clip.y2));
+	}
+	inline real_t CenterX() const {
+		return 0.5 * (x1 + x2);
+	}
+	inline real_t CenterY() const {
+		return 0.5 * (y1 + y2);
+	}
+	inline Vector2D Center() const {
+		return Vector2D(CenterX(), CenterY());
 	}
 };
 
@@ -47,7 +61,7 @@ struct GLvec2 {
 	float x, y;
 	inline GLvec2() {}
 	inline GLvec2(float x, float y) : x(x), y(y) {}
-	inline GLvec2(const Vector2D& v) : x((float) v.x), y((float) v.y) {}
+	inline GLvec2(const Vector2D &v) : x((float) v.x), y((float) v.y) {}
 	inline operator float*() { return &x; }
 };
 

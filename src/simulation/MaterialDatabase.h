@@ -35,8 +35,8 @@ struct MaterialConductor {
 
 struct MaterialDielectric {
 	std::string m_name;
-	real_t m_permittivity_x, m_permittivity_y;
-	real_t m_loss_tangent_x, m_loss_tangent_y;
+	real_t m_permittivity_x, m_permittivity_y, m_permittivity_z;
+	real_t m_loss_tangent_x, m_loss_tangent_y, m_loss_tangent_z;
 	real_t m_test_frequency;
 };
 
@@ -47,7 +47,7 @@ struct MaterialConductorProperties {
 };
 
 struct MaterialDielectricProperties {
-	std::complex<real_t> m_permittivity_x, m_permittivity_y;
+	std::complex<real_t> m_permittivity_x, m_permittivity_y, m_permittivity_z;
 };
 
 class MaterialDatabase {

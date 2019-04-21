@@ -28,10 +28,17 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 enum MeshImageType {
 	MESHIMAGETYPE_MESH,
+	MESHIMAGETYPE_EFIELD,
+	MESHIMAGETYPE_MFIELD,
 	MESHIMAGETYPE_EPOT,
 	MESHIMAGETYPE_MPOT,
 	MESHIMAGETYPE_ENERGY,
 	MESHIMAGETYPE_CURRENT,
+};
+
+enum SolverType {
+	SOLVERTYPE_QUASISTATIC,
+	SOLVERTYPE_FULLWAVE,
 };
 
 class GenericMesh {
@@ -43,8 +50,6 @@ private:
 
 protected:
 	Eigen::MatrixXr m_inductance_matrix, m_capacitance_matrix, m_resistance_matrix, m_conductance_matrix;
-
-private:
 	Eigen::MatrixXc m_characteristic_impedance_matrix;
 	Eigen::VectorXc m_characteristic_impedances, m_propagation_constants;
 	Eigen::MatrixXc m_eigenmodes;
@@ -88,8 +93,5 @@ protected:
 	virtual void DoInitialize() = 0;
 	virtual void DoSolve() = 0;
 	virtual void DoCleanup() = 0;
-
-private:
-	void SolveEigenModes();
 
 };

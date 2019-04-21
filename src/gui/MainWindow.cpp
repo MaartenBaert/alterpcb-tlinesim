@@ -97,10 +97,7 @@ MainWindow::MainWindow() {
 	{
 		QLabel *label_simulation_type = new QLabel("Simulation type:", groupbox_simulation);
 		m_combobox_simulation_type = new QComboBox(groupbox_simulation);
-		m_combobox_simulation_type->addItem("Single Frequency");
-		m_combobox_simulation_type->addItem("Frequency Sweep");
-		m_combobox_simulation_type->addItem("Parameter Sweep");
-		m_combobox_simulation_type->addItem("Parameter Tune");
+		m_combobox_simulation_type->addItems({"Single Frequency", "Frequency Sweep", "Parameter Sweep", "Parameter Tune"});
 		m_pushbutton_simulate = new QPushButton(g_icon_simulation, "Simulate", this);
 		m_pushbutton_simulate->setIconSize(QSize(16, 16));
 
@@ -138,15 +135,14 @@ MainWindow::MainWindow() {
 		m_label_parameter_tune[2] = new QLabel("Target Value:", groupbox_simulation);
 		m_lineedit_parameter_tune_target_value = new QLineEdit("50.0", groupbox_simulation);
 
+		QLabel *label_solver_type = new QLabel("Solver type:", groupbox_simulation);
+		m_combobox_solver_type = new QComboBox(groupbox_simulation);
+		m_combobox_solver_type->addItems({"Quasi-static Solver", "Full-wave Solver"});
+		m_combobox_solver_type->setCurrentIndex(SOLVERTYPE_QUASISTATIC);
+
 		QLabel *label_mesh_detail = new QLabel("Mesh Detail:", groupbox_simulation);
 		m_combobox_mesh_detail = new QComboBox(groupbox_simulation);
-		m_combobox_mesh_detail->addItem("Very Low");
-		m_combobox_mesh_detail->addItem("Lower");
-		m_combobox_mesh_detail->addItem("Low");
-		m_combobox_mesh_detail->addItem("Medium");
-		m_combobox_mesh_detail->addItem("High");
-		m_combobox_mesh_detail->addItem("Higher");
-		m_combobox_mesh_detail->addItem("Very High");
+		m_combobox_mesh_detail->addItems({"Very Low", "Lower", "Low", "Medium", "High", "Higher", "Very High"});
 		m_combobox_mesh_detail->setCurrentIndex(MESHDETAIL_MEDIUM);
 
 		connect(m_combobox_simulation_type, SIGNAL(currentIndexChanged(int)), this, SLOT(OnUpdateSimulationType()));
@@ -217,8 +213,10 @@ MainWindow::MainWindow() {
 			layout2->addWidget(m_combobox_parameter_tune_target_result, 7, 1);
 			layout2->addWidget(m_label_parameter_tune[2], 8, 0);
 			layout2->addWidget(m_lineedit_parameter_tune_target_value, 8, 1);
-			layout2->addWidget(label_mesh_detail, 9, 0);
-			layout2->addWidget(m_combobox_mesh_detail, 9, 1);
+			layout2->addWidget(label_solver_type, 9, 0);
+			layout2->addWidget(m_combobox_solver_type, 9, 0);
+			layout2->addWidget(label_mesh_detail, 10, 0);
+			layout2->addWidget(m_combobox_mesh_detail, 10, 1);
 		}
 
 	}
@@ -243,12 +241,8 @@ MainWindow::MainWindow() {
 		m_slider_zoom->setPageStep(10000);
 		QLabel *label_imagetype = new QLabel("Image Type:", groupbox_viewer);
 		m_combobox_image_type = new QComboBox(groupbox_viewer);
-		m_combobox_image_type->addItem("Mesh");
-		m_combobox_image_type->addItem("Electric Potential");
-		m_combobox_image_type->addItem("Magnetic Potential");
-		m_combobox_image_type->addItem("Energy");
-		m_combobox_image_type->addItem("Current");
-		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
+		m_combobox_image_type->addItems({"Mesh", "Electric Field", "Magnetic Field", "Electric Potential", "Magnetic Potential", "Energy", "Current"});
+		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EFIELD);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
@@ -343,6 +337,7 @@ void MainWindow::SimulationInit(TLineContext &context) {
 	context.m_material_database = m_material_database.get();
 
 	// initialize simulation settings
+	context.m_solver_type = (SolverType) m_combobox_solver_type->currentIndex();
 	context.m_mesh_detail = exp2((real_t) (m_combobox_mesh_detail->currentIndex() - (int) MESHDETAIL_MEDIUM) * 0.5);
 
 	// initialize parameters

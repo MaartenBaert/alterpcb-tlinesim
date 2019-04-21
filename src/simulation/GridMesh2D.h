@@ -36,15 +36,16 @@ public:
 		PORTTYPE_FLOATING,
 	};
 
-	static constexpr real_t DEFAULT_GRID_INC = 0.15;
-	static constexpr real_t DEFAULT_GRID_STEP = 0.005;
+	static constexpr real_t DEFAULT_GRID_INC = 0.30;
+	static constexpr real_t DEFAULT_GRID_STEP = 0.01;
 
 private:
 	struct Port {
 		PortType m_type;
+		Vector2D m_anchor;
 		bool m_infinite_area;
-		size_t m_var;
-		inline Port(PortType type, bool infinite_area) : m_type(type), m_infinite_area(infinite_area), m_var(INDEX_NONE) {}
+		size_t m_var, m_var_full_e;
+		inline Port(PortType type, const Vector2D &anchor, bool infinite_area) : m_type(type), m_anchor(anchor), m_infinite_area(infinite_area), m_var(INDEX_NONE), m_var_full_e(INDEX_NONE) {}
 	};
 	struct Conductor {
 		Box2D m_box, m_step;
@@ -66,12 +67,14 @@ private:
 	};
 	struct Node {
 		size_t m_port;
-		size_t m_var, m_var_surf;
-		inline Node() : m_port(INDEX_NONE), m_var(INDEX_NONE), m_var_surf(INDEX_NONE) {}
+		size_t m_var, m_var_surf, m_var_full_e, m_var_full_m;
+		inline Node() : m_port(INDEX_NONE), m_var(INDEX_NONE), m_var_surf(INDEX_NONE), m_var_full_e(INDEX_NONE), m_var_full_m(INDEX_NONE) {}
 	};
 	struct Edge {
 		size_t m_conductor;
-		inline Edge() : m_conductor(INDEX_NONE) {}
+		bool m_surface;
+		size_t m_var_full_m;
+		inline Edge() : m_conductor(INDEX_NONE), m_surface(false), m_var_full_m(INDEX_NONE) {}
 	};
 	struct Cell {
 		size_t m_conductor;
@@ -80,6 +83,7 @@ private:
 	};
 
 private:
+	SolverType m_solver_type;
 	Box2D m_world_box, m_world_focus;
 	real_t m_grid_inc, m_grid_epsilon;
 
@@ -89,26 +93,32 @@ private:
 	std::vector<Port> m_ports;
 	std::vector<Conductor> m_conductors;
 	std::vector<Dielectric> m_dielectrics;
+	std::vector<Box2D> m_integration_lines;
 
 	std::vector<real_t> m_grid_x, m_grid_y, m_midpoints_x, m_midpoints_y;
 	std::vector<Node> m_nodes;
-	std::vector<Edge> m_edges_h, m_edges_v;
+	std::vector<Edge> m_edges_x, m_edges_y;
 	std::vector<Cell> m_cells;
-	size_t m_vars_free, m_vars_fixed, m_vars_surf;
+	size_t m_vars_free, m_vars_fixed, m_vars_surf, m_vars_full;
 
 	std::vector<MaterialConductorProperties> m_conductor_properties;
 	std::vector<MaterialDielectricProperties> m_dielectric_properties;
 	Eigen::VectorXr m_vector_dc_resistances;
 	Eigen::SparseMatrix<complex_t> m_matrix_epot[3], m_matrix_mpot[3];
 	Eigen::SparseMatrix<real_t> m_matrix_surf_resid[2], m_matrix_surf_curr, m_matrix_surf_loss;
+	Eigen::SparseMatrix<complex_t> m_matrix_empot[3];
 
 	Eigen::SimplicialLDLT<Eigen::SparseMatrix<real_t>, Eigen::Lower> m_eigen_chol, m_eigen_chol_surf;
 	Eigen::MatrixXr m_eigen_rhs, m_eigen_rhs_surf;
 	Eigen::MatrixXr m_eigen_solution_epot, m_eigen_solution_mpot, m_eigen_solution_surf;
 
+	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
+	Eigen::MatrixXc m_eigen_solution_empot, m_eigen_resid_empot;
+	Eigen::VectorXc m_full_propagation_constants, m_full_mpot_scale_factor;
+
 public:
-	GridMesh2D(const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);
-	virtual ~GridMesh2D();
+	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);
+	virtual ~GridMesh2D() override;
 
 	// noncopyable
 	GridMesh2D(const GridMesh2D&) = delete;
@@ -117,11 +127,12 @@ public:
 	void SetPML(const Box2D &box, real_t step, real_t attenuation);
 	void SetPML(const Box2D &box, const Box2D &step, real_t attenuation);
 
-	size_t AddPort(PortType type, bool infinite_area);
+	size_t AddPort(PortType type, const Vector2D &anchor, bool infinite_area);
 	void AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, size_t port);
 	void AddConductor(const Box2D &box, const Box2D &step, const MaterialConductor *material, size_t port);
 	void AddDielectric(const Box2D &box, real_t step, const MaterialDielectric *material);
 	void AddDielectric(const Box2D &box, const Box2D &step, const MaterialDielectric *material);
+	void AddIntegrationLine(const Box2D &box);
 
 	virtual Box2D GetWorldBox2D() override;
 	virtual Box2D GetWorldFocus2D() override;
@@ -138,7 +149,9 @@ private:
 	void InitCells();
 	void InitVariables();
 	void BuildMatrices();
-	void SolveMatrices();
+	void SolveStaticModes();
+	void SolveStaticEigenModes();
+	void SolveFullEigenModes();
 
 	void GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type);
 	void GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type);
@@ -146,12 +159,12 @@ private:
 
 private:
 	inline size_t GetNodeIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size()); assert(iy < m_grid_y.size()); return ix + iy * m_grid_x.size(); }
-	inline size_t GetEdgeHIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size() - 1); assert(iy < m_grid_y.size()); return ix + iy * (m_grid_x.size() - 1); }
-	inline size_t GetEdgeVIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size()); assert(iy < m_grid_y.size() - 1); return ix + iy * m_grid_x.size(); }
+	inline size_t GetEdgeXIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size() - 1); assert(iy < m_grid_y.size()); return ix + iy * (m_grid_x.size() - 1); }
+	inline size_t GetEdgeYIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size()); assert(iy < m_grid_y.size() - 1); return ix + iy * m_grid_x.size(); }
 	inline size_t GetCellIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size() - 1); assert(iy < m_grid_y.size() - 1); return ix + iy * (m_grid_x.size() - 1); }
 	inline Node& GetNode(size_t ix, size_t iy) { return m_nodes[GetNodeIndex(ix, iy)]; }
-	inline Edge& GetEdgeH(size_t ix, size_t iy) { return m_edges_h[GetEdgeHIndex(ix, iy)]; }
-	inline Edge& GetEdgeV(size_t ix, size_t iy) { return m_edges_v[GetEdgeVIndex(ix, iy)]; }
+	inline Edge& GetEdgeX(size_t ix, size_t iy) { return m_edges_x[GetEdgeXIndex(ix, iy)]; }
+	inline Edge& GetEdgeY(size_t ix, size_t iy) { return m_edges_y[GetEdgeYIndex(ix, iy)]; }
 	inline Cell& GetCell(size_t ix, size_t iy) { return m_cells[GetCellIndex(ix, iy)]; }
 
 private:
