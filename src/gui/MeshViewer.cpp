@@ -217,7 +217,7 @@ void MeshViewer::paintEvent(QPaintEvent* event) {
 		}
 
 		// color plot
-		real_t log_scale = 1.0 / log(1e4);
+		real_t log_scale = 1.0 / log(1e2);
 		const ColorMap &cmap = COLORMAP_MAGMA;
 		for(size_t j = 0; j < (size_t) ih; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);

@@ -214,7 +214,7 @@ MainWindow::MainWindow() {
 			layout2->addWidget(m_label_parameter_tune[2], 8, 0);
 			layout2->addWidget(m_lineedit_parameter_tune_target_value, 8, 1);
 			layout2->addWidget(label_solver_type, 9, 0);
-			layout2->addWidget(m_combobox_solver_type, 9, 0);
+			layout2->addWidget(m_combobox_solver_type, 9, 1);
 			layout2->addWidget(label_mesh_detail, 10, 0);
 			layout2->addWidget(m_combobox_mesh_detail, 10, 1);
 		}
