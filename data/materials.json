@@ -32,7 +32,7 @@
 		},
 		{
 			"name": "Nichrome",
-			"conductivity": 670000
+			"conductivity": 6.7e5
 		},
 		{
 			"name": "Nickel",
