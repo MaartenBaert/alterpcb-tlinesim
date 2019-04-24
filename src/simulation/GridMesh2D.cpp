@@ -566,7 +566,7 @@ void GridMesh2D::InitVariables() {
 		std::deque<std::pair<size_t, size_t>> tree_node_queue;
 
 		// mark nodes outside conductors with placeholders
-		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
+		/*for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 				Node &node = GetNode(ix, iy);
 				if(node.m_port == INDEX_NONE) {
@@ -576,13 +576,13 @@ void GridMesh2D::InitVariables() {
 					tree_node_queue.push_back(std::make_pair(ix, iy));
 				}
 			}
-		}
+		}*/
 
 		// mark edges on or outside conductors with placeholders
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 				Edge &edge = GetEdgeX(ix, iy);
-				if(edge.m_conductor == INDEX_NONE || edge.m_surface) {
+				if(edge.m_conductor == INDEX_NONE /*|| edge.m_surface*/) {
 					edge.m_var_full_m = INDEX_OFFSET; // placeholder
 				}
 			}
@@ -590,14 +590,14 @@ void GridMesh2D::InitVariables() {
 		for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 				Edge &edge = GetEdgeY(ix, iy);
-				if(edge.m_conductor == INDEX_NONE || edge.m_surface) {
+				if(edge.m_conductor == INDEX_NONE /*|| edge.m_surface*/) {
 					edge.m_var_full_m = INDEX_OFFSET; // placeholder
 				}
 			}
 		}
 
 		// mark integration lines
-		for(Box2D &integration_line : m_integration_lines) {
+		/*for(Box2D &integration_line : m_integration_lines) {
 			size_t ix1 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), integration_line.x1) - m_midpoints_x.begin());
 			size_t ix2 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), integration_line.x2) - m_midpoints_x.begin());
 			size_t iy1 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), integration_line.y1) - m_midpoints_y.begin());
@@ -623,10 +623,10 @@ void GridMesh2D::InitVariables() {
 					edge.m_var_full_m = INDEX_NONE;
 				}
 			}
-		}
+		}*/
 
 		// breadth-first flood fill
-		while(!tree_node_queue.empty()) {
+		/*while(!tree_node_queue.empty()) {
 			size_t ix, iy;
 			std::tie(ix, iy) = tree_node_queue.front();
 			tree_node_queue.pop_front();
@@ -670,7 +670,7 @@ void GridMesh2D::InitVariables() {
 					edge.m_var_full_m = INDEX_NONE;
 				}
 			}
-		}
+		}*/
 
 		// sanity check
 		if(placeholder_count != 0)
@@ -681,10 +681,10 @@ void GridMesh2D::InitVariables() {
 		//size_t ref_iy = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), m_ports[0].m_anchor.y) - m_midpoints_y.begin());
 
 		// assign variables to ports (except the first one)
-		for(size_t i = 1; i < m_ports.size(); ++i) {
+		/*for(size_t i = 1; i < m_ports.size(); ++i) {
 			Port &port = m_ports[i];
 			port.m_var_full_e = m_vars_full++;
-		}
+		}*/
 
 		// assign variables to nodes
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
@@ -692,11 +692,12 @@ void GridMesh2D::InitVariables() {
 				Node &node = GetNode(ix, iy);
 				if(node.m_port == INDEX_NONE) {
 					node.m_var_full_e = m_vars_full++;
-					node.m_var_full_m = m_vars_full++;
+					//node.m_var_full_m = m_vars_full++;
 				} else {
-					node.m_var_full_e = m_ports[node.m_port].m_var_full_e;
+					//node.m_var_full_e = m_ports[node.m_port].m_var_full_e;
 					if(node.m_var_surf != INDEX_NONE) {
-						node.m_var_full_m = m_vars_full++;
+						//node.m_var_full_e = m_vars_full++;
+						//node.m_var_full_m = m_vars_full++;
 					}
 				}
 			}
@@ -1155,11 +1156,11 @@ void GridMesh2D::SolveFullEigenModes() {
 	Eigen::VectorXc scalefactors(m_vars_full);
 	for(Node &node : m_nodes) {
 		if(node.m_var_full_e != INDEX_NONE) {
-			eigenvector[(Eigen::Index) node.m_var_full_e] = (node.m_var < INDEX_OFFSET)? static_epot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
+			eigenvector[(Eigen::Index) node.m_var_full_e] =  rand(); //(node.m_var < INDEX_OFFSET)? static_epot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
 			scalefactors[(Eigen::Index) node.m_var_full_e] = 1.0;
 		}
 		if(node.m_var_full_m != INDEX_NONE) {
-			eigenvector[(Eigen::Index) node.m_var_full_m] = (node.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
+			eigenvector[(Eigen::Index) node.m_var_full_m] = rand(); //(node.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
 			scalefactors[(Eigen::Index) node.m_var_full_m] = mpot_scale_factor;
 		}
 	}
@@ -1191,7 +1192,11 @@ void GridMesh2D::SolveFullEigenModes() {
 	// P = [1]
 	// Q = [0]
 
-	size_t iters = 5;
+	//propagation_constant = 0.0;
+	//propagation_constant.real(0.0);
+	//propagation_constant.imag(propagation_constant.imag() * 0.9);
+
+	size_t iters = 8;
 	for(size_t it = 0; it < iters; ++it) {
 
 		// improve propagation constant
@@ -1202,7 +1207,8 @@ void GridMesh2D::SolveFullEigenModes() {
 		//complex_t pc1 = (-b + std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 		//complex_t pc2 = (-b - std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 		//std::cerr << "pc1 = " << pc1 << ", pc2 = " << pc2 << std::endl;
-		propagation_constant = (-b - std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
+		if(it != 0)
+			propagation_constant = (-b - std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 
 		// calculate residual
 		m_eigen_resid_empot = scaled_empot[0] * eigenvector + propagation_constant * (scaled_empot[1] * eigenvector + propagation_constant * (scaled_empot[2] * eigenvector));
