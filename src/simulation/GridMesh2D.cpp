@@ -696,6 +696,11 @@ void GridMesh2D::InitVariables() {
 				} else {
 					//node.m_var_full_e = m_ports[node.m_port].m_var_full_e;
 					if(node.m_var_surf != INDEX_NONE) {
+						/*size_t ref_ix = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), m_ports[node.m_port].m_anchor.x) - m_midpoints_x.begin());
+						size_t ref_iy = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), m_ports[node.m_port].m_anchor.y) - m_midpoints_y.begin());
+						if(ix != ref_ix || iy != ref_iy) {
+							node.m_var_full_e = m_vars_full++;
+						}*/
 						//node.m_var_full_e = m_vars_full++;
 						//node.m_var_full_m = m_vars_full++;
 					}
@@ -1137,6 +1142,7 @@ void GridMesh2D::SolveFullEigenModes() {
 
 	m_full_propagation_constants.resize((Eigen::Index) GetModeCount());
 	m_full_mpot_scale_factor.resize((Eigen::Index) GetModeCount());
+	m_full_mpot_scale_factor_t.resize((Eigen::Index) GetModeCount());
 
 	// refine eigenmodes from static solver
 	size_t i = 0; // TODO: make loop
@@ -1145,6 +1151,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	Eigen::VectorXc eigenmode = m_eigenmodes.col((Eigen::Index) i);
 	complex_t propagation_constant = m_eigenmode_propagation_constants[(Eigen::Index) i];
 	complex_t mpot_scale_factor = propagation_constant / complex_t(0.0, omega);
+	complex_t mpot_scale_factor_t = mpot_scale_factor; //(1/0.3e-3) / complex_t(0.0, omega);
 
 	// calculate static potentials for this mode
 	Eigen::VectorXc fixed_values = GetModes() * eigenmode;
@@ -1166,14 +1173,14 @@ void GridMesh2D::SolveFullEigenModes() {
 	}
 	for(Edge &edge : m_edges_x) {
 		if(edge.m_var_full_m != INDEX_NONE) {
-			eigenvector[(Eigen::Index) edge.m_var_full_m] = 0.0;
-			scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor;
+			eigenvector[(Eigen::Index) edge.m_var_full_m] = rand();
+			scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor_t;
 		}
 	}
 	for(Edge &edge : m_edges_y) {
 		if(edge.m_var_full_m != INDEX_NONE) {
-			eigenvector[(Eigen::Index) edge.m_var_full_m] = 0.0;
-			scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor;
+			eigenvector[(Eigen::Index) edge.m_var_full_m] = rand();
+			scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor_t;
 		}
 	}
 	eigenvector *= 1.0 / std::sqrt(eigenvector.cwiseProduct(eigenvector).sum());
@@ -1196,7 +1203,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	//propagation_constant.real(0.0);
 	//propagation_constant.imag(propagation_constant.imag() * 0.9);
 
-	size_t iters = 8;
+	size_t iters = 10;
 	for(size_t it = 0; it < iters; ++it) {
 
 		// improve propagation constant
@@ -1238,9 +1245,36 @@ void GridMesh2D::SolveFullEigenModes() {
 
 	}
 
+	// norm of parts
+	real_t norm_e = 0.0, norm_m = 0.0, norm_mt = 0.0;
+	for(Node &node : m_nodes) {
+		if(node.m_var_full_e != INDEX_NONE) {
+			norm_e += std::norm(eigenvector[(Eigen::Index) node.m_var_full_e]);
+		}
+		if(node.m_var_full_m != INDEX_NONE) {
+			norm_m += std::norm(eigenvector[(Eigen::Index) node.m_var_full_m]);
+		}
+	}
+	for(Edge &edge : m_edges_x) {
+		if(edge.m_var_full_m != INDEX_NONE) {
+			norm_mt += std::norm(eigenvector[(Eigen::Index) edge.m_var_full_m]);
+		}
+	}
+	for(Edge &edge : m_edges_y) {
+		if(edge.m_var_full_m != INDEX_NONE) {
+			norm_mt += std::norm(eigenvector[(Eigen::Index) edge.m_var_full_m]);
+		}
+	}
+	std::cerr << "norms: e = " << norm_e << ", m = " << norm_m << ", mt = " << norm_mt << std::endl;
+
+	// TODO: remove
+	m_propagation_constants[0] = propagation_constant;
+	m_propagation_constants[1] = m_eigen_resid_empot.norm();
+
 	m_eigen_solution_empot = eigenvector;
 	m_full_propagation_constants[0] = propagation_constant;
 	m_full_mpot_scale_factor[0] = mpot_scale_factor;
+	m_full_mpot_scale_factor_t[0] = mpot_scale_factor_t;
 
 }
 
@@ -1329,6 +1363,7 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 			complex_t *solution_empot = m_eigen_solution_empot.data(); // + m_eigen_solution_empot.outerStride() * (ptrdiff_t) mode;
 			complex_t epot_dz = -m_full_propagation_constants[0];
 			complex_t mpot_dt = m_full_mpot_scale_factor[0] * complex_t(0.0, 2.0 * M_PI * GetFrequency());
+			complex_t mpot_t_dt = m_full_mpot_scale_factor_t[0] * complex_t(0.0, 2.0 * M_PI * GetFrequency());
 			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 					size_t cell_index = GetCellIndex(ix, iy);
@@ -1353,10 +1388,10 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 					complex_t mpot01 = (node01.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_m];
 					complex_t mpot10 = (node10.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_m];
 					complex_t mpot11 = (node11.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_m];
-					complex_t ex0 = (epot01 - epot00) * scale_x + ((edgex0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex0.m_var_full_m]);
-					complex_t ex1 = (epot11 - epot10) * scale_x + ((edgex1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex1.m_var_full_m]);
-					complex_t ey0 = (epot10 - epot00) * scale_y + ((edgey0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey0.m_var_full_m]);
-					complex_t ey1 = (epot11 - epot01) * scale_y + ((edgey1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey1.m_var_full_m]);
+					complex_t ex0 = (epot01 - epot00) * scale_x + ((edgex0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_t_dt * solution_empot[edgex0.m_var_full_m]);
+					complex_t ex1 = (epot11 - epot10) * scale_x + ((edgex1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_t_dt * solution_empot[edgex1.m_var_full_m]);
+					complex_t ey0 = (epot10 - epot00) * scale_y + ((edgey0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_t_dt * solution_empot[edgey0.m_var_full_m]);
+					complex_t ey1 = (epot11 - epot01) * scale_y + ((edgey1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_t_dt * solution_empot[edgey1.m_var_full_m]);
 					complex_t ez00 = epot_dz * epot00 + mpot_dt * mpot00;
 					complex_t ez01 = epot_dz * epot01 + mpot_dt * mpot01;
 					complex_t ez10 = epot_dz * epot10 + mpot_dt * mpot10;
