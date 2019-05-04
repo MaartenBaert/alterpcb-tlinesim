@@ -34,6 +34,8 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <Eigen/SparseCore>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseLU>
+//#include <Eigen/UmfPackSupport>
+//#include <umfpack.h>
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop

@@ -23,12 +23,12 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "SparseMatrix.h"
 
-void FemMatrix_EMPot_Rect(SparseMatrixC<complex_t> matrix[3], size_t vars[12], real_t delta_x, real_t delta_y,
+void FemMatrix_EMPot_Rect(SparseMatrixC<complex_t> matrix[3], size_t vars[12], real_t delta_x, real_t delta_y, real_t omega,
 		complex_t permittivity_x, complex_t permittivity_y, complex_t permittivity_z,
-		complex_t permeability_ref, real_t omega);
+		complex_t permeability_x, complex_t permeability_y, complex_t permeability_z);
 
-void FemMatrix_EMPot_XLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_x,
-		real_t conductivity_x, real_t conductivity_z, real_t omega);
+void FemMatrix_EMPot_XLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_x, real_t omega,
+		real_t conductivity_x, real_t conductivity_z);
 
-void FemMatrix_EMPot_YLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_y,
-		real_t conductivity_y, real_t conductivity_z, real_t omega);
+void FemMatrix_EMPot_YLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_y, real_t omega,
+		real_t conductivity_y, real_t conductivity_z);

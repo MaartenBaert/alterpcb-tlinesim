@@ -8,6 +8,7 @@ TARGET = alterpcb-tlinesim
 TEMPLATE = app
 
 DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
+#LIBS += -lcholmod -lumfpack
 
 QMAKE_CXXFLAGS += -std=c++11 -Wconversion -Wsign-conversion -Wfloat-conversion
 QMAKE_CXXFLAGS_RELEASE -= -O2 -g

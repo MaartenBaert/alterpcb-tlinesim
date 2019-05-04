@@ -72,9 +72,9 @@ void Save(const std::string &filename, const Eigen::SparseMatrix<F> &matrix, boo
 	for(size_t outer = 0; outer < (size_t) matrix.outerSize(); ++outer) {
 		for(size_t inner = (size_t) offsets[outer]; inner < (size_t) offsets[outer + 1]; ++inner) {
 			if(matrix.IsRowMajor) {
-				stream << outer << ' ' << indices[inner] << ' ';
+				stream << (outer + 1) << ' ' << (indices[inner] + 1) << ' ';
 			} else {
-				stream << indices[inner] << ' ' << outer << ' ';
+				stream << (indices[inner] + 1) << ' ' << (outer + 1) << ' ';
 			}
 			WriteValue<F>(stream, values[inner]);
 			stream << '\n';

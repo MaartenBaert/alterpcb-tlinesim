@@ -36,10 +36,10 @@ public:
 		PORTTYPE_FLOATING,
 	};
 
-	//static constexpr real_t DEFAULT_GRID_INC = 0.30;
-	//static constexpr real_t DEFAULT_GRID_STEP = 0.01;
-	static constexpr real_t DEFAULT_GRID_INC = 0.02;
-	static constexpr real_t DEFAULT_GRID_STEP = 0.05;
+	static constexpr real_t DEFAULT_GRID_INC = 0.30;
+	static constexpr real_t DEFAULT_GRID_STEP = 0.01;
+	//static constexpr real_t DEFAULT_GRID_INC = 0.02;
+	//static constexpr real_t DEFAULT_GRID_STEP = 0.05;
 
 private:
 	struct Port {
@@ -115,8 +115,9 @@ private:
 	Eigen::MatrixXr m_eigen_solution_epot, m_eigen_solution_mpot, m_eigen_solution_surf;
 
 	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
+	//Eigen::UmfPackLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
 	Eigen::MatrixXc m_eigen_solution_empot, m_eigen_resid_empot;
-	Eigen::VectorXc m_full_propagation_constants, m_full_mpot_scale_factor, m_full_mpot_scale_factor_t;
+	Eigen::VectorXc m_full_propagation_constants;
 
 public:
 	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);
