@@ -204,62 +204,60 @@ void FemMatrix_EMPot_Rect(SparseMatrixC<complex_t> matrix[3], size_t vars[12], r
 	FemMatrix_Insert(matrix[2], vars[11], vars[11], (1.0/9.0)*delta_x*delta_y*permittivity_z - 1.0/3.0*delta_x/(delta_y*square(omega)*permeability_x) - 1.0/3.0*delta_y/(delta_x*square(omega)*permeability_y));
 }
 
-void FemMatrix_EMPot_XLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_x, real_t omega,
-		real_t conductivity_x, real_t conductivity_z) {
+void FemMatrix_EMPot_XLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_x, real_t omega, complex_t impedance) {
 	constexpr complex_t I(0.0, 1.0);
-	FemMatrix_Insert(matrix[0], vars[0], vars[0], I*conductivity_x/(delta_x*omega));
-	FemMatrix_Insert(matrix[0], vars[0], vars[1], -I*conductivity_x/(delta_x*omega));
-	FemMatrix_Insert(matrix[0], vars[0], vars[2], -I*conductivity_x);
-	FemMatrix_Insert(matrix[0], vars[1], vars[0], -I*conductivity_x/(delta_x*omega));
-	FemMatrix_Insert(matrix[0], vars[1], vars[1], I*conductivity_x/(delta_x*omega));
-	FemMatrix_Insert(matrix[0], vars[1], vars[2], I*conductivity_x);
-	FemMatrix_Insert(matrix[0], vars[2], vars[0], -I*conductivity_x);
-	FemMatrix_Insert(matrix[0], vars[2], vars[1], I*conductivity_x);
-	FemMatrix_Insert(matrix[0], vars[2], vars[2], I*conductivity_x*delta_x*omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[0], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[1], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[3], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[4], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[0], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[1], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[3], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[4], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[0], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[1], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[3], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[4], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[0], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[1], -1.0/3.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[3], -1.0/6.0*I*conductivity_z*delta_x/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[4], -1.0/3.0*I*conductivity_z*delta_x/omega);
+	FemMatrix_Insert(matrix[0], vars[0], vars[0], I/(delta_x*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[0], vars[1], -I/(delta_x*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[0], vars[2], -I/impedance);
+	FemMatrix_Insert(matrix[0], vars[1], vars[0], -I/(delta_x*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[1], vars[1], I/(delta_x*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[1], vars[2], I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[0], -I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[1], I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[2], I*delta_x*omega/impedance);
+	FemMatrix_Insert(matrix[2], vars[0], vars[0], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[1], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[3], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[4], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[0], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[1], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[3], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[4], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[0], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[1], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[3], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[4], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[0], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[1], -1.0/3.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[3], -1.0/6.0*I*delta_x/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[4], -1.0/3.0*I*delta_x/(impedance*omega));
 }
 
-void FemMatrix_EMPot_YLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_y, real_t omega,
-		real_t conductivity_y, real_t conductivity_z) {
+void FemMatrix_EMPot_YLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_y, real_t omega, complex_t impedance) {
 	constexpr complex_t I(0.0, 1.0);
-	FemMatrix_Insert(matrix[0], vars[0], vars[0], I*conductivity_y/(delta_y*omega));
-	FemMatrix_Insert(matrix[0], vars[0], vars[1], -I*conductivity_y/(delta_y*omega));
-	FemMatrix_Insert(matrix[0], vars[0], vars[2], -I*conductivity_y);
-	FemMatrix_Insert(matrix[0], vars[1], vars[0], -I*conductivity_y/(delta_y*omega));
-	FemMatrix_Insert(matrix[0], vars[1], vars[1], I*conductivity_y/(delta_y*omega));
-	FemMatrix_Insert(matrix[0], vars[1], vars[2], I*conductivity_y);
-	FemMatrix_Insert(matrix[0], vars[2], vars[0], -I*conductivity_y);
-	FemMatrix_Insert(matrix[0], vars[2], vars[1], I*conductivity_y);
-	FemMatrix_Insert(matrix[0], vars[2], vars[2], I*conductivity_y*delta_y*omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[0], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[1], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[3], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[0], vars[4], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[0], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[1], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[3], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[1], vars[4], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[0], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[1], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[3], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[3], vars[4], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[0], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[1], -1.0/3.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[3], -1.0/6.0*I*conductivity_z*delta_y/omega);
-	FemMatrix_Insert(matrix[2], vars[4], vars[4], -1.0/3.0*I*conductivity_z*delta_y/omega);
+	FemMatrix_Insert(matrix[0], vars[0], vars[0], I/(delta_y*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[0], vars[1], -I/(delta_y*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[0], vars[2], -I/impedance);
+	FemMatrix_Insert(matrix[0], vars[1], vars[0], -I/(delta_y*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[1], vars[1], I/(delta_y*impedance*omega));
+	FemMatrix_Insert(matrix[0], vars[1], vars[2], I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[0], -I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[1], I/impedance);
+	FemMatrix_Insert(matrix[0], vars[2], vars[2], I*delta_y*omega/impedance);
+	FemMatrix_Insert(matrix[2], vars[0], vars[0], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[1], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[3], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[0], vars[4], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[0], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[1], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[3], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[1], vars[4], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[0], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[1], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[3], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[3], vars[4], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[0], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[1], -1.0/3.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[3], -1.0/6.0*I*delta_y/(impedance*omega));
+	FemMatrix_Insert(matrix[2], vars[4], vars[4], -1.0/3.0*I*delta_y/(impedance*omega));
 }

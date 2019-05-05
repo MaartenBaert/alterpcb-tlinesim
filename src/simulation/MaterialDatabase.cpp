@@ -112,8 +112,8 @@ complex_t DjordjevicSarkar(real_t permittivity, real_t loss_tangent, real_t refe
 void GetConductorProperties(MaterialConductorProperties &result, const MaterialConductor *source, real_t target_frequency) {
 	result.m_conductivity = source->m_conductivity;
 	result.m_permeability = VACUUM_PERMEABILITY * std::min(source->m_permeability, std::max(1.0, source->m_permeability_unity_frequency / target_frequency));
-	real_t skin_depth = sqrt(1.0 / (M_PI * target_frequency * result.m_conductivity * result.m_permeability));
-	result.m_surface_conductivity = result.m_conductivity * skin_depth;
+	//real_t skin_depth = sqrt(1.0 / (M_PI * target_frequency * result.m_conductivity * result.m_permeability));
+	result.m_impedance = std::sqrt(complex_t(0.0, 2.0 * M_PI * target_frequency) * result.m_permeability / result.m_conductivity);
 }
 
 void GetDielectricProperties(MaterialDielectricProperties &result, const MaterialDielectric *source, real_t target_frequency) {

@@ -877,68 +877,68 @@ void GridMesh2D::BuildMatrices() {
 			if(edgex0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node01.m_var_surf != INDEX_NONE);
-				real_t conductivity_x = m_conductor_properties[edgex0.m_conductor].m_surface_conductivity, conductivity_z = conductivity_x;
+				complex_t impedance = m_conductor_properties[edgex0.m_conductor].m_impedance;
 				if(m_solver_type == SOLVERTYPE_FULLWAVE) {
 					size_t vars_empot_xline[5] = {
 						node00.m_var_full_e, node01.m_var_full_e,
 						edgex0.m_var_full_m,
 						node00.m_var_full_m, node01.m_var_full_m,
 					};
-					FemMatrix_EMPot_XLine(matrix_empot, vars_empot_xline, delta_x, omega, conductivity_x, conductivity_z);
+					FemMatrix_EMPot_XLine(matrix_empot, vars_empot_xline, delta_x, omega, impedance);
 				}
 				real_t coef_curr = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef_curr / conductivity_z;
+				real_t coef_loss = coef_curr * impedance.real();
 				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node01.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgex1.m_conductor != INDEX_NONE) {
 				assert(node10.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
-				real_t conductivity_x = m_conductor_properties[edgex1.m_conductor].m_surface_conductivity, conductivity_z = conductivity_x;
+				complex_t impedance = m_conductor_properties[edgex1.m_conductor].m_impedance;
 				if(m_solver_type == SOLVERTYPE_FULLWAVE) {
 					size_t vars_empot_xline[5] = {
 						node10.m_var_full_e, node11.m_var_full_e,
 						edgex1.m_var_full_m,
 						node10.m_var_full_m, node11.m_var_full_m,
 					};
-					FemMatrix_EMPot_XLine(matrix_empot, vars_empot_xline, delta_x, omega, conductivity_x, conductivity_z);
+					FemMatrix_EMPot_XLine(matrix_empot, vars_empot_xline, delta_x, omega, impedance);
 				}
 				real_t coef_curr = 1.0 / 6.0 * delta_x;
-				real_t coef_loss = coef_curr / conductivity_z;
+				real_t coef_loss = coef_curr * impedance.real();
 				BuildMatrix_Symm1(matrix_surf_curr, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node10.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgey0.m_conductor != INDEX_NONE) {
 				assert(node00.m_var_surf != INDEX_NONE);
 				assert(node10.m_var_surf != INDEX_NONE);
-				real_t conductivity_y = m_conductor_properties[edgey0.m_conductor].m_surface_conductivity, conductivity_z = conductivity_y;
+				complex_t impedance = m_conductor_properties[edgey0.m_conductor].m_impedance;
 				if(m_solver_type == SOLVERTYPE_FULLWAVE) {
 					size_t vars_empot_yline[5] = {
 						node00.m_var_full_e, node10.m_var_full_e,
 						edgey0.m_var_full_m,
 						node00.m_var_full_m, node10.m_var_full_m,
 					};
-					FemMatrix_EMPot_YLine(matrix_empot, vars_empot_yline, delta_x, omega, conductivity_y, conductivity_z);
+					FemMatrix_EMPot_YLine(matrix_empot, vars_empot_yline, delta_x, omega, impedance);
 				}
 				real_t coef_curr = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef_curr / conductivity_z;
+				real_t coef_loss = coef_curr * impedance.real();
 				BuildMatrix_Symm1(matrix_surf_curr, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node00.m_var_surf, node10.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
 			if(edgey1.m_conductor != INDEX_NONE) {
 				assert(node01.m_var_surf != INDEX_NONE);
 				assert(node11.m_var_surf != INDEX_NONE);
-				real_t conductivity_y = m_conductor_properties[edgey1.m_conductor].m_surface_conductivity, conductivity_z = conductivity_y;
+				complex_t impedance = m_conductor_properties[edgey1.m_conductor].m_impedance;
 				if(m_solver_type == SOLVERTYPE_FULLWAVE) {
 					size_t vars_empot_yline[5] = {
 						node01.m_var_full_e, node11.m_var_full_e,
 						edgey1.m_var_full_m,
 						node01.m_var_full_m, node11.m_var_full_m,
 					};
-					FemMatrix_EMPot_YLine(matrix_empot, vars_empot_yline, delta_x, omega, conductivity_y, conductivity_z);
+					FemMatrix_EMPot_YLine(matrix_empot, vars_empot_yline, delta_x, omega, impedance);
 				}
 				real_t coef_curr = 1.0 / 6.0 * delta_y;
-				real_t coef_loss = coef_curr / conductivity_z;
+				real_t coef_loss = coef_curr * impedance.real();
 				BuildMatrix_Symm1(matrix_surf_curr, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_curr, coef_curr);
 				BuildMatrix_Symm1(matrix_surf_loss, node01.m_var_surf, node11.m_var_surf, 2.0 * coef_loss, coef_loss);
 			}
@@ -1176,8 +1176,8 @@ void GridMesh2D::SolveFullEigenModes() {
 		}
 		if(node.m_var_full_m != INDEX_NONE) {
 			complex_t curr = (node.m_var_surf == INDEX_NONE)? 0.0 : static_curr[(Eigen::Index) node.m_var_surf];
-			real_t conductivity_z = m_conductor_properties[0].m_surface_conductivity; // TODO: fix conductor
-			eigenvector[(Eigen::Index) node.m_var_full_m] = curr / (complex_t(0.0, omega) * conductivity_z * mpot_scale_factor);
+			complex_t impedance = m_conductor_properties[0].m_impedance; // TODO: fix conductor
+			eigenvector[(Eigen::Index) node.m_var_full_m] = curr * impedance / (complex_t(0.0, omega) * mpot_scale_factor);
 			scalefactors[(Eigen::Index) node.m_var_full_m] = mpot_scale_factor;
 		}
 	}
@@ -1327,7 +1327,7 @@ void GridMesh2D::SolveFullEigenModes() {
 
 	// TODO: remove
 	m_propagation_constants[0] = propagation_constant;
-	m_propagation_constants[1] = m_eigen_resid_empot.norm();
+	//m_propagation_constants[1] = m_eigen_resid_empot.norm();
 
 	m_eigen_solution_empot = eigenvector.cwiseProduct(scalefactors);
 	m_full_propagation_constants[0] = propagation_constant;
