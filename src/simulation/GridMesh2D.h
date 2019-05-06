@@ -118,6 +118,7 @@ private:
 	//Eigen::UmfPackLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
 	Eigen::MatrixXc m_eigen_solution_empot, m_eigen_resid_empot;
 	Eigen::VectorXc m_full_propagation_constants;
+	complex_t m_full_scale_factor_e, m_full_scale_factor_m, m_full_scale_factor_mt;
 
 public:
 	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);

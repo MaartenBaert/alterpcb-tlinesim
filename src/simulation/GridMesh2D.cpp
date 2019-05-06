@@ -566,17 +566,17 @@ void GridMesh2D::InitVariables() {
 		std::deque<std::pair<size_t, size_t>> tree_node_queue;
 
 		// mark nodes outside conductors with placeholders
-		/*for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
+		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 				Node &node = GetNode(ix, iy);
 				if(node.m_port == INDEX_NONE) {
 					node.m_var_full_m = INDEX_OFFSET; // placeholder
 					++placeholder_count;
 				} else {
-					tree_node_queue.push_back(std::make_pair(ix, iy));
+					tree_node_queue.emplace_back(ix, iy);
 				}
 			}
-		}*/
+		}
 
 		// mark edges on or outside conductors with placeholders
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
@@ -597,7 +597,7 @@ void GridMesh2D::InitVariables() {
 		}
 
 		// mark integration lines
-		/*for(Box2D &integration_line : m_integration_lines) {
+		for(Box2D &integration_line : m_integration_lines) {
 			size_t ix1 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), integration_line.x1) - m_midpoints_x.begin());
 			size_t ix2 = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), integration_line.x2) - m_midpoints_x.begin());
 			size_t iy1 = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), integration_line.y1) - m_midpoints_y.begin());
@@ -608,6 +608,7 @@ void GridMesh2D::InitVariables() {
 					if(node.m_var_full_m == INDEX_OFFSET) {
 						node.m_var_full_m = INDEX_NONE;
 						--placeholder_count;
+						tree_node_queue.emplace_back(ix, iy);
 					}
 				}
 			}
@@ -623,10 +624,10 @@ void GridMesh2D::InitVariables() {
 					edge.m_var_full_m = INDEX_NONE;
 				}
 			}
-		}*/
+		}
 
 		// breadth-first flood fill
-		/*while(!tree_node_queue.empty()) {
+		while(!tree_node_queue.empty()) {
 			size_t ix, iy;
 			std::tie(ix, iy) = tree_node_queue.front();
 			tree_node_queue.pop_front();
@@ -635,7 +636,7 @@ void GridMesh2D::InitVariables() {
 				if(node.m_var_full_m == INDEX_OFFSET) {
 					node.m_var_full_m = INDEX_NONE;
 					--placeholder_count;
-					tree_node_queue.push_back(std::make_pair(ix - 1, iy));
+					tree_node_queue.emplace_back(ix - 1, iy);
 					Edge &edge = GetEdgeX(ix - 1, iy);
 					edge.m_var_full_m = INDEX_NONE;
 				}
@@ -645,7 +646,7 @@ void GridMesh2D::InitVariables() {
 				if(node.m_var_full_m == INDEX_OFFSET) {
 					node.m_var_full_m = INDEX_NONE;
 					--placeholder_count;
-					tree_node_queue.push_back(std::make_pair(ix + 1, iy));
+					tree_node_queue.emplace_back(ix + 1, iy);
 					Edge &edge = GetEdgeX(ix, iy);
 					edge.m_var_full_m = INDEX_NONE;
 				}
@@ -655,7 +656,7 @@ void GridMesh2D::InitVariables() {
 				if(node.m_var_full_m == INDEX_OFFSET) {
 					node.m_var_full_m = INDEX_NONE;
 					--placeholder_count;
-					tree_node_queue.push_back(std::make_pair(ix, iy - 1));
+					tree_node_queue.emplace_back(ix, iy - 1);
 					Edge &edge = GetEdgeY(ix, iy - 1);
 					edge.m_var_full_m = INDEX_NONE;
 				}
@@ -665,12 +666,12 @@ void GridMesh2D::InitVariables() {
 				if(node.m_var_full_m == INDEX_OFFSET) {
 					node.m_var_full_m = INDEX_NONE;
 					--placeholder_count;
-					tree_node_queue.push_back(std::make_pair(ix, iy + 1));
+					tree_node_queue.emplace_back(ix, iy + 1);
 					Edge &edge = GetEdgeY(ix, iy);
 					edge.m_var_full_m = INDEX_NONE;
 				}
 			}
-		}*/
+		}
 
 		// sanity check
 		if(placeholder_count != 0)
@@ -681,10 +682,10 @@ void GridMesh2D::InitVariables() {
 		//size_t ref_iy = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), m_ports[0].m_anchor.y) - m_midpoints_y.begin());
 
 		// assign variables to ports (except the first one)
-		/*for(size_t i = 1; i < m_ports.size(); ++i) {
+		for(size_t i = 1; i < m_ports.size(); ++i) {
 			Port &port = m_ports[i];
 			port.m_var_full_e = m_vars_full++;
-		}*/
+		}
 
 		// assign variables to nodes
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
@@ -692,9 +693,9 @@ void GridMesh2D::InitVariables() {
 				Node &node = GetNode(ix, iy);
 				if(node.m_port == INDEX_NONE) {
 					node.m_var_full_e = m_vars_full++;
-					//node.m_var_full_m = m_vars_full++;
+					node.m_var_full_m = m_vars_full++;
 				} else {
-					//node.m_var_full_e = m_ports[node.m_port].m_var_full_e;
+					node.m_var_full_e = m_ports[node.m_port].m_var_full_e;
 					if(node.m_var_surf != INDEX_NONE) {
 						/*size_t ref_ix = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), m_ports[node.m_port].m_anchor.x) - m_midpoints_x.begin());
 						size_t ref_iy = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), m_ports[node.m_port].m_anchor.y) - m_midpoints_y.begin());
@@ -703,6 +704,8 @@ void GridMesh2D::InitVariables() {
 						}*/
 						//node.m_var_full_e = m_vars_full++;
 						node.m_var_full_m = m_vars_full++;
+					} else {
+						node.m_var_full_m = m_ports[node.m_port].m_var_full_e;
 					}
 				}
 			}
@@ -1154,9 +1157,9 @@ void GridMesh2D::SolveFullEigenModes() {
 	// get static eigenmode and propagation constant
 	Eigen::VectorXc eigenmode = m_eigenmodes.col((Eigen::Index) i);
 	complex_t propagation_constant = m_eigenmode_propagation_constants[(Eigen::Index) i];
-	complex_t epot_scale_factor = 1.0 / sqrt(VACUUM_PERMITTIVITY);
-	complex_t mpot_scale_factor = 1.0 / sqrt(VACUUM_PERMITTIVITY); //(1/0.3e-3) / complex_t(0.0, omega);
-	complex_t mpot_scale_factor_t = sqrt(VACUUM_PERMEABILITY); //propagation_constant / complex_t(0.0, omega);
+	m_full_scale_factor_e = 1.0 / sqrt(VACUUM_PERMITTIVITY);
+	m_full_scale_factor_m = 1.0 / sqrt(VACUUM_PERMITTIVITY); //(1/0.3e-3) / complex_t(0.0, omega);
+	m_full_scale_factor_mt = sqrt(VACUUM_PERMEABILITY); //propagation_constant / complex_t(0.0, omega);
 
 	// calculate static potentials for this mode
 	Eigen::VectorXc fixed_values = GetModes() * eigenmode;
@@ -1165,33 +1168,37 @@ void GridMesh2D::SolveFullEigenModes() {
 	Eigen::VectorXc static_curr = m_eigen_solution_surf * eigenmode;
 
 	// calculate initial guess
+	// TODO: deal with duplicates
 	Eigen::VectorXc eigenvector(m_vars_full);
 	Eigen::VectorXc scalefactors(m_vars_full);
+	Eigen::VectorXc orthofactors(m_vars_full);
+	orthofactors.fill(1.0);
 	for(Node &node : m_nodes) {
-		if(node.m_var_full_e != INDEX_NONE) {
+		if(node.m_var_full_e != INDEX_NONE && (node.m_port == INDEX_NONE || node.m_var_surf != INDEX_NONE)) {
 			complex_t epot = (node.m_var < INDEX_OFFSET)? static_epot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
-			complex_t mpot = (node.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
-			eigenvector[(Eigen::Index) node.m_var_full_e] = (epot - mpot) / epot_scale_factor;
-			scalefactors[(Eigen::Index) node.m_var_full_e] = epot_scale_factor;
+			eigenvector[(Eigen::Index) node.m_var_full_e] = epot; //(epot - mpot) / epot_scale_factor;
+			scalefactors[(Eigen::Index) node.m_var_full_e] = m_full_scale_factor_e;
 		}
-		if(node.m_var_full_m != INDEX_NONE) {
-			complex_t curr = (node.m_var_surf == INDEX_NONE)? 0.0 : static_curr[(Eigen::Index) node.m_var_surf];
-			complex_t impedance = m_conductor_properties[0].m_impedance; // TODO: fix conductor
-			eigenvector[(Eigen::Index) node.m_var_full_m] = curr * impedance / (complex_t(0.0, omega) * mpot_scale_factor);
-			scalefactors[(Eigen::Index) node.m_var_full_m] = mpot_scale_factor;
+		if(node.m_var_full_m != INDEX_NONE && (node.m_port == INDEX_NONE || node.m_var_surf != INDEX_NONE)) {
+			complex_t mpot = (node.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node.m_var] : fixed_values[(Eigen::Index) (node.m_var - INDEX_OFFSET)];
+			//complex_t curr = (node.m_var_surf == INDEX_NONE)? 0.0 : static_curr[(Eigen::Index) node.m_var_surf];
+			//complex_t impedance = m_conductor_properties[0].m_impedance; // TODO: fix conductor
+			eigenvector[(Eigen::Index) node.m_var_full_m] = mpot; //curr * impedance / (complex_t(0.0, omega) * mpot_scale_factor);
+			scalefactors[(Eigen::Index) node.m_var_full_m] = m_full_scale_factor_m;
+			orthofactors[(Eigen::Index) node.m_var_full_m] = 0.0;
 		}
 	}
 	for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 			Edge &edge = GetEdgeX(ix, iy);
 			if(edge.m_var_full_m != INDEX_NONE) {
-				real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
-				Node &node0 = GetNode(ix, iy);
-				Node &node1 = GetNode(ix + 1, iy);
-				complex_t mpot0 = (node0.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node0.m_var] : fixed_values[(Eigen::Index) (node0.m_var - INDEX_OFFSET)];
-				complex_t mpot1 = (node1.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node1.m_var] : fixed_values[(Eigen::Index) (node1.m_var - INDEX_OFFSET)];
-				eigenvector[(Eigen::Index) edge.m_var_full_m] = (mpot1 - mpot0) / (delta_x * omega * mpot_scale_factor_t);
-				scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor_t;
+				//real_t delta_x = m_grid_x[ix + 1] - m_grid_x[ix];
+				//Node &node0 = GetNode(ix, iy);
+				//Node &node1 = GetNode(ix + 1, iy);
+				//complex_t mpot0 = (node0.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node0.m_var] : fixed_values[(Eigen::Index) (node0.m_var - INDEX_OFFSET)];
+				//complex_t mpot1 = (node1.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node1.m_var] : fixed_values[(Eigen::Index) (node1.m_var - INDEX_OFFSET)];
+				eigenvector[(Eigen::Index) edge.m_var_full_m] = 0.0; //(mpot1 - mpot0) / (delta_x * omega * mpot_scale_factor_t);
+				scalefactors[(Eigen::Index) edge.m_var_full_m] = m_full_scale_factor_mt;
 			}
 		}
 	}
@@ -1199,13 +1206,13 @@ void GridMesh2D::SolveFullEigenModes() {
 		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 			Edge &edge = GetEdgeY(ix, iy);
 			if(edge.m_var_full_m != INDEX_NONE) {
-				real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
-				Node &node0 = GetNode(ix, iy);
-				Node &node1 = GetNode(ix, iy + 1);
-				complex_t mpot0 = (node0.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node0.m_var] : fixed_values[(Eigen::Index) (node0.m_var - INDEX_OFFSET)];
-				complex_t mpot1 = (node1.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node1.m_var] : fixed_values[(Eigen::Index) (node1.m_var - INDEX_OFFSET)];
-				eigenvector[(Eigen::Index) edge.m_var_full_m] = (mpot1 - mpot0) / (delta_y * omega * mpot_scale_factor_t);
-				scalefactors[(Eigen::Index) edge.m_var_full_m] = mpot_scale_factor_t;
+				//real_t delta_y = m_grid_y[iy + 1] - m_grid_y[iy];
+				//Node &node0 = GetNode(ix, iy);
+				//Node &node1 = GetNode(ix, iy + 1);
+				//complex_t mpot0 = (node0.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node0.m_var] : fixed_values[(Eigen::Index) (node0.m_var - INDEX_OFFSET)];
+				//complex_t mpot1 = (node1.m_var < INDEX_OFFSET)? static_mpot[(Eigen::Index) node1.m_var] : fixed_values[(Eigen::Index) (node1.m_var - INDEX_OFFSET)];
+				eigenvector[(Eigen::Index) edge.m_var_full_m] = 0.0; //(mpot1 - mpot0) / (delta_y * omega * mpot_scale_factor_t);
+				scalefactors[(Eigen::Index) edge.m_var_full_m] = m_full_scale_factor_mt;
 			}
 		}
 	}
@@ -1243,11 +1250,11 @@ void GridMesh2D::SolveFullEigenModes() {
 		//complex_t pc1 = (-b + std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 		//complex_t pc2 = (-b - std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 		//std::cerr << "pc1 = " << pc1 << ", pc2 = " << pc2 << std::endl;
-		//if(it != 0) {
+		if(it != 0) {
 			//propagation_constant = (-b - std::sqrt(square(b) - 4.0 * a * c)) / (2.0 * a);
 			//propagation_constant = (-j * std::sqrt(a * c)) / a;
 			propagation_constant = std::sqrt(c / a) * complex_t(0.0, 1.0);
-		//}
+		}
 
 		// calculate residual
 		m_eigen_resid_empot = scaled_empot[0] * eigenvector + propagation_constant * (scaled_empot[1] * eigenvector + propagation_constant * (scaled_empot[2] * eigenvector));
@@ -1278,7 +1285,10 @@ void GridMesh2D::SolveFullEigenModes() {
 
 		// improve eigenvector
 		for(size_t k = 0; k < 10; ++k) {
-			eigenvector = m_eigen_lu_empot.solve(scaled_empot[2] * eigenvector);
+			Eigen::VectorXc temp1 = scaled_empot[2] * eigenvector;
+			Eigen::VectorXc temp2 = temp1.cwiseProduct(orthofactors);
+			std::cerr << "ortho: " << temp1.norm() << " " << temp2.norm() << " " << (temp1 - temp2).norm() << std::endl;
+			eigenvector = m_eigen_lu_empot.solve(temp2);
 			eigenvector *= 1.0 / std::sqrt((eigenvector.transpose() * eigenvector)[0]);
 		}
 
@@ -1313,14 +1323,19 @@ void GridMesh2D::SolveFullEigenModes() {
 	std::cerr << "resid: e = " << std::sqrt(resid_e) << ", m = " << std::sqrt(resid_m) << ", mt = " << std::sqrt(resid_mt) << std::endl;
 
 	// update scale factors
+	/*Eigen::VectorXc scalefactors2(m_vars_full);
+	scalefactors2.fill(1.0);
 	for(Node &node : m_nodes) {
 		if(node.m_var_full_e != INDEX_NONE) {
-			scalefactors[(Eigen::Index) node.m_var_full_e] *= complex_t(0.0, 1.0);
+			scalefactors2[(Eigen::Index) node.m_var_full_e] = complex_t(0.0, 1.0);
 		}
 		if(node.m_var_full_m != INDEX_NONE) {
-			scalefactors[(Eigen::Index) node.m_var_full_m] *= -propagation_constant / omega;
+			scalefactors2[(Eigen::Index) node.m_var_full_m] = -propagation_constant / omega;
 		}
 	}
+	scalefactors = scalefactors.cwiseProduct(scalefactors2);*/
+	m_full_scale_factor_e *= complex_t(0.0, 1.0);
+	m_full_scale_factor_m *= propagation_constant / omega;
 
 	//std::cerr << "eigenvector_init:" << eigenvector_init << std::endl;
 	//std::cerr << "eigenvector:" << eigenvector << std::endl;
@@ -1329,7 +1344,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	m_propagation_constants[0] = propagation_constant;
 	//m_propagation_constants[1] = m_eigen_resid_empot.norm();
 
-	m_eigen_solution_empot = eigenvector.cwiseProduct(scalefactors);
+	m_eigen_solution_empot = eigenvector; //eigenvector.cwiseProduct(scalefactors);
 	m_full_propagation_constants[0] = propagation_constant;
 
 }
@@ -1419,6 +1434,7 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 			complex_t *solution_empot = m_eigen_solution_empot.data(); // + m_eigen_solution_empot.outerStride() * (ptrdiff_t) mode;
 			complex_t epot_dz = -m_full_propagation_constants[0];
 			complex_t mpot_dt = complex_t(0.0, 2.0 * M_PI * GetFrequency());
+			//complex_t epot_to_mpot = m_full_propagation_constants[0] / complex_t(0.0, 2.0 * M_PI * GetFrequency());
 			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
 				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
 					size_t cell_index = GetCellIndex(ix, iy);
@@ -1435,18 +1451,18 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 					Edge &edgey1 = GetEdgeY(ix + 1, iy    );
 					real_t epot_dx = 1.0 / (m_grid_x[ix + 1] - m_grid_x[ix]);
 					real_t epot_dy = 1.0 / (m_grid_y[iy + 1] - m_grid_y[iy]);
-					complex_t epot00 = (node00.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_e];
-					complex_t epot01 = (node01.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_e];
-					complex_t epot10 = (node10.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_e];
-					complex_t epot11 = (node11.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_e];
-					complex_t mpot00 = (node00.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_m];
-					complex_t mpot01 = (node01.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_m];
-					complex_t mpot10 = (node10.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_m];
-					complex_t mpot11 = (node11.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_m];
-					complex_t ex0 = (epot01 - epot00) * epot_dx + ((edgex0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex0.m_var_full_m]);
-					complex_t ex1 = (epot11 - epot10) * epot_dx + ((edgex1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex1.m_var_full_m]);
-					complex_t ey0 = (epot10 - epot00) * epot_dy + ((edgey0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey0.m_var_full_m]);
-					complex_t ey1 = (epot11 - epot01) * epot_dy + ((edgey1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey1.m_var_full_m]);
+					complex_t epot00 = (node00.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_e] * m_full_scale_factor_e;
+					complex_t epot01 = (node01.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_e] * m_full_scale_factor_e;
+					complex_t epot10 = (node10.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_e] * m_full_scale_factor_e;
+					complex_t epot11 = (node11.m_var_full_e == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_e] * m_full_scale_factor_e;
+					complex_t mpot00 = (node00.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot01 = (node01.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot10 = (node10.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot11 = (node11.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_m] * m_full_scale_factor_m;
+					complex_t ex0 = (epot01 - epot00) * epot_dx + ((edgex0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex0.m_var_full_m] * m_full_scale_factor_mt);
+					complex_t ex1 = (epot11 - epot10) * epot_dx + ((edgex1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgex1.m_var_full_m] * m_full_scale_factor_mt);
+					complex_t ey0 = (epot10 - epot00) * epot_dy + ((edgey0.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey0.m_var_full_m] * m_full_scale_factor_mt);
+					complex_t ey1 = (epot11 - epot01) * epot_dy + ((edgey1.m_var_full_m == INDEX_NONE)? 0.0 : mpot_dt * solution_empot[edgey1.m_var_full_m] * m_full_scale_factor_mt);
 					complex_t ez00 = epot_dz * epot00 + mpot_dt * mpot00;
 					complex_t ez01 = epot_dz * epot01 + mpot_dt * mpot01;
 					complex_t ez10 = epot_dz * epot10 + mpot_dt * mpot10;
@@ -1492,14 +1508,14 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 					Edge &edgey1 = GetEdgeY(ix + 1, iy    );
 					complex_t mpot_dx = 1.0 / (m_grid_x[ix + 1] - m_grid_x[ix]);
 					complex_t mpot_dy = 1.0 / (m_grid_y[iy + 1] - m_grid_y[iy]);
-					complex_t mpot00 = (node00.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_m];
-					complex_t mpot01 = (node01.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_m];
-					complex_t mpot10 = (node10.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_m];
-					complex_t mpot11 = (node11.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_m];
-					complex_t mpot_ex0 = (edgex0.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgex0.m_var_full_m];
-					complex_t mpot_ex1 = (edgex1.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgex1.m_var_full_m];
-					complex_t mpot_ey0 = (edgey0.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgey0.m_var_full_m];
-					complex_t mpot_ey1 = (edgey1.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgey1.m_var_full_m];
+					complex_t mpot00 = (node00.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node00.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot01 = (node01.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node01.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot10 = (node10.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node10.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot11 = (node11.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[node11.m_var_full_m] * m_full_scale_factor_m;
+					complex_t mpot_ex0 = (edgex0.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgex0.m_var_full_m] * m_full_scale_factor_mt;
+					complex_t mpot_ex1 = (edgex1.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgex1.m_var_full_m] * m_full_scale_factor_mt;
+					complex_t mpot_ey0 = (edgey0.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgey0.m_var_full_m] * m_full_scale_factor_mt;
+					complex_t mpot_ey1 = (edgey1.m_var_full_m == INDEX_NONE)? 0.0 : solution_empot[edgey1.m_var_full_m] * m_full_scale_factor_mt;
 					complex_t mx0 = mpot_dy * (mpot10 - mpot00) - mpot_dz * mpot_ey0;
 					complex_t mx1 = mpot_dy * (mpot11 - mpot01) - mpot_dz * mpot_ey1;
 					complex_t my0 = mpot_dz * mpot_ex0 - mpot_dx * (mpot01 - mpot00);
