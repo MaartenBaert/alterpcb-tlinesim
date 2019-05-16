@@ -36,10 +36,11 @@ public:
 		PORTTYPE_FLOATING,
 	};
 
-	//static constexpr real_t DEFAULT_GRID_INC = 0.30;
-	//static constexpr real_t DEFAULT_GRID_STEP = 0.01;
-	static constexpr real_t DEFAULT_GRID_INC = 0.02;
-	static constexpr real_t DEFAULT_GRID_STEP = 0.05;
+	static constexpr real_t DEFAULT_LAMBDA_FACTOR = 0.2;
+	static constexpr real_t DEFAULT_GRID_INC = 0.30;
+	static constexpr real_t DEFAULT_GRID_STEP = 0.01;
+	//static constexpr real_t DEFAULT_GRID_INC = 0.02;
+	//static constexpr real_t DEFAULT_GRID_STEP = 0.05;
 
 private:
 	struct Port {
@@ -87,6 +88,7 @@ private:
 private:
 	SolverType m_solver_type;
 	Box2D m_world_box, m_world_focus;
+	real_t m_max_frequency, m_lambda_factor;
 	real_t m_grid_inc, m_grid_epsilon;
 
 	Box2D m_pml_box, m_pml_step;
@@ -121,7 +123,7 @@ private:
 	complex_t m_full_scale_factor_e, m_full_scale_factor_m, m_full_scale_factor_mt;
 
 public:
-	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon);
+	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t max_frequency, real_t lambda_factor, real_t grid_inc, real_t grid_epsilon);
 	virtual ~GridMesh2D() override;
 
 	// noncopyable
@@ -173,9 +175,10 @@ private:
 
 private:
 	static void GridAddBox(std::vector<GridLine> &grid_x, std::vector<GridLine> &grid_y, const Box2D &box, const Box2D &step);
-	static void GridRefine(std::vector<real_t> &m_cholmod_result, std::vector<GridLine> &grid, real_t inc, real_t epsilon);
-	static void GridRefine2(std::vector<real_t> &m_cholmod_result, real_t x1, real_t x2, real_t step1, real_t step2, real_t inc);
-	static void GridMidpoints(std::vector<real_t> &m_cholmod_result, const std::vector<real_t> &grid);
+	static void GridRefine(std::vector<real_t> &result, std::vector<GridLine> &grid, const std::vector<real_t> &max_step, real_t inc, real_t epsilon);
+	static void GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, real_t step1, real_t step2, real_t max_step, real_t inc);
+	static void GridMidpoints(std::vector<real_t> &result, const std::vector<real_t> &grid);
+	static void GridMidpoints(std::vector<real_t> &result, const std::vector<GridLine> &grid);
 	static void PrepareNodeImage(std::vector<size_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, real_t value1, real_t value2, size_t size);
 	static void PrepareCellImage(std::vector<size_t> &index, std::vector<real_t> &frac, const std::vector<real_t> &grid, const std::vector<real_t> &midpoints, real_t value1, real_t value2, size_t size);
 

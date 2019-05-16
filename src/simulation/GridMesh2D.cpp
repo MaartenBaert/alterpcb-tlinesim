@@ -86,7 +86,7 @@ inline void BuildMatrix_Asymm2(
 	BuildMatrix_Asymm2_Sub(matrix, i11, j11, j10, j01, j00, cs, cx, cy, cd);
 }
 
-GridMesh2D::GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t grid_inc, real_t grid_epsilon) {
+GridMesh2D::GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t max_frequency, real_t lambda_factor, real_t grid_inc, real_t grid_epsilon) {
 	if(!FinitePositive(grid_inc))
 		throw std::runtime_error("GridMesh2D error: grid_inc must be positive.");
 	if(!FinitePositive(grid_epsilon))
@@ -94,6 +94,8 @@ GridMesh2D::GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box
 	m_solver_type = solver_type;
 	m_world_box = world_box.Normalize();
 	m_world_focus = world_focus.Normalize();
+	m_max_frequency = max_frequency;
+	m_lambda_factor = lambda_factor;
 	m_grid_inc = grid_inc;
 	m_grid_epsilon = grid_epsilon;
 	m_pml_box = m_world_box;
@@ -401,9 +403,37 @@ void GridMesh2D::InitGrid() {
 		GridAddBox(grid_x, grid_y, integration_line, Box2D(REAL_MAX, REAL_MAX, REAL_MAX, REAL_MAX));
 	}
 
+	// sort grid lines
+	std::sort(grid_x.begin(), grid_x.end());
+	std::sort(grid_y.begin(), grid_y.end());
+
+	// calculate midpoints
+	std::vector<real_t> midpoints_x, midpoints_y;
+	GridMidpoints(midpoints_x, grid_x);
+	GridMidpoints(midpoints_y, grid_y);
+
+	// set maximum step size
+	real_t max_step_vacuum = m_lambda_factor / (m_max_frequency * sqrt(VACUUM_PERMITTIVITY * VACUUM_PERMEABILITY));
+	std::vector<real_t> max_step_x(grid_x.size() - 1, max_step_vacuum), max_step_y(grid_y.size() - 1, max_step_vacuum);
+	for(Dielectric &dielectric : m_dielectrics) {
+		MaterialDielectricProperties properties;
+		GetDielectricProperties(properties, dielectric.m_material, m_max_frequency);
+		real_t max_step = m_lambda_factor / (m_max_frequency * sqrt(properties.m_permittivity_x.real() * VACUUM_PERMEABILITY));
+		size_t ix1 = (size_t) (std::upper_bound(midpoints_x.begin(), midpoints_x.end(), dielectric.m_box.x1) - midpoints_x.begin());
+		size_t ix2 = (size_t) (std::upper_bound(midpoints_x.begin(), midpoints_x.end(), dielectric.m_box.x2) - midpoints_x.begin());
+		size_t iy1 = (size_t) (std::upper_bound(midpoints_y.begin(), midpoints_y.end(), dielectric.m_box.y1) - midpoints_y.begin());
+		size_t iy2 = (size_t) (std::upper_bound(midpoints_y.begin(), midpoints_y.end(), dielectric.m_box.y2) - midpoints_y.begin());
+		for(size_t ix = ix1; ix < ix2; ++ix) {
+			max_step_x[ix] = std::min(max_step_x[ix], max_step);
+		}
+		for(size_t iy = iy1; iy < iy2; ++iy) {
+			max_step_y[iy] = std::min(max_step_y[iy], max_step);
+		}
+	}
+
 	// refine grid
-	GridRefine(m_grid_x, grid_x, m_grid_inc, m_grid_epsilon);
-	GridRefine(m_grid_y, grid_y, m_grid_inc, m_grid_epsilon);
+	GridRefine(m_grid_x, grid_x, max_step_x, m_grid_inc, m_grid_epsilon);
+	GridRefine(m_grid_y, grid_y, max_step_y, m_grid_inc, m_grid_epsilon);
 
 	if(m_grid_x.size() < 2 || m_grid_y.size() < 2)
 		throw std::runtime_error("GridMesh2D error: The mesh must have at least 2 grid lines.");
@@ -1287,8 +1317,10 @@ void GridMesh2D::SolveFullEigenModes() {
 		for(size_t k = 0; k < 10; ++k) {
 			Eigen::VectorXc temp1 = scaled_empot[2] * eigenvector;
 			Eigen::VectorXc temp2 = temp1.cwiseProduct(orthofactors);
-			std::cerr << "ortho: " << temp1.norm() << " " << temp2.norm() << " " << (temp1 - temp2).norm() << std::endl;
+			//std::cerr << "ortho: " << temp1.norm() << " " << temp2.norm() << " " << (temp1 - temp2).norm() << std::endl;
 			eigenvector = m_eigen_lu_empot.solve(temp2);
+			if(m_eigen_lu_empot.info() != Eigen::Success)
+				throw std::runtime_error("Sparse matrix solving failed!");
 			eigenvector *= 1.0 / std::sqrt((eigenvector.transpose() * eigenvector)[0]);
 		}
 
@@ -1663,12 +1695,9 @@ void GridMesh2D::GridAddBox(std::vector<GridLine> &grid_x, std::vector<GridLine>
 	grid_y.emplace_back(box.y2, step.y2);
 }
 
-void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &grid, real_t inc, real_t epsilon) {
+void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &grid, const std::vector<real_t> &max_step, real_t inc, real_t epsilon) {
 	if(grid.size() < 2)
 		throw std::runtime_error("GridMesh2D error: The mesh must have at least 2 grid lines.");
-
-	// sort the list
-	std::sort(grid.begin(), grid.end());
 
 	// propagate minimum step size
 	real_t min_step = grid[0].m_step;
@@ -1708,7 +1737,7 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 			avg_step = gridline.m_step;
 			avg_count = 1;
 		} else {
-			GridRefine2(result, result.back(), avg_sum / (real_t) avg_count, result_back_step, avg_step, inc);
+			GridRefine2(result, result.back(), avg_sum / (real_t) avg_count, result_back_step, avg_step, max_step[i - 1], inc);
 			result_back_step = avg_step;
 			avg_sum = gridline.m_value;
 			avg_prev = gridline.m_value;
@@ -1720,13 +1749,13 @@ void GridMesh2D::GridRefine(std::vector<real_t> &result, std::vector<GridLine> &
 	// complete the grid
 	if(result.empty())
 		throw std::runtime_error("GridMesh2D error: The mesh must have at least 2 grid lines.");
-	GridRefine2(result, result.back(), avg_sum / (real_t) avg_count, result_back_step, avg_step, inc);
+	GridRefine2(result, result.back(), avg_sum / (real_t) avg_count, result_back_step, avg_step, max_step.back(), inc);
 	if(result.size() < 2)
 		throw std::runtime_error("GridMesh2D error: The mesh must have at least 2 grid lines.");
 
 }
 
-void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, real_t step1, real_t step2, real_t inc) {
+void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, real_t step1, real_t step2, real_t max_step, real_t inc) {
 	assert(FiniteLess(x1, x2));
 	assert(FinitePositive(step1));
 	assert(FinitePositive(step2));
@@ -1745,40 +1774,59 @@ void GridMesh2D::GridRefine2(std::vector<real_t> &result, real_t x1, real_t x2, 
 		return;
 	}
 
-	// split into two halves
+	// split into parts
 	real_t frac = 1.0 / (1.0 + inc);
 	real_t log2frac = log2(frac);
-	real_t split = (step2 - step1) / (inc * (x2 - x1)) * 0.5 + 0.5;
-	real_t delta1 = (x2 - x1) * split;
-	real_t delta2 = (x2 - x1) * (1.0 - split);
-
-	// eliminate one half if empty
-	if(delta1 < step1 * 0.5) {
-		delta1 = 0.0;
-		delta2 = x2 - x1;
-	} else if(delta2 < step2 * 0.5) {
-		delta1 = x2 - x1;
-		delta2 = 0.0;
+	real_t delta = x2 - x1;
+	real_t split1 = clamp((max_step - step1) / inc, 0.0, delta);
+	real_t split2 = clamp(delta - (max_step - step2) / inc, 0.0, delta);
+	if(split2 - split1 < max_step * 0.5) {
+		real_t split = ((step2 - step1) / inc + delta) * 0.5;
+		if(split < step1 * 0.5) {
+			split = 0.0;
+		} else if(split > delta - step2 * 0.5) {
+			split = delta;
+		}
+		split1 = split;
+		split2 = split;
+	} else {
+		if(split1 < step1 * 0.5) {
+			split1 = 0.0;
+		}
+		if(split2 > delta - step2 * 0.5) {
+			split2 = delta;
+		}
 	}
+	real_t delta1 = split1;
+	real_t delta2 = split2 - split1;
+	real_t delta3 = delta - split2;
 
-	// first half
+	// part 1
 	if(delta1 != 0.0) {
-		real_t st1 = step1 / delta1;
-		size_t n1 = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st1 / (1.0 + (st1 - 1.0) * frac)) / log2frac + 1.5));
-		real_t vmin1 = exp2(log2frac * (real_t) n1);
-		for(size_t i = n1 - 1; i > 0; --i) {
-			result.push_back(x1 + delta1 * (exp2(log2frac * (real_t) i) - vmin1) / (1.0 - vmin1));
+		real_t st = step1 / delta1;
+		size_t n = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st / (1.0 + (st - 1.0) * frac)) / log2frac + 1.5));
+		real_t vmin = exp2(log2frac * (real_t) n);
+		for(size_t i = n - 1; i > 0; --i) {
+			result.push_back(x1 + delta1 * (exp2(log2frac * (real_t) i) - vmin) / (1.0 - vmin));
 		}
 		result.push_back(x1 + delta1);
 	}
 
-	// second half
+	// part 2
 	if(delta2 != 0.0) {
-		real_t st2 = step2 / delta2;
-		size_t n2 = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st2 / (1.0 + (st2 - 1.0) * frac)) / log2frac + 1.5));
-		real_t vmin2 = exp2(log2frac * (real_t) n2);
-		for(size_t i = 1; i < n2; ++i) {
-			result.push_back(x2 - delta2 * (exp2(log2frac * (real_t) i) - vmin2) / (1.0 - vmin2));
+		size_t n = (size_t) std::max<ptrdiff_t>(1, rintp(delta2 / max_step + 0.5));
+		for(size_t i = 1; i <= n; ++i) {
+			result.push_back(x1 + delta1 + delta2 * ((real_t) i) / ((real_t) n));
+		}
+	}
+
+	// part 3
+	if(delta3 != 0.0) {
+		real_t st = step2 / delta3;
+		size_t n = (size_t) std::max<ptrdiff_t>(1, rintp(log2(st / (1.0 + (st - 1.0) * frac)) / log2frac + 1.5));
+		real_t vmin = exp2(log2frac * (real_t) n);
+		for(size_t i = 1; i < n; ++i) {
+			result.push_back(x2 - delta3 * (exp2(log2frac * (real_t) i) - vmin) / (1.0 - vmin));
 		}
 		result.push_back(x2);
 	}
@@ -1791,6 +1839,15 @@ void GridMesh2D::GridMidpoints(std::vector<real_t> &result, const std::vector<re
 	result.resize(grid.size() - 1);
 	for(size_t i = 0; i < result.size(); ++i) {
 		result[i] = (grid[i] + grid[i + 1]) * 0.5;
+	}
+}
+
+void GridMesh2D::GridMidpoints(std::vector<real_t> &result, const std::vector<GridLine> &grid) {
+	assert(grid.size() >= 2);
+	result.clear();
+	result.resize(grid.size() - 1);
+	for(size_t i = 0; i < result.size(); ++i) {
+		result[i] = (grid[i].m_value + grid[i + 1].m_value) * 0.5;
 	}
 }
 
