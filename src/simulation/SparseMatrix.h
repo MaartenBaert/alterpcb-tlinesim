@@ -48,255 +48,148 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 //   solution = A \ -B
 //   residual = C * solution + D
 
-// Sparse matrices are usually constructed in triplet form, then converted to CSR/CSC by sorting and deduplicating.
-// Unfortunately this is quite slow when there are a lot of duplicates, and can consume a lot of memory. In that case,
-// a better strategy is to use a hash table to deduplicate the coefficients on the fly. The downside of this approach is
-// that when the matrix becomes too large, the hash table buckets no longer fit in the cache and the hash table becomes
-// very slow. In order to avoid this problem, the A block uses a 'bulk storage' optimization: since the typical number
-// of coefficients per column is usually known for FEM problems, we can preallocate memory for these coefficients as a
-// flat array instead of a hash table. This greatly improves the locality, assuming that the matrix is constructed in
-// nearly sequential order. For the few columns that might need extra storage, we can fall back to a hash table.
-// Usually the number of fixed variables is very small, so the B, C and D blocks don't need any special optimizations.
-
 // Symmetric sparse matrices are stored in lower or upper triangular format, with diagonal entry values halved.
 // The lower and upper triangular parts are assumed to be identical (i.e. not complex conjugates).
 // The 'size1' and 'size2' parameters determine the size of the ABCD partitions as explained above.
 
-// Insertion sort for data stored in two separate arrays. Useful for sorting coefficients in CSR/CSC format.
-template<typename A, typename B>
-void InsertionSortPairs(A *data_a, B *data_b, size_t size) {
-	for(size_t i = 1; i < size; ++i) {
-		if(data_a[i - 1] > data_a[i]) {
-			A value_a = data_a[i];
-			B value_b = data_b[i];
-			data_a[i] = data_a[i - 1];
-			data_b[i] = data_b[i - 1];
-			size_t j = i - 1;
-			while(j != 0 && data_a[j - 1] > value_a) {
-				data_a[j] = data_a[j - 1];
-				data_b[j] = data_b[j - 1];
-				--j;
-			}
-			data_a[j] = value_a;
-			data_b[j] = value_b;
-		}
-	}
-}
-
-template<typename F, bool ROWMAJOR, bool SYMMETRIC, bool UPPER>
-class SparseMatrixBase {
+template<typename F>
+class SparseMatrix {
 
 private:
-	struct BulkEntry {
-		size_t inner;
+	struct TripletEntry {
+		size_t row, col;
 		F value;
-		inline BulkEntry() : inner(INDEX_NONE) {}
+		inline TripletEntry(size_t row, size_t col, F value) : row(row), col(col), value(value) {}
 	};
-
-	struct TableEntry {
-		size_t outer, inner;
+	struct CompressedEntry {
+		size_t index;
 		F value;
-		inline TableEntry(size_t outer, size_t inner, F value) : outer(outer), inner(inner), value(value) {}
-	};
-
-	struct TableHasher {
-		inline static bool Equal(const TableEntry &a, const TableEntry &b) {
-			return (a.outer == b.outer && a.inner == b.inner);
-		}
-		inline static hash_t Hash(hash_t hash, const TableEntry &value) {
-			hash = MurmurHash::HashData(hash, value.outer);
-			hash = MurmurHash::HashData(hash, value.inner);
-			return hash;
-		}
 	};
 
 private:
-	size_t m_outer_size, m_inner_size, m_bulk_size, m_bulk_coefficients;
-	std::unique_ptr<BulkEntry[]> m_bulk_data;
-	HashTable<TableEntry, TableHasher> m_table_data;
-
-private:
-	inline static size_t Row(size_t outer, size_t inner) { return (ROWMAJOR)? outer : inner; }
-	inline static size_t Col(size_t outer, size_t inner) { return (ROWMAJOR)? inner : outer; }
-	inline static size_t Outer(size_t row, size_t col) { return (ROWMAJOR)? row : col; }
-	inline static size_t Inner(size_t row, size_t col) { return (ROWMAJOR)? col : row; }
+	size_t m_rows, m_cols;
+	std::vector<TripletEntry> m_triplets;
 
 public:
-	SparseMatrixBase() {
-		m_outer_size = 0;
-		m_inner_size = 0;
-		m_bulk_size = 0;
-		m_bulk_coefficients = 0;
+	SparseMatrix() {
+		m_rows = 0;
+		m_cols = 0;
 	}
 
 	void Free() {
-		m_outer_size = 0;
-		m_inner_size = 0;
-		m_bulk_size = 0;
-		m_bulk_coefficients = 0;
-		m_bulk_data.reset();
-		m_table_data.Free();
+		m_cols = 0;
+		m_rows = 0;
+		m_triplets.clear();
+		m_triplets.shrink_to_fit();
 	}
 
-	void Reset(size_t rows, size_t cols, size_t bulk_size) {
-		assert(!SYMMETRIC || rows == cols);
-		m_outer_size = Outer(rows, cols);
-		m_inner_size = Inner(rows, cols);
-		m_bulk_size = bulk_size;
-		m_bulk_coefficients = 0;
-		m_bulk_data.reset(new BulkEntry[m_bulk_size * m_outer_size]());
-		m_table_data.Clear();
+	void Reset(size_t rows, size_t cols) {
+		m_rows = rows;
+		m_cols = cols;
+		m_triplets.clear();
 	}
 
-	// Insert a new coefficient. If it already exists, the new value will be added to the existing one.
-	template<bool MAKE_SYMMETRIC=true>
 	void Insert(size_t row, size_t col, F value) {
-		size_t outer = Outer(row, col), inner = Inner(row, col);
-		assert(outer < m_outer_size);
-		assert(inner < m_inner_size);
-		if(SYMMETRIC) {
-			if(MAKE_SYMMETRIC) {
-				if(UPPER) {
-					if(row > col)
-						std::swap(outer, inner);
-				} else {
-					if(row < col)
-						std::swap(outer, inner);
-				}
-			} else {
-				if(UPPER) {
-					assert(row <= col);
-				} else {
-					assert(row >= col);
-				}
-			}
-		}
-		BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-		for(size_t i = 0; i < m_bulk_size; ++i) {
-			BulkEntry &entry = bulk[i];
-			if(entry.inner == inner) {
-				entry.value += value;
-				return;
-			}
-			if(entry.inner == INDEX_NONE) {
-				entry.inner = inner;
-				entry.value = value;
-				++m_bulk_coefficients;
-				return;
-		}
-			}
-			TableEntry temp = {outer, inner, value};
-			std::pair<size_t, bool> p = m_table_data.TryPushBack(temp);
-			if(!p.second) {
-				m_table_data[p.first].value += value;
-		}
+		assert(row < m_rows);
+		assert(col < m_cols);
+		m_triplets.emplace_back(row, col, value);
 	}
 
 	// Convert to compressed sparse row/column format.
 	// For symmetric matrices, only the lower or upper part will be stored, but the diagonal values will be doubled.
-	template<typename I, typename F1, bool TRANSPOSE>
-	void ToCompressedSparse(I *offsets, I *indices, F1 *values) const {
-
-		// count coefficients per row/column
-		std::fill_n(offsets, (TRANSPOSE)? m_inner_size : m_outer_size, 0);
-		for(size_t outer = 0; outer < m_outer_size; ++outer) {
-			const BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-			for(size_t i = 0; i < m_bulk_size; ++i) {
-				const BulkEntry &entry = bulk[i];
-				if(entry.inner == INDEX_NONE)
-					break;
-				++offsets[(TRANSPOSE)? entry.inner : outer];
-			}
-		}
-		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
-			const TableEntry &entry = m_table_data[i];
-			++offsets[(TRANSPOSE)? entry.inner : entry.outer];
-		}
-
-		// calculate offsets
-		I total = 0;
-		for(size_t i = 0; i < ((TRANSPOSE)? m_inner_size : m_outer_size); ++i) {
-			total += offsets[i];
-			offsets[i] = total;
-		}
-		offsets[(TRANSPOSE)? m_inner_size : m_outer_size] = total;
-		assert((size_t) total == GetCoefficients());
-
-		// calculate indices and values
-		for(size_t outer = 0; outer < m_outer_size; ++outer) {
-			const BulkEntry *bulk = m_bulk_data.get() + m_bulk_size * outer;
-			for(size_t i = 0; i < m_bulk_size; ++i) {
-				const BulkEntry &entry = bulk[i];
-				if(entry.inner == INDEX_NONE)
-					break;
-				size_t j = (size_t) --offsets[(TRANSPOSE)? entry.inner : outer];
-				indices[j] = I((TRANSPOSE)? outer : entry.inner);
-				values[j] = (SYMMETRIC && outer == entry.inner)? entry.value + entry.value : entry.value;
-			}
-		}
-		for(size_t i = 0; i < m_table_data.GetSize(); ++i) {
-			const TableEntry &entry = m_table_data[i];
-			size_t j = (size_t) --offsets[(TRANSPOSE)? entry.inner : entry.outer];
-			indices[j] = I((TRANSPOSE)? entry.outer : entry.inner);
-			values[j] = (SYMMETRIC && entry.outer == entry.inner)? entry.value + entry.value : entry.value;
-		}
-
-		// sort by index within each column
-		for(size_t i = 0; i < ((TRANSPOSE)? m_inner_size : m_outer_size); ++i) {
-			I begin = offsets[i], end = offsets[i + 1];
-			InsertionSortPairs(indices + begin, values + begin, (size_t) (end - begin));
-		}
-
-	}
-
-	// Convert to compressed sparse column format (convenience function).
-	template<typename I, typename F1>
-	void ToCSC(I *offsets, I *indices, F1 *values) const {
-		ToCompressedSparse<I, F1, ROWMAJOR>(offsets, indices, values);
-	}
-
-	// Convert to compressed sparse row format (convenience function).
-	template<typename I, typename F1>
-	void ToCSR(I *offsets, I *indices, F1 *values) const {
-		ToCompressedSparse<I, F1, !ROWMAJOR>(offsets, indices, values);
-	}
-
-	// Convert to Eigen sparse matrix.
 	template<class EigenSparseMatrix>
 	void ToEigen(EigenSparseMatrix &output) const {
-		output.resize((Eigen::Index) GetRows(), (Eigen::Index) GetCols());
-		output.resizeNonZeros((Eigen::Index) GetCoefficients());
-		if(output.IsRowMajor) {
-			ToCSR(output.outerIndexPtr(), output.innerIndexPtr(), output.valuePtr());
-		} else {
-			ToCSC(output.outerIndexPtr(), output.innerIndexPtr(), output.valuePtr());
+
+		// count inner coefficients
+		std::vector<size_t> inner_offsets((EigenSparseMatrix::IsRowMajor)? m_cols : m_rows, 0);
+		for(const TripletEntry &entry : m_triplets) {
+			++inner_offsets[(EigenSparseMatrix::IsRowMajor)? entry.col : entry.row];
 		}
+		size_t inner_total = 0;
+		for(size_t inner = 0; inner < inner_offsets.size(); ++inner) {
+			size_t count = inner_offsets[inner];
+			inner_offsets[inner] = inner_total;
+			inner_total += count;
+		}
+
+		// group by inner index
+		std::vector<size_t> inner_indices(m_triplets.size());
+		std::vector<F> inner_values(m_triplets.size());
+		for(const TripletEntry &entry : m_triplets) {
+			size_t k = inner_offsets[(EigenSparseMatrix::IsRowMajor)? entry.col : entry.row]++;
+			inner_indices[k] = (EigenSparseMatrix::IsRowMajor)? entry.row : entry.col;
+			inner_values[k] = entry.value;
+		}
+
+		// deduplicate and count outer coefficients
+		std::vector<size_t> outer_offsets(((EigenSparseMatrix::IsRowMajor)? m_rows : m_cols) + 1, 0);
+		std::vector<size_t> outer_last((EigenSparseMatrix::IsRowMajor)? m_rows : m_cols, INDEX_NONE);
+		size_t pos = 0;
+		size_t n1 = 0, n2 = 0;
+		for(size_t inner = 0; inner < inner_offsets.size(); ++inner) {
+			for(size_t end = inner_offsets[inner]; pos < end; ++pos) {
+				size_t outer = inner_indices[pos];
+				if(outer_last[outer] != inner) {
+					assert(outer_last[outer] == INDEX_NONE || outer_last[outer] < inner);
+					++outer_offsets[outer];
+					outer_last[outer] = inner;
+					++n1;
+				} else {
+					++n2;
+				}
+			}
+		}
+		size_t outer_total = 0;
+		for(size_t outer = 0; outer < ((EigenSparseMatrix::IsRowMajor)? m_rows : m_cols); ++outer) {
+			size_t count = outer_offsets[outer];
+			outer_offsets[outer] = outer_total;
+			outer_total += count;
+		}
+
+		// allocate output buffers
+		output.resize((Eigen::Index) GetRows(), (Eigen::Index) GetCols());
+		output.resizeNonZeros((Eigen::Index) outer_total);
+		typename EigenSparseMatrix::StorageIndex *offsets = output.outerIndexPtr();
+		typename EigenSparseMatrix::StorageIndex *indices = output.innerIndexPtr();
+		typename EigenSparseMatrix::Scalar *values = output.valuePtr();
+
+		// write offsets
+		for(size_t outer = 0; outer < ((EigenSparseMatrix::IsRowMajor)? m_rows : m_cols); ++outer) {
+			offsets[outer] = (typename EigenSparseMatrix::StorageIndex) outer_offsets[outer];
+		}
+		offsets[(EigenSparseMatrix::IsRowMajor)? m_rows : m_cols] = (typename EigenSparseMatrix::StorageIndex) outer_total;
+
+		// deduplicate and group by outer index
+		pos = 0;
+		std::fill_n(outer_last.data(), outer_last.size(), INDEX_NONE);
+		for(size_t inner = 0; inner < inner_offsets.size(); ++inner) {
+			for(size_t end = inner_offsets[inner]; pos < end; ++pos) {
+				size_t outer = inner_indices[pos];
+				if(outer_last[outer] != inner) {
+					size_t k = outer_offsets[outer]++;
+					outer_last[outer] = inner;
+					indices[k] = (typename EigenSparseMatrix::StorageIndex) inner;
+					values[k] = (typename EigenSparseMatrix::Scalar) inner_values[pos];
+				} else {
+					size_t k = outer_offsets[outer] - 1;
+					values[k] += (typename EigenSparseMatrix::Scalar) inner_values[pos];
+				}
+			}
+		}
+
 	}
 
 public:
-	inline size_t GetOuterSize() const { return m_outer_size; }
-	inline size_t GetInnerSize() const { return m_inner_size; }
-	inline size_t GetRows() const { return Row(m_outer_size, m_inner_size); }
-	inline size_t GetCols() const { return Col(m_outer_size, m_inner_size); }
-	inline size_t GetCoefficients() const { return m_bulk_coefficients + m_table_data.GetSize(); }
+	inline size_t GetRows() const { return m_rows; }
+	inline size_t GetCols() const { return m_cols; }
 
 };
 
-template<typename F> using SparseMatrixC   = SparseMatrixBase<F, false, false, false>;
-template<typename F> using SparseMatrixCSL = SparseMatrixBase<F, false, true , false>;
-template<typename F> using SparseMatrixCSU = SparseMatrixBase<F, false, true , true >;
-template<typename F> using SparseMatrixR   = SparseMatrixBase<F, true , false, false>;
-template<typename F> using SparseMatrixRSL = SparseMatrixBase<F, true , true , false>;
-template<typename F> using SparseMatrixRSU = SparseMatrixBase<F, true , true , true >;
-
-template<typename F, bool ROWMAJOR, bool SYMMETRIC, bool UPPER>
-class SparseBlockMatrixBase {};
-
-template<typename F, bool ROWMAJOR, bool UPPER>
-class SparseBlockMatrixBase<F, ROWMAJOR, false, UPPER> {
+template<typename F>
+class SparseBlockMatrix {
 
 private:
-	SparseMatrixBase<F, ROWMAJOR, false, false> m_matrix_a, m_matrix_b, m_matrix_c, m_matrix_d;
+	SparseMatrix<F> m_matrix_a, m_matrix_b, m_matrix_c, m_matrix_d;
 
 public:
 	void Free() {
@@ -306,18 +199,17 @@ public:
 		m_matrix_d.Free();
 	}
 
-	void Reset(size_t rows1, size_t rows2, size_t cols1, size_t cols2, size_t bulk_size) {
-		assert(rows1 < INDEX_OFFSET);
-		assert(rows2 < INDEX_OFFSET - 1);
-		assert(cols1 < INDEX_OFFSET);
-		assert(cols2 < INDEX_OFFSET - 1);
-		m_matrix_a.Reset(rows1, cols1, bulk_size);
-		m_matrix_b.Reset(rows1, cols2, bulk_size);
-		m_matrix_c.Reset(rows2, cols1, bulk_size);
-		m_matrix_d.Reset(rows2, cols2, bulk_size);
+	void Reset(size_t rows1, size_t rows2, size_t cols1, size_t cols2) {
+		assert(rows1 <= INDEX_OFFSET);
+		assert(rows2 < INDEX_OFFSET);
+		assert(cols1 <= INDEX_OFFSET);
+		assert(cols2 < INDEX_OFFSET);
+		m_matrix_a.Reset(rows1, cols1);
+		m_matrix_b.Reset(rows1, cols2);
+		m_matrix_c.Reset(rows2, cols1);
+		m_matrix_d.Reset(rows2, cols2);
 	}
 
-	// Insert a new coefficient. If it already exists, the new value will be added to the existing one.
 	void Insert(size_t row, size_t col, F value) {
 		assert(row < m_matrix_a.GetRows() || (row >= INDEX_OFFSET && row < INDEX_OFFSET + m_matrix_d.GetRows()));
 		assert(col < m_matrix_a.GetCols() || (col >= INDEX_OFFSET && col < INDEX_OFFSET + m_matrix_d.GetCols()));
@@ -342,79 +234,9 @@ public:
 	inline size_t GetCols1() const { return m_matrix_a.GetCols(); }
 	inline size_t GetCols2() const { return m_matrix_d.GetCols(); }
 
-	inline const SparseMatrixBase<F, ROWMAJOR, false, false>& GetMatrixA() const { return m_matrix_a; }
-	inline const SparseMatrixBase<F, ROWMAJOR, false, false>& GetMatrixB() const { return m_matrix_b; }
-	inline const SparseMatrixBase<F, ROWMAJOR, false, false>& GetMatrixC() const { return m_matrix_c; }
-	inline const SparseMatrixBase<F, ROWMAJOR, false, false>& GetMatrixD() const { return m_matrix_d; }
+	inline const SparseMatrix<F>& GetMatrixA() const { return m_matrix_a; }
+	inline const SparseMatrix<F>& GetMatrixB() const { return m_matrix_b; }
+	inline const SparseMatrix<F>& GetMatrixC() const { return m_matrix_c; }
+	inline const SparseMatrix<F>& GetMatrixD() const { return m_matrix_d; }
 
 };
-
-template<typename F, bool ROWMAJOR, bool UPPER>
-class SparseBlockMatrixBase<F, ROWMAJOR, true, UPPER> {
-
-private:
-	SparseMatrixBase<F, ROWMAJOR, true , UPPER> m_matrix_a;
-	SparseMatrixBase<F, ROWMAJOR, false, false> m_matrix_bc;
-	SparseMatrixBase<F, ROWMAJOR, true , UPPER> m_matrix_d;
-
-public:
-	void Free() {
-		m_matrix_a.Free();
-		m_matrix_bc.Free();
-		m_matrix_d.Free();
-	}
-
-	void Reset(size_t rows1, size_t rows2, size_t cols1, size_t cols2, size_t bulk_size) {
-		assert(rows1 < INDEX_OFFSET);
-		assert(rows2 < INDEX_OFFSET - 1);
-		assert(cols1 < INDEX_OFFSET);
-		assert(cols2 < INDEX_OFFSET - 1);
-		assert(rows1 == cols1);
-		assert(rows2 == cols2);
-		m_matrix_a.Reset(rows1, cols1, bulk_size);
-		if(UPPER) {
-			m_matrix_bc.Reset(rows1, cols2, bulk_size); // use B
-		} else {
-			m_matrix_bc.Reset(rows2, cols1, bulk_size); // use C
-		}
-		m_matrix_d.Reset(rows2, cols2, bulk_size);
-	}
-
-	// Insert a new coefficient. If it already exists, the new value will be added to the existing one.
-	void Insert(size_t row, size_t col, F value) {
-		assert(row < GetRows1() || (row >= INDEX_OFFSET && row < INDEX_OFFSET + GetRows2()));
-		assert(col < GetCols1() || (col >= INDEX_OFFSET && col < INDEX_OFFSET + GetCols2()));
-		if((UPPER)? (row > col) : (row < col)) {
-			std::swap(row, col);
-		}
-		if(((UPPER)? col : row) < INDEX_OFFSET) {
-			m_matrix_a.template Insert<false>(row, col, value);
-		} else if(((UPPER)? row : col) < INDEX_OFFSET) {
-			if(UPPER) {
-				m_matrix_bc.template Insert<false>(row, col - INDEX_OFFSET, value);
-			} else {
-				m_matrix_bc.template Insert<false>(row - INDEX_OFFSET, col, value);
-			}
-		} else {
-			m_matrix_d.template Insert<false>(row - INDEX_OFFSET, col - INDEX_OFFSET, value);
-		}
-	}
-
-public:
-	inline size_t GetRows1() const { return m_matrix_a.GetRows(); }
-	inline size_t GetRows2() const { return m_matrix_d.GetRows(); }
-	inline size_t GetCols1() const { return m_matrix_a.GetCols(); }
-	inline size_t GetCols2() const { return m_matrix_d.GetCols(); }
-
-	inline const SparseMatrixBase<F, ROWMAJOR, true , UPPER>& GetMatrixA()  const { return m_matrix_a;  }
-	inline const SparseMatrixBase<F, ROWMAJOR, false, false>& GetMatrixBC() const { return m_matrix_bc; }
-	inline const SparseMatrixBase<F, ROWMAJOR, true , UPPER>& GetMatrixD()  const { return m_matrix_d;  }
-
-};
-
-template<typename F> using SparseBlockMatrixC   = SparseBlockMatrixBase<F, false, false, false>;
-template<typename F> using SparseBlockMatrixCSL = SparseBlockMatrixBase<F, false, true , false>;
-template<typename F> using SparseBlockMatrixCSU = SparseBlockMatrixBase<F, false, true , true >;
-template<typename F> using SparseBlockMatrixR   = SparseBlockMatrixBase<F, true , false, false>;
-template<typename F> using SparseBlockMatrixRSL = SparseBlockMatrixBase<F, true , true , false>;
-template<typename F> using SparseBlockMatrixRSU = SparseBlockMatrixBase<F, true , true , true >;

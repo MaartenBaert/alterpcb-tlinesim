@@ -54,6 +54,7 @@ HEADERS += \
 	simulation/GenericMesh.h \
 	simulation/GridMesh2D.h \
 	simulation/MaterialDatabase.h \
+	simulation/Materials.h \
 	simulation/MatrixMarket.h \
 	simulation/SparseMatrix.h \
 	simulation/TLineTypes.h
@@ -79,6 +80,7 @@ SOURCES += \
 	simulation/GenericMesh.cpp \
 	simulation/GridMesh2D.cpp \
 	simulation/MaterialDatabase.cpp \
+	simulation/Materials.cpp \
 	simulation/TLineTypes.cpp \
 	simulation/TLine_CoplanarWaveguide.cpp \
 	simulation/TLine_Microstrip.cpp \

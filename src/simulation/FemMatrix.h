@@ -23,10 +23,16 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "SparseMatrix.h"
 
-void FemMatrix_EMPot_Rect(SparseMatrixC<complex_t> matrix[3], size_t vars[12], real_t delta_x, real_t delta_y, real_t omega,
+void FemMatrix_StaticEPot_Rect(SparseBlockMatrix<complex_t> &matrix, size_t vars[8], real_t delta_x, real_t delta_y,
+		complex_t permittivity_x, complex_t permittivity_y);
+
+void FemMatrix_StaticMPot_Rect(SparseBlockMatrix<complex_t> &matrix, size_t vars[8], real_t delta_x, real_t delta_y,
+		complex_t permeability_x, complex_t permeability_y);
+void FemMatrix_StaticMPot_XLine(SparseBlockMatrix<complex_t> &matrix, size_t vars[4], real_t delta_x, real_t omega, complex_t impedance);
+void FemMatrix_StaticMPot_YLine(SparseBlockMatrix<complex_t> &matrix, size_t vars[4], real_t delta_y, real_t omega, complex_t impedance);
+
+void FemMatrix_FullEMPot_Rect(SparseMatrix<complex_t> matrix[2], size_t vars[24], real_t delta_x, real_t delta_y, real_t omega,
 		complex_t permittivity_x, complex_t permittivity_y, complex_t permittivity_z,
 		complex_t permeability_x, complex_t permeability_y, complex_t permeability_z);
-
-void FemMatrix_EMPot_XLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_x, real_t omega, complex_t impedance);
-
-void FemMatrix_EMPot_YLine(SparseMatrixC<complex_t> matrix[3], size_t vars[5], real_t delta_y, real_t omega, complex_t impedance);
+void FemMatrix_FullEMPot_XLine(SparseMatrix<complex_t> matrix[2], size_t vars[8], real_t delta_x, real_t omega, complex_t impedance);
+void FemMatrix_FullEMPot_YLine(SparseMatrix<complex_t> matrix[2], size_t vars[8], real_t delta_y, real_t omega, complex_t impedance);

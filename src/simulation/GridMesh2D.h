@@ -31,11 +31,6 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 class GridMesh2D : public GenericMesh {
 
 public:
-	enum PortType {
-		PORTTYPE_FIXED,
-		PORTTYPE_FLOATING,
-	};
-
 	static constexpr real_t DEFAULT_LAMBDA_FACTOR = 0.2;
 	static constexpr real_t DEFAULT_GRID_INC = 0.30;
 	static constexpr real_t DEFAULT_GRID_STEP = 0.01;
@@ -44,11 +39,11 @@ public:
 
 private:
 	struct Port {
-		PortType m_type;
 		Vector2D m_anchor;
 		bool m_infinite_area;
-		size_t m_var, m_var_full_e;
-		inline Port(PortType type, const Vector2D &anchor, bool infinite_area) : m_type(type), m_anchor(anchor), m_infinite_area(infinite_area), m_var(INDEX_NONE), m_var_full_e(INDEX_NONE) {}
+		size_t m_var_static_e, m_var_static_m, m_var_full_e;
+		inline Port(const Vector2D &anchor, bool infinite_area) : m_anchor(anchor), m_infinite_area(infinite_area),
+				m_var_static_e(INDEX_NONE), m_var_static_m(INDEX_NONE), m_var_full_e(INDEX_NONE) {}
 	};
 	struct Conductor {
 		Box2D m_box, m_step;
@@ -64,20 +59,26 @@ private:
 			: m_box(box), m_step(step), m_material(material) {}
 	};
 	struct GridLine {
-		real_t m_value,  m_step;
+		real_t m_value, m_step;
 		inline GridLine(real_t value, real_t step) : m_value(value), m_step(step) {}
 		inline bool operator<(const GridLine &other) const { return m_value < other.m_value; }
 	};
 	struct Node {
-		size_t m_port;
-		size_t m_var, m_var_surf, m_var_full_e, m_var_full_m;
-		inline Node() : m_port(INDEX_NONE), m_var(INDEX_NONE), m_var_surf(INDEX_NONE), m_var_full_e(INDEX_NONE), m_var_full_m(INDEX_NONE) {}
+		size_t m_conductor;
+		bool m_surface;
+		size_t m_var_static_e1, m_var_static_m1;
+		size_t m_var_full_e1, m_var_full_m1;
+		inline Node() : m_conductor(INDEX_NONE), m_surface(false), m_var_static_e1(INDEX_NONE), m_var_static_m1(INDEX_NONE),
+				m_var_full_e1(INDEX_NONE), m_var_full_m1(INDEX_NONE) {}
 	};
 	struct Edge {
 		size_t m_conductor;
 		bool m_surface;
-		size_t m_var_full_m;
-		inline Edge() : m_conductor(INDEX_NONE), m_surface(false), m_var_full_m(INDEX_NONE) {}
+		size_t m_var_static_e2, m_var_static_m2;
+		size_t m_var_full_e2, m_var_full_m2;
+		size_t m_var_full_mt1, m_var_full_mt2;
+		inline Edge() : m_conductor(INDEX_NONE), m_surface(false), m_var_static_e2(INDEX_NONE), m_var_static_m2(INDEX_NONE),
+				m_var_full_e2(INDEX_NONE), m_var_full_m2(INDEX_NONE), m_var_full_mt1(INDEX_NONE), m_var_full_mt2(INDEX_NONE) {}
 	};
 	struct Cell {
 		size_t m_conductor;
@@ -85,8 +86,24 @@ private:
 		inline Cell() : m_conductor(INDEX_NONE), m_dielectric(INDEX_NONE) {}
 	};
 
+public:
+	struct NodeField {
+		complex_t e1, m1;
+	};
+	struct EdgeField {
+		complex_t e2, m2;
+		complex_t mt1, mt2;
+	};
+	struct SolutionField {
+		complex_t m_propagation_constant;
+		complex_t m_effective_index;
+		std::vector<NodeField> m_field_nodes;
+		std::vector<EdgeField> m_field_edges_x, m_field_edges_y;
+	};
+
 private:
 	SolverType m_solver_type;
+	ElementType m_element_type;
 	Box2D m_world_box, m_world_focus;
 	real_t m_max_frequency, m_lambda_factor;
 	real_t m_grid_inc, m_grid_epsilon;
@@ -103,27 +120,25 @@ private:
 	std::vector<Node> m_nodes;
 	std::vector<Edge> m_edges_x, m_edges_y;
 	std::vector<Cell> m_cells;
-	size_t m_vars_free, m_vars_fixed, m_vars_surf, m_vars_full;
+	size_t m_vars_static_e_free, m_vars_static_e_fixed;
+	size_t m_vars_static_m_free, m_vars_static_m_fixed;
+	size_t m_vars_full_em;
 
-	std::vector<MaterialConductorProperties> m_conductor_properties;
-	std::vector<MaterialDielectricProperties> m_dielectric_properties;
+	std::vector<MaterialConductor::Properties> m_conductor_properties;
+	std::vector<MaterialDielectric::Properties> m_dielectric_properties;
 	Eigen::VectorXr m_vector_dc_resistances;
-	Eigen::SparseMatrix<complex_t> m_matrix_epot[3], m_matrix_mpot[3];
-	Eigen::SparseMatrix<real_t> m_matrix_surf_resid[2], m_matrix_surf_curr, m_matrix_surf_loss;
-	Eigen::SparseMatrix<complex_t> m_matrix_empot[3];
+	Eigen::SparseMatrix<complex_t> m_matrix_static_e[4], m_matrix_static_m[4];
+	Eigen::SparseMatrix<complex_t> m_matrix_full_em[2];
 
-	Eigen::SimplicialLDLT<Eigen::SparseMatrix<real_t>, Eigen::Lower> m_eigen_chol, m_eigen_chol_surf;
-	Eigen::MatrixXr m_eigen_rhs, m_eigen_rhs_surf;
-	Eigen::MatrixXr m_eigen_solution_epot, m_eigen_solution_mpot, m_eigen_solution_surf;
+	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_lu_static_e, m_lu_static_m;
+	Eigen::MatrixXc m_solution_static_e, m_solution_static_m, m_solution_full_em;
 
-	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
-	//Eigen::UmfPackLU<Eigen::SparseMatrix<complex_t>> m_eigen_lu_empot;
-	Eigen::MatrixXc m_eigen_solution_empot, m_eigen_resid_empot;
-	Eigen::VectorXc m_full_propagation_constants;
-	complex_t m_full_scale_factor_e, m_full_scale_factor_m, m_full_scale_factor_mt;
+	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_lu_full_em;
+
+	std::vector<SolutionField> m_solution_fields;
 
 public:
-	GridMesh2D(SolverType solver_type, const Box2D &world_box, const Box2D &world_focus, real_t max_frequency, real_t lambda_factor, real_t grid_inc, real_t grid_epsilon);
+	GridMesh2D(SolverType solver_type, ElementType element_type, const Box2D &world_box, const Box2D &world_focus, real_t max_frequency, real_t lambda_factor, real_t grid_inc, real_t grid_epsilon);
 	virtual ~GridMesh2D() override;
 
 	// noncopyable
@@ -133,7 +148,7 @@ public:
 	void SetPML(const Box2D &box, real_t step, real_t attenuation);
 	void SetPML(const Box2D &box, const Box2D &step, real_t attenuation);
 
-	size_t AddPort(PortType type, const Vector2D &anchor, bool infinite_area);
+	size_t AddPort(const Vector2D &anchor, bool infinite_area);
 	void AddConductor(const Box2D &box, real_t step, const MaterialConductor *material, size_t port);
 	void AddConductor(const Box2D &box, const Box2D &step, const MaterialConductor *material, size_t port);
 	void AddDielectric(const Box2D &box, real_t step, const MaterialDielectric *material);
@@ -148,7 +163,7 @@ protected:
 	virtual void DoInitialize() override;
 	virtual void DoSolve() override;
 	virtual void DoCleanup() override;
-	virtual size_t GetFixedVariableCount() override;
+	virtual size_t GetPortCount() override;
 
 private:
 	void InitGrid();
@@ -159,6 +174,9 @@ private:
 	void SolveStaticEigenModes();
 	void SolveFullEigenModes();
 
+	void GetCellField(size_t mode, size_t ix, size_t iy, real_t fx, real_t fy, complex_t &fex, complex_t &fey, complex_t &fez, complex_t &fmx, complex_t &fmy, complex_t &fmz);
+
+	// TODO: remove
 	void GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type);
 	void GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type);
 	void GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type);

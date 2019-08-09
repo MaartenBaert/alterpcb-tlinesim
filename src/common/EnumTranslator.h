@@ -20,39 +20,55 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "Basics.h"
+
 #include <algorithm>
 
-template<typename A, typename B>
+template<typename E>
 class EnumTranslator {
+
+public:
+	static const std::string NAME;
 
 private:
 	static const EnumTranslator SINGLETON;
 
 private:
-	std::vector<std::pair<A, B>> m_to_second, m_to_first;
+	std::vector<std::pair<E, std::string>> m_enum_to_string, m_string_to_enum;
 
 private:
-	inline static bool CompareFirst(const std::pair<A, B> &a, const std::pair<A, B> &b) { return (a.first < b.first); }
-	inline static bool CompareSecond(const std::pair<A, B> &a, const std::pair<A, B> &b) { return (a.second < b.second); }
+	inline static bool CompareEnum1(const std::pair<E, std::string> &a, E b) {
+		return (a.first < b);
+	}
+	inline static bool CompareEnum2(const std::pair<E, std::string> &a, const std::pair<E, std::string> &b) {
+		return (a.first < b.first);
+	}
+	inline static bool CompareString1(const std::pair<E, std::string> &a, const std::string &b) {
+		return (a.second < b);
+	}
+	inline static bool CompareString2(const std::pair<E, std::string> &a, const std::pair<E, std::string> &b) {
+		return (a.second < b.second);
+	}
 
 public:
-	EnumTranslator(std::initializer_list<std::pair<A, B>> list) {
-		m_to_first = m_to_second = list;
-		std::stable_sort(m_to_first.begin(), m_to_first.end(), CompareSecond);
-		std::stable_sort(m_to_second.begin(), m_to_second.end(), CompareFirst);
+	EnumTranslator(std::initializer_list<std::pair<E, std::string>> list) {
+		m_enum_to_string = list;
+		m_string_to_enum = list;
+		std::stable_sort(m_enum_to_string.begin(), m_enum_to_string.end(), CompareEnum2);
+		std::stable_sort(m_string_to_enum.begin(), m_string_to_enum.end(), CompareString2);
 	}
-	inline static bool ToFirst(A &first, const B &second) {
-		auto it = std::lower_bound(SINGLETON.m_to_first.begin(), SINGLETON.m_to_first.end(), std::make_pair(A(), second), CompareSecond);
-		if(it == SINGLETON.m_to_first.end() || it->second != second)
+	inline static bool EnumToString(const E &e, std::string &s) {
+		auto it = std::lower_bound(SINGLETON.m_enum_to_string.begin(), SINGLETON.m_enum_to_string.end(), e, CompareEnum1);
+		if(it == SINGLETON.m_enum_to_string.end() || it->first != e)
 			return false;
-		first = it->first;
+		s = it->second;
 		return true;
 	}
-	inline static bool ToSecond(const A &first, B &second) {
-		auto it = std::lower_bound(SINGLETON.m_to_second.begin(), SINGLETON.m_to_second.end(), std::make_pair(first, B()), CompareFirst);
-		if(it == SINGLETON.m_to_second.end() || it->first != first)
+	inline static bool StringToEnum(const std::string &s, E &e) {
+		auto it = std::lower_bound(SINGLETON.m_string_to_enum.begin(), SINGLETON.m_string_to_enum.end(), s, CompareString1);
+		if(it == SINGLETON.m_string_to_enum.end() || it->second != s)
 			return false;
-		second = it->second;
+		e = it->first;
 		return true;
 	}
 
@@ -60,18 +76,19 @@ public:
 
 // convenience functions without full error checking
 template<typename E>
-inline std::string EnumToString(E value) {
-	std::string string;
-	bool success = EnumTranslator<E, std::string>::ToSecond(value, string);
+inline std::string EnumToString(E e) {
+	std::string s;
+	bool success = EnumTranslator<E>::EnumToString(e, s);
 	assert(success); UNUSED(success);
-	return string;
+	return s;
 }
 template<typename E>
 inline E StringToEnum(const std::string &string, E fallback) {
-	E value = fallback;
-	EnumTranslator<E, std::string>::ToFirst(value, string);
-	return value;
+	E e = fallback;
+	EnumTranslator<E>::StringToEnum(e, string);
+	return e;
 }
 
-#define ENUMTRANSLATOR(A, B) template<> const EnumTranslator<A, B> EnumTranslator<A, B>::SINGLETON
-#define ENUMSTRINGS(E) ENUMTRANSLATOR(E, std::string)
+#define ENUMSTRINGS(E) \
+	template<> const std::string EnumTranslator<E>::NAME = #E; \
+	template<> const EnumTranslator<E> EnumTranslator<E>::SINGLETON

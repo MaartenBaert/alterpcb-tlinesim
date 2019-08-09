@@ -67,6 +67,11 @@ inline F cube(F x) {
 	return x * x * x;
 }
 
+template<typename F, typename G>
+F lerp(F n0, F n1, G fx) {
+	return n0 + (n1 - n0) * fx;
+}
+
 template<typename F>
 inline int32_t rint32(F x) {
 	return (sizeof(long int) >= sizeof(int32_t))? (int32_t) lrint(x) : (int32_t) llrint(x);

@@ -20,6 +20,8 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "NaturalSort.h"
 
+namespace NaturalSort {
+
 // locale-independent alternative to std::isdigit()
 inline bool IsDigit(char c) {
 	return c >= '0' && c <= '9';
@@ -32,7 +34,7 @@ inline bool IsDigit(char c) {
 // padded from the right. For example, when comparing the strings "X 1.2" and "X 12.345", the comparison will behave as
 // if the first string was actually "X 01.200". If two numbers have the same numerical value, the one with the highest
 // number of leading/trailing zeros is considered to be greater. For example, "12" < "012" and "1.2" < "1.20".
-int NaturalStringCompare(const char *a, size_t a_len, const char *b, size_t b_len) {
+int Compare(const char *a, size_t a_len, const char *b, size_t b_len) {
 	size_t ia = 0, ib = 0;
 	while(ia < a_len && ib < b_len) {
 		if(IsDigit(a[ia]) && IsDigit(b[ib])) { // both strings contain a number
@@ -84,4 +86,6 @@ int NaturalStringCompare(const char *a, size_t a_len, const char *b, size_t b_le
 		}
 	}
 	return (ia < a_len)? 1 : (ib < b_len)? -1 : 0;
+}
+
 }

@@ -21,34 +21,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "Basics.h"
-
-constexpr real_t VACUUM_PERMITTIVITY = 8.854187817620389e-12;
-constexpr real_t VACUUM_PERMEABILITY = 1.2566370614359173e-6;
-constexpr real_t SPEED_OF_LIGHT = 299792458.0;
-
-struct MaterialConductor {
-	std::string m_name;
-	real_t m_conductivity;
-	real_t m_permeability;
-	real_t m_permeability_unity_frequency;
-};
-
-struct MaterialDielectric {
-	std::string m_name;
-	real_t m_permittivity_x, m_permittivity_y, m_permittivity_z;
-	real_t m_loss_tangent_x, m_loss_tangent_y, m_loss_tangent_z;
-	real_t m_test_frequency;
-};
-
-struct MaterialConductorProperties {
-	real_t m_conductivity;
-	real_t m_permeability;
-	complex_t m_impedance;
-};
-
-struct MaterialDielectricProperties {
-	std::complex<real_t> m_permittivity_x, m_permittivity_y, m_permittivity_z;
-};
+#include "Materials.h"
 
 class MaterialDatabase {
 
@@ -70,6 +43,3 @@ public:
 	inline const std::vector<MaterialDielectric>& GetDielectrics() { return m_dielectrics; }
 
 };
-
-void GetConductorProperties(MaterialConductorProperties &result, const MaterialConductor *source, real_t target_frequency);
-void GetDielectricProperties(MaterialDielectricProperties &result, const MaterialDielectric *source, real_t target_frequency);

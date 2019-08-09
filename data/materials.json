@@ -2,1235 +2,1524 @@
 	"conductors": [
 		{
 			"name": "Aluminium",
-			"conductivity": 3.5e7
+			"categories": ["Common", "Generic"],
+			"model": "constant",
+			"conductivity": 3.5e7,
+			"permeability": 1
 		},
 		{
 			"name": "Constantan",
-			"conductivity": 2.04e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 2.04e6,
+			"permeability": 1
 		},
 		{
 			"name": "Copper",
-			"conductivity": 5.96e7
+			"categories": ["Common", "Generic"],
+			"model": "constant",
+			"conductivity": 5.96e7,
+			"permeability": 1
 		},
 		{
 			"name": "Gold",
-			"conductivity": 4.1e7
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 4.1e7,
+			"permeability": 1
 		},
 		{
 			"name": "Iron",
+			"categories": ["Generic"],
+			"model": "constant",
 			"conductivity": 1e7,
-			"permeability": 5000,
-			"permeability_unity_frequency": 1.0e9
+			"permeability": 5000
 		},
 		{
 			"name": "Lead",
-			"conductivity": 4.55e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 4.55e6,
+			"permeability": 1
 		},
 		{
 			"name": "Manganin",
-			"conductivity": 2.07e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 2.07e6,
+			"permeability": 1
 		},
 		{
 			"name": "Nichrome",
-			"conductivity": 6.7e5
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 6.7e5,
+			"permeability": 1
 		},
 		{
 			"name": "Nickel",
+			"categories": ["Generic"],
+			"model": "constant",
 			"conductivity": 1.43e7,
-			"permeability": 100,
-			"permeability_unity_frequency": 1.0e9
+			"permeability": 100
 		},
 		{
 			"name": "Platinum",
-			"conductivity": 9.43e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 9.43e6,
+			"permeability": 1
 		},
 		{
 			"name": "Silver",
-			"conductivity": 6.3e7
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 6.3e7,
+			"permeability": 1
 		},
 		{
 			"name": "Solder (SnAgCu)",
-			"conductivity": 7.54e6
+			"categories": ["Common", "Generic"],
+			"model": "constant",
+			"conductivity": 7.54e6,
+			"permeability": 1
 		},
 		{
 			"name": "Solder (SnPb)",
-			"conductivity": 6.85e6
+			"categories": ["Common", "Generic"],
+			"model": "constant",
+			"conductivity": 6.85e6,
+			"permeability": 1
 		},
 		{
 			"name": "Steel (carbon)",
+			"categories": ["Generic"],
+			"model": "constant",
 			"conductivity": 6.99e6,
-			"permeability": 100,
-			"permeability_unity_frequency": 1.0e9
+			"permeability": 100
 		},
 		{
 			"name": "Steel (electrical)",
+			"categories": ["Generic"],
+			"model": "constant",
 			"conductivity": 2.17e6,
-			"permeability": 4000,
-			"permeability_unity_frequency": 1.0e9
+			"permeability": 4000
 		},
 		{
 			"name": "Steel (stainless)",
+			"categories": ["Generic"],
+			"model": "constant",
 			"conductivity": 1.45e6,
-			"permeability": 4,
-			"permeability_unity_frequency": 1.0e9
+			"permeability": 4
 		},
 		{
 			"name": "Tin",
-			"conductivity": 9.17e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 9.17e6,
+			"permeability": 1
 		},
 		{
 			"name": "Titanium",
-			"conductivity": 2.38e6
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 2.38e6,
+			"permeability": 1
 		},
 		{
 			"name": "Tungsten",
-			"conductivity": 1.79e7
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 1.79e7,
+			"permeability": 1
 		},
 		{
 			"name": "Zinc",
-			"conductivity": 1.69e7
+			"categories": ["Generic"],
+			"model": "constant",
+			"conductivity": 1.69e7,
+			"permeability": 1
 		}
 	],
 	"dielectrics": [
 		{
+			"name": "Test - Constant PVC",
+			"categories": ["Test"],
+			"model": "constant",
+			"permittivity_x": 2.8,
+			"permittivity_y": 2.8,
+			"permittivity_z": 2.8,
+			"loss_tangent_x": 0.019,
+			"loss_tangent_y": 0.019,
+			"loss_tangent_z": 0.019
+		},
+		{
 			"name": "3M Epsilam 10",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 11.64,
 			"permittivity_y": 9.25,
 			"permittivity_z": 11.64,
 			"loss_tangent_x": 0.0022,
 			"loss_tangent_y": 0.0045,
 			"loss_tangent_z": 0.0022,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Air",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 1.0,
 			"permittivity_y": 1.0,
 			"permittivity_z": 1.0,
 			"loss_tangent_x": 0.0,
 			"loss_tangent_y": 0.0,
 			"loss_tangent_z": 0.0,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Arlon 25N",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.57,
 			"permittivity_y": 3.37,
 			"permittivity_z": 3.57,
 			"loss_tangent_x": 0.0041,
 			"loss_tangent_y": 0.0033,
 			"loss_tangent_z": 0.0041,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Arlon DiClad880",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.32,
 			"permittivity_y": 2.15,
 			"permittivity_z": 2.32,
 			"loss_tangent_x": 0.0016,
 			"loss_tangent_y": 0.00093,
 			"loss_tangent_z": 0.0016,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Corsa Alumina",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 9.65,
 			"permittivity_y": 10.35,
 			"permittivity_z": 9.65,
 			"loss_tangent_x": 0.0003,
 			"loss_tangent_y": 0.0004,
 			"loss_tangent_z": 0.0003,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "GE Getek R54",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.91,
 			"permittivity_y": 3.5,
 			"permittivity_z": 3.91,
 			"loss_tangent_x": 0.005,
 			"loss_tangent_y": 0.0038,
 			"loss_tangent_z": 0.005,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Isola 185HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.318,
 			"permittivity_y": 3.893,
 			"permittivity_z": 4.318,
 			"loss_tangent_x": 0.02032,
 			"loss_tangent_y": 0.02568,
 			"loss_tangent_z": 0.02032,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola 250HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.34,
 			"permittivity_y": 3.913,
 			"permittivity_z": 4.34,
 			"loss_tangent_x": 0.01902,
 			"loss_tangent_y": 0.02404,
 			"loss_tangent_z": 0.01902,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola 254",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.674,
 			"permittivity_y": 4.214,
 			"permittivity_z": 4.674,
 			"loss_tangent_x": 0.01902,
 			"loss_tangent_y": 0.02404,
 			"loss_tangent_z": 0.01902,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola 370 TURBO",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.451,
 			"permittivity_y": 4.013,
 			"permittivity_z": 4.451,
 			"loss_tangent_x": 0.02075,
 			"loss_tangent_y": 0.02622,
 			"loss_tangent_z": 0.02075,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola 370HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.362,
 			"permittivity_y": 3.933,
 			"permittivity_z": 4.362,
 			"loss_tangent_x": 0.02161,
 			"loss_tangent_y": 0.02732,
 			"loss_tangent_z": 0.02161,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola Astra MT77",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.302,
 			"permittivity_y": 2.954,
 			"permittivity_z": 3.302,
 			"loss_tangent_x": 0.00237,
 			"loss_tangent_y": 0.00204,
 			"loss_tangent_z": 0.00237,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola Auto-HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.585,
 			"permittivity_y": 4.134,
 			"permittivity_z": 4.585,
 			"loss_tangent_x": 0.01729,
 			"loss_tangent_y": 0.02185,
 			"loss_tangent_z": 0.01729,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola Chronon",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.051,
 			"permittivity_y": 3.623,
 			"permittivity_z": 4.051,
 			"loss_tangent_x": 0.00558,
 			"loss_tangent_y": 0.00479,
 			"loss_tangent_z": 0.00558,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola DE104",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.841,
 			"permittivity_y": 4.365,
 			"permittivity_z": 4.841,
 			"loss_tangent_x": 0.01989,
 			"loss_tangent_y": 0.02513,
 			"loss_tangent_z": 0.01989,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola DE156",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.418,
 			"permittivity_y": 3.983,
 			"permittivity_z": 4.418,
 			"loss_tangent_x": 0.01487,
 			"loss_tangent_y": 0.01879,
 			"loss_tangent_z": 0.01487,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola FR402",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.73,
 			"permittivity_y": 4.264,
 			"permittivity_z": 4.73,
 			"loss_tangent_x": 0.01297,
 			"loss_tangent_y": 0.01639,
 			"loss_tangent_z": 0.01297,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Isola FR406",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.362,
 			"permittivity_y": 3.933,
 			"permittivity_z": 4.362,
 			"loss_tangent_x": 0.01487,
 			"loss_tangent_y": 0.01879,
 			"loss_tangent_z": 0.01487,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola FR408",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.073,
 			"permittivity_y": 3.672,
 			"permittivity_z": 4.073,
 			"loss_tangent_x": 0.01098,
 			"loss_tangent_y": 0.01388,
 			"loss_tangent_z": 0.01098,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola FR408HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.051,
 			"permittivity_y": 3.652,
 			"permittivity_z": 4.051,
 			"loss_tangent_x": 0.00847,
 			"loss_tangent_y": 0.01071,
 			"loss_tangent_z": 0.00847,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola G200",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.062,
 			"permittivity_y": 3.662,
 			"permittivity_z": 4.062,
 			"loss_tangent_x": 0.01297,
 			"loss_tangent_y": 0.01639,
 			"loss_tangent_z": 0.01297,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola I-Speed",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.996,
 			"permittivity_y": 3.574,
 			"permittivity_z": 3.996,
 			"loss_tangent_x": 0.00935,
 			"loss_tangent_y": 0.00802,
 			"loss_tangent_z": 0.00935,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola I-Speed IS",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.611,
 			"permittivity_y": 3.23,
 			"permittivity_z": 3.611,
 			"loss_tangent_x": 0.00921,
 			"loss_tangent_y": 0.0079,
 			"loss_tangent_z": 0.00921,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola I-Tera MT (3.00)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.302,
 			"permittivity_y": 2.954,
 			"permittivity_z": 3.302,
 			"loss_tangent_x": 0.00489,
 			"loss_tangent_y": 0.00419,
 			"loss_tangent_z": 0.00489,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola I-Tera MT RF (3.38)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.721,
 			"permittivity_y": 3.328,
 			"permittivity_z": 3.721,
 			"loss_tangent_x": 0.00391,
 			"loss_tangent_y": 0.00335,
 			"loss_tangent_z": 0.00391,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT RF (3.45)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.798,
 			"permittivity_y": 3.397,
 			"permittivity_z": 3.798,
 			"loss_tangent_x": 0.00433,
 			"loss_tangent_y": 0.00371,
 			"loss_tangent_z": 0.00433,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT RF (3.50)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.853,
 			"permittivity_y": 3.446,
 			"permittivity_z": 3.853,
 			"loss_tangent_x": 0.00447,
 			"loss_tangent_y": 0.00383,
 			"loss_tangent_z": 0.00447,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT RF (3.80)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.183,
 			"permittivity_y": 3.742,
 			"permittivity_z": 4.183,
 			"loss_tangent_x": 0.0053,
 			"loss_tangent_y": 0.00455,
 			"loss_tangent_z": 0.0053,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT40 (3.38)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.721,
 			"permittivity_y": 3.328,
 			"permittivity_z": 3.721,
 			"loss_tangent_x": 0.00391,
 			"loss_tangent_y": 0.00335,
 			"loss_tangent_z": 0.00391,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT40 (3.45)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.798,
 			"permittivity_y": 3.397,
 			"permittivity_z": 3.798,
 			"loss_tangent_x": 0.00433,
 			"loss_tangent_y": 0.00371,
 			"loss_tangent_z": 0.00433,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola I-Tera MT40 (3.75)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.128,
 			"permittivity_y": 3.692,
 			"permittivity_z": 4.128,
 			"loss_tangent_x": 0.00489,
 			"loss_tangent_y": 0.00419,
 			"loss_tangent_z": 0.00489,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola IS300MD",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.368,
 			"permittivity_y": 3.013,
 			"permittivity_z": 3.368,
 			"loss_tangent_x": 0.00461,
 			"loss_tangent_y": 0.00395,
 			"loss_tangent_z": 0.00461,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS400",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.34,
 			"permittivity_y": 3.913,
 			"permittivity_z": 4.34,
 			"loss_tangent_x": 0.01902,
 			"loss_tangent_y": 0.02404,
 			"loss_tangent_z": 0.01902,
-			"test_frequency": 5e8
+			"reference_frequency": 5e8
 		},
 		{
 			"name": "Isola IS400HR",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.674,
 			"permittivity_y": 4.214,
 			"permittivity_z": 4.674,
 			"loss_tangent_x": 0.01383,
 			"loss_tangent_y": 0.01748,
 			"loss_tangent_z": 0.01383,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Isola IS410",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.307,
 			"permittivity_y": 3.883,
 			"permittivity_z": 4.307,
 			"loss_tangent_x": 0.01989,
 			"loss_tangent_y": 0.02513,
 			"loss_tangent_z": 0.01989,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS415",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.129,
 			"permittivity_y": 3.722,
 			"permittivity_z": 4.129,
 			"loss_tangent_x": 0.01098,
 			"loss_tangent_y": 0.01388,
 			"loss_tangent_z": 0.01098,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS420",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.362,
 			"permittivity_y": 3.933,
 			"permittivity_z": 4.362,
 			"loss_tangent_x": 0.02161,
 			"loss_tangent_y": 0.02732,
 			"loss_tangent_z": 0.02161,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS620i",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.897,
 			"permittivity_y": 3.486,
 			"permittivity_z": 3.897,
 			"loss_tangent_x": 0.00921,
 			"loss_tangent_y": 0.0079,
 			"loss_tangent_z": 0.00921,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (2.80)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.082,
 			"permittivity_y": 2.757,
 			"permittivity_z": 3.082,
 			"loss_tangent_x": 0.00349,
 			"loss_tangent_y": 0.00299,
 			"loss_tangent_z": 0.00349,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (3.00)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.302,
 			"permittivity_y": 2.954,
 			"permittivity_z": 3.302,
 			"loss_tangent_x": 0.00419,
 			"loss_tangent_y": 0.00359,
 			"loss_tangent_z": 0.00419,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (3.20)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.522,
 			"permittivity_y": 3.151,
 			"permittivity_z": 3.522,
 			"loss_tangent_x": 0.00419,
 			"loss_tangent_y": 0.00359,
 			"loss_tangent_z": 0.00419,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (3.33)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.666,
 			"permittivity_y": 3.279,
 			"permittivity_z": 3.666,
 			"loss_tangent_x": 0.00419,
 			"loss_tangent_y": 0.00359,
 			"loss_tangent_z": 0.00419,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (3.38)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.721,
 			"permittivity_y": 3.328,
 			"permittivity_z": 3.721,
 			"loss_tangent_x": 0.00489,
 			"loss_tangent_y": 0.00419,
 			"loss_tangent_z": 0.00489,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 (3.45)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.798,
 			"permittivity_y": 3.397,
 			"permittivity_z": 3.798,
 			"loss_tangent_x": 0.00489,
 			"loss_tangent_y": 0.00419,
 			"loss_tangent_z": 0.00489,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola IS680 AG (3.00)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.302,
 			"permittivity_y": 2.954,
 			"permittivity_z": 3.302,
 			"loss_tangent_x": 0.00279,
 			"loss_tangent_y": 0.00239,
 			"loss_tangent_z": 0.00279,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola IS680 AG (3.45)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.798,
 			"permittivity_y": 3.397,
 			"permittivity_z": 3.798,
 			"loss_tangent_x": 0.00363,
 			"loss_tangent_y": 0.00311,
 			"loss_tangent_z": 0.00363,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Isola TerraGreen",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.787,
 			"permittivity_y": 3.387,
 			"permittivity_z": 3.787,
 			"loss_tangent_x": 0.00544,
 			"loss_tangent_y": 0.00467,
 			"loss_tangent_z": 0.00544,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola Tachyon 100G",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.324,
 			"permittivity_y": 2.974,
 			"permittivity_z": 3.324,
 			"loss_tangent_x": 0.00293,
 			"loss_tangent_y": 0.00251,
 			"loss_tangent_z": 0.00293,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola P96/P26",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.151,
 			"permittivity_y": 3.742,
 			"permittivity_z": 4.151,
 			"loss_tangent_x": 0.01625,
 			"loss_tangent_y": 0.02054,
 			"loss_tangent_z": 0.01625,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola P95/P25",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.151,
 			"permittivity_y": 3.742,
 			"permittivity_z": 4.151,
 			"loss_tangent_x": 0.01625,
 			"loss_tangent_y": 0.02054,
 			"loss_tangent_z": 0.01625,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Isola P25N (60%)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.084,
 			"permittivity_y": 3.682,
 			"permittivity_z": 4.084,
 			"loss_tangent_x": 0.01617,
 			"loss_tangent_y": 0.02043,
 			"loss_tangent_z": 0.01617,
-			"test_frequency": 2.0e9
+			"reference_frequency": 2.0e9
 		},
 		{
 			"name": "Isola P25N (65%)",
+			"categories": ["Isola"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.973,
 			"permittivity_y": 3.582,
 			"permittivity_z": 3.973,
 			"loss_tangent_x": 0.01712,
 			"loss_tangent_y": 0.02163,
 			"loss_tangent_z": 0.01712,
-			"test_frequency": 2.0e9
+			"reference_frequency": 2.0e9
 		},
 		{
 			"name": "Iteq IT158",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.563,
 			"permittivity_y": 4.114,
 			"permittivity_z": 4.563,
 			"loss_tangent_x": 0.01556,
 			"loss_tangent_y": 0.01967,
 			"loss_tangent_z": 0.01556,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Iteq IT180A",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.563,
 			"permittivity_y": 4.114,
 			"permittivity_z": 4.563,
 			"loss_tangent_x": 0.01383,
 			"loss_tangent_y": 0.01748,
 			"loss_tangent_z": 0.01383,
-			"test_frequency": 5.0e9
+			"reference_frequency": 5.0e9
 		},
 		{
 			"name": "Neltec NH9300",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.42,
 			"permittivity_y": 2.82,
 			"permittivity_z": 3.42,
 			"loss_tangent_x": 0.0038,
 			"loss_tangent_y": 0.0023,
 			"loss_tangent_z": 0.0038,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Neltec NH9338",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.02,
 			"permittivity_y": 3.14,
 			"permittivity_z": 4.02,
 			"loss_tangent_x": 0.0051,
 			"loss_tangent_y": 0.0025,
 			"loss_tangent_z": 0.0051,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Nylon",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.9,
 			"permittivity_y": 2.9,
 			"permittivity_z": 2.9,
 			"loss_tangent_x": 0.012,
 			"loss_tangent_y": 0.012,
 			"loss_tangent_z": 0.012,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		},
 		{
 			"name": "PET",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.8,
 			"permittivity_y": 2.8,
 			"permittivity_z": 2.8,
 			"loss_tangent_x": 0.005,
 			"loss_tangent_y": 0.005,
 			"loss_tangent_z": 0.005,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "PMMA",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.58,
 			"permittivity_y": 2.58,
 			"permittivity_z": 2.58,
 			"loss_tangent_x": 0.009,
 			"loss_tangent_y": 0.009,
 			"loss_tangent_z": 0.009,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Polycarbonate",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.768,
 			"permittivity_y": 2.768,
 			"permittivity_z": 2.768,
 			"loss_tangent_x": 0.0054,
 			"loss_tangent_y": 0.0054,
 			"loss_tangent_z": 0.0054,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Polyethylene",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.26,
 			"permittivity_y": 2.26,
 			"permittivity_z": 2.26,
 			"loss_tangent_x": 0.00031,
 			"loss_tangent_y": 0.00031,
 			"loss_tangent_z": 0.00031,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		},
 		{
 			"name": "Polyimide",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.3,
 			"permittivity_y": 3.3,
 			"permittivity_z": 3.3,
 			"loss_tangent_x": 0.004,
 			"loss_tangent_y": 0.004,
 			"loss_tangent_z": 0.004,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Polyolefin (irradiated)",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.314,
 			"permittivity_y": 2.314,
 			"permittivity_z": 2.314,
 			"loss_tangent_x": 0.00407,
 			"loss_tangent_y": 0.00407,
 			"loss_tangent_z": 0.00407,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Polypropylene",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.2,
 			"permittivity_y": 2.2,
 			"permittivity_z": 2.2,
 			"loss_tangent_x": 0.0003,
 			"loss_tangent_y": 0.0003,
 			"loss_tangent_z": 0.0003,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Polystyrene",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.53,
 			"permittivity_y": 2.53,
 			"permittivity_z": 2.53,
 			"loss_tangent_x": 0.00033,
 			"loss_tangent_y": 0.00033,
 			"loss_tangent_z": 0.00033,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		},
 		{
 			"name": "PVC",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.8,
 			"permittivity_y": 2.8,
 			"permittivity_z": 2.8,
 			"loss_tangent_x": 0.019,
 			"loss_tangent_y": 0.019,
 			"loss_tangent_z": 0.019,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "PTFE",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.046,
 			"permittivity_y": 2.046,
 			"permittivity_z": 2.046,
 			"loss_tangent_x": 0.00025,
 			"loss_tangent_y": 0.00025,
 			"loss_tangent_z": 0.00025,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Pyrex",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 4.84,
 			"permittivity_y": 4.84,
 			"permittivity_z": 4.84,
 			"loss_tangent_x": 0.0054,
 			"loss_tangent_y": 0.0054,
 			"loss_tangent_z": 0.0054,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		},
 		{
 			"name": "Quartz (fused)",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.8,
 			"permittivity_y": 3.8,
 			"permittivity_z": 3.8,
 			"loss_tangent_x": 0.00006,
 			"loss_tangent_y": 0.00006,
 			"loss_tangent_z": 0.00006,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		},
 		{
 			"name": "Rogers DiClad 527 (2.40)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.566,
 			"permittivity_y": 2.378,
 			"permittivity_z": 2.566,
 			"loss_tangent_x": 0.00320,
 			"loss_tangent_y": 0.00186,
 			"loss_tangent_z": 0.00320,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers DiClad 527 (2.65)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.834,
 			"permittivity_y": 2.626,
 			"permittivity_z": 2.834,
 			"loss_tangent_x": 0.00320,
 			"loss_tangent_y": 0.00186,
 			"loss_tangent_z": 0.00320,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers DiClad 870",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.492,
 			"permittivity_y": 2.309,
 			"permittivity_z": 2.492,
 			"loss_tangent_x": 0.00231,
 			"loss_tangent_y": 0.00134,
 			"loss_tangent_z": 0.00231,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers DiClad 880 (2.17)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.321,
 			"permittivity_y": 2.150,
 			"permittivity_z": 2.321,
 			"loss_tangent_x": 0.00160,
 			"loss_tangent_y": 0.00093,
 			"loss_tangent_z": 0.00160,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers DiClad 880 (2.20)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.353,
 			"permittivity_y": 2.180,
 			"permittivity_z": 2.353,
 			"loss_tangent_x": 0.00160,
 			"loss_tangent_y": 0.00093,
 			"loss_tangent_z": 0.00160,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3003",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.000,
 			"permittivity_y": 2.971,
 			"permittivity_z": 3.000,
 			"loss_tangent_x": 0.00120,
 			"loss_tangent_y": 0.00130,
 			"loss_tangent_z": 0.00120,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3035",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.601,
 			"permittivity_y": 3.565,
 			"permittivity_z": 3.601,
 			"loss_tangent_x": 0.00180,
 			"loss_tangent_y": 0.00195,
 			"loss_tangent_z": 0.00180,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3006",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 6.816,
 			"permittivity_y": 5.882,
 			"permittivity_z": 6.816,
 			"loss_tangent_x": 0.00227,
 			"loss_tangent_y": 0.00345,
 			"loss_tangent_z": 0.00227,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3010",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 11.744,
 			"permittivity_y": 10.135,
 			"permittivity_z": 11.744,
 			"loss_tangent_x": 0.00250,
 			"loss_tangent_y": 0.00380,
 			"loss_tangent_z": 0.00250,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3203",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.181,
 			"permittivity_y": 2.961,
 			"permittivity_z": 3.181,
 			"loss_tangent_x": 0.00270,
 			"loss_tangent_y": 0.00210,
 			"loss_tangent_z": 0.00270,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3206",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 6.921,
 			"permittivity_y": 5.973,
 			"permittivity_z": 6.921,
 			"loss_tangent_x": 0.00307,
 			"loss_tangent_y": 0.00466,
 			"loss_tangent_z": 0.00307,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO3210",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 11.325,
 			"permittivity_y": 9.773,
 			"permittivity_z": 11.325,
 			"loss_tangent_x": 0.00307,
 			"loss_tangent_y": 0.00466,
 			"loss_tangent_z": 0.00307,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4003C",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.662,
 			"permittivity_y": 3.371,
 			"permittivity_z": 3.662,
 			"loss_tangent_x": 0.00370,
 			"loss_tangent_y": 0.00290,
 			"loss_tangent_z": 0.00370,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4350B",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.775,
 			"permittivity_y": 3.476,
 			"permittivity_z": 3.775,
 			"loss_tangent_x": 0.00507,
 			"loss_tangent_y": 0.00397,
 			"loss_tangent_z": 0.00507,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4360G2",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 6.449,
 			"permittivity_y": 5.565,
 			"permittivity_z": 6.449,
 			"loss_tangent_x": 0.00432,
 			"loss_tangent_y": 0.00656,
 			"loss_tangent_z": 0.00432,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4450B (3.30)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.404,
 			"permittivity_y": 3.134,
 			"permittivity_z": 3.404,
 			"loss_tangent_x": 0.00548,
 			"loss_tangent_y": 0.00429,
 			"loss_tangent_z": 0.00548,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4450B (3.54)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.652,
 			"permittivity_y": 3.362,
 			"permittivity_z": 3.652,
 			"loss_tangent_x": 0.00548,
 			"loss_tangent_y": 0.00429,
 			"loss_tangent_z": 0.00548,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4450F",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.631,
 			"permittivity_y": 3.343,
 			"permittivity_z": 3.631,
 			"loss_tangent_x": 0.00548,
 			"loss_tangent_y": 0.00429,
 			"loss_tangent_z": 0.00548,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4533",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.404,
 			"permittivity_y": 3.134,
 			"permittivity_z": 3.404,
 			"loss_tangent_x": 0.00342,
 			"loss_tangent_y": 0.00268,
 			"loss_tangent_z": 0.00342,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4534",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.507,
 			"permittivity_y": 3.229,
 			"permittivity_z": 3.507,
 			"loss_tangent_x": 0.00370,
 			"loss_tangent_y": 0.00290,
 			"loss_tangent_z": 0.00370,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4535",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.548,
 			"permittivity_y": 3.267,
 			"permittivity_z": 3.548,
 			"loss_tangent_x": 0.05068,
 			"loss_tangent_y": 0.03972,
 			"loss_tangent_z": 0.05068,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4725JXR",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.723,
 			"permittivity_y": 2.507,
 			"permittivity_z": 2.723,
 			"loss_tangent_x": 0.00356,
 			"loss_tangent_y": 0.00279,
 			"loss_tangent_z": 0.00356,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4730JXR",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.074,
 			"permittivity_y": 2.830,
 			"permittivity_z": 3.074,
 			"loss_tangent_x": 0.00370,
 			"loss_tangent_y": 0.00290,
 			"loss_tangent_z": 0.00370,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4730G3",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.074,
 			"permittivity_y": 2.830,
 			"permittivity_z": 3.074,
 			"loss_tangent_x": 0.00397,
 			"loss_tangent_y": 0.00311,
 			"loss_tangent_z": 0.00397,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RO4830",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.342,
 			"permittivity_y": 3.077,
 			"permittivity_z": 3.342,
 			"loss_tangent_x": 0.00452,
 			"loss_tangent_y": 0.00354,
 			"loss_tangent_z": 0.00452,
-			"test_frequency": 77.0e9
+			"reference_frequency": 77.0e9
 		},
 		{
 			"name": "Rogers RO4835",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.775,
 			"permittivity_y": 3.476,
 			"permittivity_z": 3.775,
 			"loss_tangent_x": 0.00507,
 			"loss_tangent_y": 0.00397,
 			"loss_tangent_z": 0.00507,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 5870",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.330,
 			"permittivity_y": 2.330,
 			"permittivity_z": 2.330,
 			"loss_tangent_x": 0.00120,
 			"loss_tangent_y": 0.00120,
 			"loss_tangent_z": 0.00120,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 5880",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.200,
 			"permittivity_y": 2.200,
 			"permittivity_z": 2.200,
 			"loss_tangent_x": 0.00090,
 			"loss_tangent_y": 0.00090,
 			"loss_tangent_z": 0.00090,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 5880LZ",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.000,
 			"permittivity_y": 2.000,
 			"permittivity_z": 2.000,
 			"loss_tangent_x": 0.00210,
 			"loss_tangent_y": 0.00210,
 			"loss_tangent_z": 0.00210,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6002",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.940,
 			"permittivity_y": 2.940,
 			"permittivity_z": 2.940,
 			"loss_tangent_x": 0.00120,
 			"loss_tangent_y": 0.00120,
 			"loss_tangent_z": 0.00120,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6006",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 6.450,
 			"permittivity_y": 6.450,
 			"permittivity_z": 6.450,
 			"loss_tangent_x": 0.00270,
 			"loss_tangent_y": 0.00270,
 			"loss_tangent_z": 0.00270,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6010LM",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 10.700,
 			"permittivity_y": 10.700,
 			"permittivity_z": 10.700,
 			"loss_tangent_x": 0.00230,
 			"loss_tangent_y": 0.00230,
 			"loss_tangent_z": 0.00230,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6035HTC",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.600,
 			"permittivity_y": 3.600,
 			"permittivity_z": 3.600,
 			"loss_tangent_x": 0.00130,
 			"loss_tangent_y": 0.00130,
 			"loss_tangent_z": 0.00130,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6202",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.900,
 			"permittivity_y": 2.900,
 			"permittivity_z": 2.900,
 			"loss_tangent_x": 0.00150,
 			"loss_tangent_y": 0.00150,
 			"loss_tangent_z": 0.00150,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6202PR (2.90)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.900,
 			"permittivity_y": 2.900,
 			"permittivity_z": 2.900,
 			"loss_tangent_x": 0.00200,
 			"loss_tangent_y": 0.00200,
 			"loss_tangent_z": 0.00200,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers RT/duroid 6202PR (2.98)",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 2.980,
 			"permittivity_y": 2.980,
 			"permittivity_z": 2.980,
 			"loss_tangent_x": 0.00200,
 			"loss_tangent_y": 0.00200,
 			"loss_tangent_z": 0.00200,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM3",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.848,
 			"permittivity_y": 3.609,
 			"permittivity_z": 3.848,
 			"loss_tangent_x": 0.00190,
 			"loss_tangent_y": 0.00350,
 			"loss_tangent_z": 0.00190,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM4",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 5.243,
 			"permittivity_y": 4.916,
 			"permittivity_z": 5.243,
 			"loss_tangent_x": 0.00190,
 			"loss_tangent_y": 0.00350,
 			"loss_tangent_z": 0.00190,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM6",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 7.027,
 			"permittivity_y": 6.590,
 			"permittivity_z": 7.027,
 			"loss_tangent_x": 0.00218,
 			"loss_tangent_y": 0.00402,
 			"loss_tangent_z": 0.00218,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM10",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 10.931,
 			"permittivity_y": 10.250,
 			"permittivity_z": 10.931,
 			"loss_tangent_x": 0.00209,
 			"loss_tangent_y": 0.00385,
 			"loss_tangent_z": 0.00209,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM10i",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 11.043,
 			"permittivity_y": 10.355,
 			"permittivity_z": 11.043,
 			"loss_tangent_x": 0.00190,
 			"loss_tangent_y": 0.00350,
 			"loss_tangent_z": 0.00190,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Rogers TMM13i",
+			"categories": ["Rogers"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 13.608,
 			"permittivity_y": 12.761,
 			"permittivity_z": 13.608,
 			"loss_tangent_x": 0.00180,
 			"loss_tangent_y": 0.00332,
 			"loss_tangent_z": 0.00180,
-			"test_frequency": 10.0e9
+			"reference_frequency": 10.0e9
 		},
 		{
 			"name": "Solder Mask",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.5,
 			"permittivity_y": 3.5,
 			"permittivity_z": 3.5,
 			"loss_tangent_x": 0.025,
 			"loss_tangent_y": 0.025,
 			"loss_tangent_z": 0.025,
-			"test_frequency": 1.0e9
+			"reference_frequency": 1.0e9
 		},
 		{
 			"name": "Taconic RF-35",
+			"categories": ["Other"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 3.9,
 			"permittivity_y": 3.45,
 			"permittivity_z": 3.9,
 			"loss_tangent_x": 0.0049,
 			"loss_tangent_y": 0.0038,
 			"loss_tangent_z": 0.0049,
-			"test_frequency": 12.4e9
+			"reference_frequency": 12.4e9
 		},
 		{
 			"name": "Water (distilled)",
+			"categories": ["Generic"],
+			"model": "djordjevic-sarkar",
 			"permittivity_x": 77.0,
 			"permittivity_y": 77.0,
 			"permittivity_z": 77.0,
 			"loss_tangent_x": 0.16,
 			"loss_tangent_y": 0.16,
 			"loss_tangent_z": 0.16,
-			"test_frequency": 3.0e9
+			"reference_frequency": 3.0e9
 		}
 	]
 }

@@ -45,12 +45,12 @@ void GenericMesh::Initialize() {
 void GenericMesh::Solve(const Eigen::MatrixXr &modes, real_t frequency) {
 	if(!m_initialized)
 		throw std::runtime_error("GenericMesh error: The mesh must be initialized first.");
-	if((size_t) modes.rows() != GetFixedVariableCount())
-		throw std::runtime_error(MakeString("GenericMesh error: Expected mode matrix with ", GetFixedVariableCount(), " rows, got ", modes.rows(), " instead."));
+	if((size_t) modes.rows() != GetPortCount())
+		throw std::runtime_error(MakeString("GenericMesh error: Expected mode matrix with ", GetPortCount(), " rows, got ", modes.rows(), " instead."));
 	if((size_t) modes.cols() == 0)
 		throw std::runtime_error(MakeString("GenericMesh error: Expected mode matrix with at least one column, got ", modes.cols(), " instead."));
-	if((size_t) modes.cols() >= GetFixedVariableCount())
-		throw std::runtime_error(MakeString("GenericMesh error: Expected mode matrix with less than ", GetFixedVariableCount(), " columns, got ", modes.cols(), " instead."));
+	if((size_t) modes.cols() >= GetPortCount())
+		throw std::runtime_error(MakeString("GenericMesh error: Expected mode matrix with less than ", GetPortCount(), " columns, got ", modes.cols(), " instead."));
 	m_solved = false;
 	m_modes = modes;
 	m_frequency = frequency;

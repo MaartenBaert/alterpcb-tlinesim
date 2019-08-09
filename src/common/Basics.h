@@ -41,7 +41,7 @@ typedef uint32_t hash_t;
 
 constexpr real_t REAL_MAX = std::numeric_limits<real_t>::max();
 constexpr size_t INDEX_NONE = (size_t) -1;
-constexpr size_t INDEX_OFFSET = ~(INDEX_NONE >> 1);
+constexpr size_t INDEX_OFFSET = (INDEX_NONE >> 1) + 1;
 constexpr stringtag_t STRINGTAG_NONE = (stringtag_t) -1;
 
 static_assert(sizeof(void*) == sizeof(size_t), "Size of size_t does not match pointer size!");

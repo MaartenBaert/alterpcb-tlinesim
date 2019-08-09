@@ -22,19 +22,23 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Basics.h"
 
-int NaturalStringCompare(const char *a, size_t a_len, const char *b, size_t b_len);
+namespace NaturalSort {
 
-inline int NaturalStringCompare(const std::string &a, const std::string &b) {
-	return NaturalStringCompare(a.data(), a.length(), b.data(), b.length());
+int Compare(const char *a, size_t a_len, const char *b, size_t b_len);
+
+inline int Compare(const std::string &a, const std::string &b) {
+	return Compare(a.data(), a.length(), b.data(), b.length());
 }
-inline int NaturalStringCompare(const std::string &a, const char *b) {
-	return NaturalStringCompare(a.data(), a.length(), b, strlen(b));
+inline int Compare(const std::string &a, const char *b) {
+	return Compare(a.data(), a.length(), b, strlen(b));
 }
-inline int NaturalStringCompare(const char *a, const std::string &b) {
-	return NaturalStringCompare(a, strlen(a), b.data(), b.length());
+inline int Compare(const char *a, const std::string &b) {
+	return Compare(a, strlen(a), b.data(), b.length());
 }
 
 template<typename A, typename B>
-inline bool NaturalStringLess(A &&a, B &&b) {
-	return NaturalStringCompare(std::forward<A>(a), std::forward<B>(b)) < 0;
+inline bool Less(A &&a, B &&b) {
+	return Compare(std::forward<A>(a), std::forward<B>(b)) < 0;
+}
+
 }

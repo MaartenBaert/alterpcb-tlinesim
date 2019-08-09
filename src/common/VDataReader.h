@@ -64,6 +64,16 @@ public:
 		throw std::runtime_error(MakeString("Expected '", *this, "' to be string, got ", EnumToString(m_data.GetType()), " instead."));
 	}
 
+	template<typename E>
+	inline E AsEnum() {
+		if(m_data.GetType() != VDATA_STRING)
+			throw std::runtime_error(MakeString("Expected '", *this, "' to be string, got ", EnumToString(m_data.GetType()), " instead."));
+		E value;
+		if(!EnumTranslator<E>::StringToEnum(m_data.AsString(), value))
+			throw std::runtime_error(MakeString("Value of '", *this, "' not found in enum ", EnumTranslator<E>::NAME, "."));
+		return value;
+	}
+
 	inline size_t GetElementCount() {
 		if(m_data.GetType() != VDATA_LIST)
 			throw std::runtime_error(MakeString("Expected '", *this, "' to be list, got ", EnumToString(m_data.GetType()), " instead."));

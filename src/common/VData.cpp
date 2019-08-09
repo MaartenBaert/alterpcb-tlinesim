@@ -23,7 +23,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "EnumTranslator.h"
 #include "StringRegistry.h"
 
-ENUMSTRINGS(VDataType) = {
+ENUMSTRINGS(VDataType) {
 	{VDATA_NULL, "null"},
 	{VDATA_BOOL, "bool"},
 	{VDATA_INT, "int"},

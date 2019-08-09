@@ -29,7 +29,13 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 enum MeshImageType {
 	MESHIMAGETYPE_MESH,
 	MESHIMAGETYPE_EFIELD,
+	MESHIMAGETYPE_EFIELD_X,
+	MESHIMAGETYPE_EFIELD_Y,
+	MESHIMAGETYPE_EFIELD_Z,
 	MESHIMAGETYPE_MFIELD,
+	MESHIMAGETYPE_MFIELD_X,
+	MESHIMAGETYPE_MFIELD_Y,
+	MESHIMAGETYPE_MFIELD_Z,
 	MESHIMAGETYPE_EPOT,
 	MESHIMAGETYPE_MPOT,
 	MESHIMAGETYPE_ENERGY,
@@ -39,6 +45,11 @@ enum MeshImageType {
 enum SolverType {
 	SOLVERTYPE_QUASISTATIC,
 	SOLVERTYPE_FULLWAVE,
+};
+
+enum ElementType {
+	ELEMENTTYPE_LINEAR,
+	ELEMENTTYPE_QUADRATIC,
 };
 
 class GenericMesh {
@@ -89,9 +100,9 @@ public:
 	inline const Eigen::VectorXc& GetEigenmodePropagationConstants() { return m_eigenmode_propagation_constants; }
 
 protected:
-	virtual size_t GetFixedVariableCount() = 0;
 	virtual void DoInitialize() = 0;
 	virtual void DoSolve() = 0;
 	virtual void DoCleanup() = 0;
+	virtual size_t GetPortCount() = 0;
 
 };

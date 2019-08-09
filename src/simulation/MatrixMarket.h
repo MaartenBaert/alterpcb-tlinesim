@@ -28,6 +28,15 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace MatrixMarket {
 
+enum MatrixType {
+	TYPE_GENERAL,
+	TYPE_SYMMETRIC,
+	TYPE_SKEW_SYMMETRIC,
+	TYPE_HERMITIAN,
+};
+
+constexpr const char* TYPE_STRINGS[] = {"general", "symmetric", "skew-symmetric", "hermitian"};
+
 template<typename F> constexpr bool IsComplex();
 template<> constexpr bool IsComplex<float>() { return false; }
 template<> constexpr bool IsComplex<double>() { return false; }
@@ -47,7 +56,7 @@ template<> void WriteValue<std::complex<float>>(std::ostream &stream, std::compl
 template<> void WriteValue<std::complex<double>>(std::ostream &stream, std::complex<double> value) { stream << value.real() << ' ' << value.imag(); }
 
 template<typename F>
-void Save(const std::string &filename, const Eigen::SparseMatrix<F> &matrix, bool symmetric) {
+void Save(const std::string &filename, const Eigen::SparseMatrix<F> &matrix, MatrixType type) {
 
 	// open file
 	std::ofstream stream;
@@ -59,7 +68,7 @@ void Save(const std::string &filename, const Eigen::SparseMatrix<F> &matrix, boo
 	// write header
 	stream << "%%MatrixMarket matrix coordinate";
 	stream << ' ' << ((IsComplex<F>())? "complex" : "real");
-	stream << ' ' << ((symmetric)? "symmetric" : "general");
+	stream << ' ' << TYPE_STRINGS[type];
 	stream << '\n';
 
 	// write size

@@ -138,12 +138,16 @@ MainWindow::MainWindow() {
 		QLabel *label_solver_type = new QLabel("Solver type:", groupbox_simulation);
 		m_combobox_solver_type = new QComboBox(groupbox_simulation);
 		m_combobox_solver_type->addItems({"Quasi-static Solver", "Full-wave Solver"});
-		m_combobox_solver_type->setCurrentIndex(SOLVERTYPE_QUASISTATIC);
+		m_combobox_solver_type->setCurrentIndex(SOLVERTYPE_FULLWAVE);
+		QLabel *label_element_type = new QLabel("Element type:", groupbox_simulation);
+		m_combobox_element_type = new QComboBox(groupbox_simulation);
+		m_combobox_element_type->addItems({"Linear", "Quadratic"});
+		m_combobox_element_type->setCurrentIndex(ELEMENTTYPE_QUADRATIC);
 
 		QLabel *label_mesh_detail = new QLabel("Mesh Detail:", groupbox_simulation);
 		m_combobox_mesh_detail = new QComboBox(groupbox_simulation);
 		m_combobox_mesh_detail->addItems({"Very Low", "Lower", "Low", "Medium", "High", "Higher", "Very High"});
-		m_combobox_mesh_detail->setCurrentIndex(MESHDETAIL_MEDIUM);
+		m_combobox_mesh_detail->setCurrentIndex(MESHDETAIL_LOWER);
 
 		connect(m_combobox_simulation_type, SIGNAL(currentIndexChanged(int)), this, SLOT(OnUpdateSimulationType()));
 		connect(m_pushbutton_simulate, SIGNAL(clicked(bool)), this, SLOT(OnSimulate()));
@@ -215,8 +219,10 @@ MainWindow::MainWindow() {
 			layout2->addWidget(m_lineedit_parameter_tune_target_value, 8, 1);
 			layout2->addWidget(label_solver_type, 9, 0);
 			layout2->addWidget(m_combobox_solver_type, 9, 1);
-			layout2->addWidget(label_mesh_detail, 10, 0);
-			layout2->addWidget(m_combobox_mesh_detail, 10, 1);
+			layout2->addWidget(label_element_type, 10, 0);
+			layout2->addWidget(m_combobox_element_type, 10, 1);
+			layout2->addWidget(label_mesh_detail, 11, 0);
+			layout2->addWidget(m_combobox_mesh_detail, 11, 1);
 		}
 
 	}
@@ -241,7 +247,12 @@ MainWindow::MainWindow() {
 		m_slider_zoom->setPageStep(10000);
 		QLabel *label_imagetype = new QLabel("Image Type:", groupbox_viewer);
 		m_combobox_image_type = new QComboBox(groupbox_viewer);
-		m_combobox_image_type->addItems({"Mesh", "Electric Field", "Magnetic Field", "Electric Potential", "Magnetic Potential", "Energy", "Current"});
+		m_combobox_image_type->addItems({
+			"Mesh",
+			"Electric Field", "Electric Field X", "Electric Field Y", "Electric Field Z",
+			"Magnetic Field", "Magnetic Field X", "Magnetic Field Y", "Magnetic Field Z",
+			"Electric Potential", "Magnetic Potential", "Energy", "Current",
+		});
 		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EFIELD);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
@@ -338,6 +349,7 @@ void MainWindow::SimulationInit(TLineContext &context) {
 
 	// initialize simulation settings
 	context.m_solver_type = (SolverType) m_combobox_solver_type->currentIndex();
+	context.m_element_type = (ElementType) m_combobox_element_type->currentIndex();
 	context.m_mesh_detail = exp2((real_t) (m_combobox_mesh_detail->currentIndex() - (int) MESHDETAIL_MEDIUM) * 0.5);
 
 	// initialize parameters
@@ -624,8 +636,8 @@ void MainWindow::OnUpdateTLineType() {
 				case TLINE_PARAMETERTYPE_MATERIAL_CONDUCTOR: {
 					QComboBox *combobox_value = new QComboBox(widget);
 					for(size_t j = 0; j < conductors.size(); ++j) {
-						combobox_value->addItem(QString::fromStdString(conductors[j].m_name));
-						if(parameter.m_default_value.AsString() == conductors[j].m_name) {
+						combobox_value->addItem(QString::fromStdString(conductors[j].name));
+						if(parameter.m_default_value.AsString() == conductors[j].name) {
 							combobox_value->setCurrentIndex((int) j);
 						}
 					}
@@ -635,8 +647,8 @@ void MainWindow::OnUpdateTLineType() {
 				case TLINE_PARAMETERTYPE_MATERIAL_DIELECTRIC: {
 					QComboBox *combobox_value = new QComboBox(widget);
 					for(size_t j = 0; j < dielectrics.size(); ++j) {
-						combobox_value->addItem(QString::fromStdString(dielectrics[j].m_name));
-						if(parameter.m_default_value.AsString() == dielectrics[j].m_name) {
+						combobox_value->addItem(QString::fromStdString(dielectrics[j].name));
+						if(parameter.m_default_value.AsString() == dielectrics[j].name) {
 							combobox_value->setCurrentIndex((int) j);
 						}
 					}
