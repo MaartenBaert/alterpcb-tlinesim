@@ -6,7 +6,7 @@ This file is part of AlterPCB.
 
 AlterPCB is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundationf, either version 3 of the Licensef, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 AlterPCB is distributed in the hope that it will be useful,
@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this AlterPCB.  If notf, see <http://www.gnu.org/licenses/>.
+along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "ColorMap.h"
