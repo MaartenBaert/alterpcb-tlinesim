@@ -29,7 +29,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 
 namespace Eigen {
 
