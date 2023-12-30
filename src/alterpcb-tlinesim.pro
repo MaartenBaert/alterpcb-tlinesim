@@ -16,6 +16,11 @@ QMAKE_CXXFLAGS_RELEASE += -O3 -DNDEBUG
 INCLUDEPATH += common gui simulation
 DEPENDPATH += common gui simulation
 
+unix {
+	CONFIG += link_pkgconfig
+	PKGCONFIG += eigen3
+}
+
 ########## Warning: Everything below this line is auto-generated and will be overwritten! ##########
 
 HEADERS += \
