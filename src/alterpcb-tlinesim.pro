@@ -7,7 +7,26 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 TARGET = alterpcb-tlinesim
 TEMPLATE = app
 
+data.files = ../data/*
+
+isEmpty(PREFIX) {
+	PREFIX = /usr/local
+}
+
+isEmpty(BINDIR) {
+	BINDIR = $$PREFIX/bin
+}
+
+isEmpty(DATADIR) {
+	DATADIR = $$PREFIX/share
+}
+
+target.path = $$BINDIR
+data.path = $$DATADIR/$$TARGET
+INSTALLS += target data
+
 DEFINES += "ALTERPCB_VERSION=\\\"0.0.0\\\""
+DEFINES += "DATADIR=\\\"$${data.path}\\\""
 
 QMAKE_CXXFLAGS += -std=c++11 -Wconversion -Wsign-conversion -Wfloat-conversion
 QMAKE_CXXFLAGS_RELEASE -= -O2 -g
@@ -15,6 +34,11 @@ QMAKE_CXXFLAGS_RELEASE += -O3 -DNDEBUG
 
 INCLUDEPATH += common gui simulation
 DEPENDPATH += common gui simulation
+
+unix {
+	CONFIG += link_pkgconfig
+	PKGCONFIG += eigen3
+}
 
 ########## Warning: Everything below this line is auto-generated and will be overwritten! ##########
 
