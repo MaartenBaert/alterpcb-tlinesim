@@ -30,9 +30,9 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
-#include <Eigen/Dense>
-#include <Eigen/SparseCore>
-#include <Eigen/SparseCholesky>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/SparseCore>
+#include <eigen3/Eigen/SparseCholesky>
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
