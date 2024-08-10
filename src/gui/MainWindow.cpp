@@ -22,6 +22,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ApplicationDirs.h"
 #include "FindRoot.h"
+#include "GenericMesh.h"
 #include "Icons.h"
 #include "Json.h"
 #include "LayoutHelper.h"
@@ -253,7 +254,7 @@ MainWindow::MainWindow() {
 			"Magnetic Field", "Magnetic Field X", "Magnetic Field Y", "Magnetic Field Z",
 			"Electric Potential", "Magnetic Potential", "Energy", "Current",
 		});
-		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EFIELD);
+		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);

@@ -28,6 +28,12 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "SparseMatrix.h"
 #include "Vector.h"
 
+// #define real_t metis_real_t
+// #include <iostream>
+// #include <Eigen/MetisSupport>
+// #undef real_t
+// #undef REAL_MAX
+
 class GridMesh2D : public GenericMesh {
 
 public:
@@ -38,6 +44,9 @@ public:
 	//static constexpr real_t DEFAULT_GRID_STEP = 0.05;
 
 private:
+	typedef Eigen::NaturalOrdering<Eigen::SparseMatrix<complex_t>::StorageIndex> NaturalOrdering;
+	typedef Eigen::SimplicialNonHermitianLDLT<Eigen::SparseMatrix<complex_t>, Eigen::Upper, NaturalOrdering> SparseComplexLDLT;
+
 	struct Port {
 		Vector2D m_anchor;
 		bool m_infinite_area;
@@ -130,10 +139,8 @@ private:
 	Eigen::SparseMatrix<complex_t> m_matrix_static_e[4], m_matrix_static_m[4];
 	Eigen::SparseMatrix<complex_t> m_matrix_full_em[2];
 
-	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_lu_static_e, m_lu_static_m;
+	SparseComplexLDLT m_ldlt_static_e, m_ldlt_static_m, m_ldlt_full_em;
 	Eigen::MatrixXc m_solution_static_e, m_solution_static_m, m_solution_full_em;
-
-	Eigen::SparseLU<Eigen::SparseMatrix<complex_t>> m_lu_full_em;
 
 	std::vector<SolutionField> m_solution_fields;
 
@@ -169,6 +176,7 @@ private:
 	void InitGrid();
 	void InitCells();
 	void InitVariables();
+	void InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size_t iy2);
 	void BuildMatrices();
 	void SolveStaticModes();
 	void SolveStaticEigenModes();

@@ -29,6 +29,7 @@ void InitApplicationDirs() {
 	std::vector<QString> global_data_dirs = {
 		QCoreApplication::applicationDirPath() + "/data",
 		QCoreApplication::applicationDirPath() + "/../data",
+		QCoreApplication::applicationDirPath() + "/../../data",
 	};
 	for(auto &dir : global_data_dirs) {
 		if(QDir(dir).exists()) {

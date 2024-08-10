@@ -77,9 +77,13 @@ void Save(const std::string &filename, const Eigen::SparseMatrix<F> &matrix, Mat
 	// write data (always lower triangular)
 	auto offsets = matrix.outerIndexPtr();
 	auto indices = matrix.innerIndexPtr();
+	auto lengths = matrix.innerNonZeroPtr();
 	auto values = matrix.valuePtr();
 	for(size_t outer = 0; outer < (size_t) matrix.outerSize(); ++outer) {
-		for(size_t inner = (size_t) offsets[outer]; inner < (size_t) offsets[outer + 1]; ++inner) {
+		size_t offset = (size_t) offsets[outer];
+		size_t length = (lengths == NULL)? (size_t) (offsets[outer + 1] - offsets[outer]) : (size_t) lengths[outer];
+		for(size_t i = 0; i < length; ++i) {
+			size_t inner = offset + i;
 			if(matrix.IsRowMajor) {
 				stream << (outer + 1) << ' ' << (indices[inner] + 1) << ' ';
 			} else {

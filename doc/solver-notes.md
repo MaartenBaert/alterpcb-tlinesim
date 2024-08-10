@@ -112,3 +112,38 @@ TODO:
 - coupling S-parameters?
 - iterative RF mode solver (Rayleigh quotient iteration)
 
+Full-wave solver
+----------------
+
+The full-wave solver is largely based on the following paper:
+O. Farle, V. Hill and R. Dyczij-Edlinger, "Finite-element waveguide solvers revisited," in IEEE Transactions on Magnetics, vol. 40, no. 2, pp. 1468-1471, March 2004, doi: 10.1109/TMAG.2004.825128
+
+TODO:
+- From quasistatic to full-wave: separate E and M problems become a single EM problem.
+- Magnetic potential becomes magnetic vector potential.
+- Although the number of variables and equations is equal, the solution is still ill-defined because some of the equations are redundant. Requires gauge fixing.
+- We don't want a gauge that adds new equations (e.g. Lorentz gauge) because then the matrix we are solving isn't square. We want to instead remove the redundant part of the equations and force their respective variables to zero. AFAIK there are three common options for this: V-gauge (force electric potential to zero), axial gauge (force magnetic potential in the Z direction to zero) and tree-cotree gauge (complicated, forces specific X/Y components to zero).
+- Gauge fixing can make the entire problem very ill-conditioned in some circumstances. Most of the transmission modes we are interested in are almost TEM modes, which are best described with electric potential and magnetic potential in the Z direction. Magnetic potential in the X/Y direction is then very weak. Therefore gauges which force electric potential and magnetic potential in the Z direction to zero are generally a bad idea for TEM modes. Unfortunately this eliminates the easiest gauges (V-gauge and axial gauge) which leaves us with the tree-cotree gauge.
+- The equations for finding eigenmodes are generalized quadratic eigenvalue problems. However with some carefully chosen substitions and scaling it is possible to turn it into a pure quadratic problem which can then be solved like a (non-quadratic) generalized eigenvalue problem. Also, it is possible to make the matrices complex symmetric (though not Hermitian) which allows for efficient LDLT (though not LDL*) factorization. None of the common libraries supported this though, so I had to add my own code to Eigen for this.
+- Eigenvectors are found by Rayleigh quotient iteration, using the solution from the quasistatic solver as initial guess. Still need a solution to deal with singular matrices.
+- In order to make the eigensolver stable, the eigenvector has to be repeatedly orthogonalized against some undesirable solutions. I don't fully remember how this works but it has something to do with suppressing nonphysical modes. This orthogonalization is implemented by multiplying with a diagonal matrix that zeros out the components associated with magnetic potential in the Z direction as part of the shift-invert strategy.
+- Rayleigh quotient iteration is bad at dealing with modes with near-identical eigenvalues. Unfortunately this is common e.g. with striplines. I would like to switch to a different method such as Arnoldi to avoid this, but it's not clear yet how I can make this work with our weird generalized eigenvalue problem that requires this extra orthogonalization step.
+- At the end we could apply a transformation to the Lorentz gauge (or something else) to make the fields look nicer, but this does not affect the transmission line properties. It may affect voltages/currents though if we use this instead of the integration lines.
+
+The shift-invert eigenmode solver is a bit weird. The problem we are trying to solve is of the form:
+`A * x = l * B * x`
+Here the eigenvalue `l` we are solving for is the square of the 'effective index' `n` (a concept from optics), rather than the propagation constant `gamma`. The two are related as follows:
+`n = (gamma * c) / (j * omega)`
+The nice thing about `n` is that it is largely independent of frequency and is close to `1.0`, so very predictable. It is a real number for lossless problems. Solving for eigenvalue `n^2` rather than `gamma` is also required to make `A` and `B` complex symmetric.
+
+In order to find eigenvalues near some initial guess `n0`, we first apply a shift `l0 = n0^2`:
+`(A - l0 * B) * x = l * B * x`
+Then we move `B` to the left to turn it into a normal (non-generalized) eigenvalue problem:
+`B^-1 * (A - l0 * B) * x = l * x`
+Then we invert the matrix since we want to find eigenvalues near zero:
+`(A - l0 * B)^-1 * B * x = l * x`
+We can apply Rayleigh quotient iteration (or even just the power method) to solve this, but we will get in trouble with nonphysical modes. To fix that, we add a multiplication by a diagonal matrix in the middle:
+`(A - l0 * B)^-1 * D * B * x = l * x`
+The matrix `D` has diagonal elements equal to 0 for components associated with magnetic potential in the Z direction and 1 for everything else. This suppresses the nonphysical modes by moving their eigenvalues to zero (for the shift-inverted matrix).
+
+Note that the resulting eigenvectors are generally not orthogonal to each other in the regular sense, however they do satisfy `v1^T * B * v2`.

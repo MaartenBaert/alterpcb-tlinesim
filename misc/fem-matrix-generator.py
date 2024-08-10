@@ -1,10 +1,11 @@
 import itertools
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pprint
 import sympy
 import sympy.plotting
-import sympy.printing.cxxcode
+import sympy.printing
 
 plt.close("all")
 
@@ -211,14 +212,14 @@ def check_symmetry(mat, collect_var=None, collect_num=1):
 			plt.subplot(2, collect_num + 1, collect_num + k + 2)
 			matcc = matc if collect_var is None or k == 0 else np.array([[matc[i, j].coeff(collect_var, k - 1) * collect_var**(k-1) for j in range(n)] for i in range(n)], dtype=object)
 			val = np.array([[np.nan if matcc[i][j] == 0 else complex(matcc[i][j].evalf(subs=typical_values)) for j in range(n)] for i in range(n)], dtype=complex)
-			col = np.log10(np.abs(val))
+			col = np.abs(val)
 			#col = np.degrees(np.angle(val))
 			if k == 0:
 				vmin = col[np.isfinite(col)].min()
 				vmax = col[np.isfinite(col)].max()
 				#vmin = -180
 				#vmax = 180
-			plt.imshow(col, vmin=vmin, vmax=vmax, cmap=plt.cm.rainbow, extent=(0, n, n, 0))
+			plt.imshow(col, norm=mpl.colors.LogNorm(vmin=vmin, vmax=vmax), cmap=plt.cm.rainbow, extent=(0, n, n, 0))
 			plt.grid()
 			plt.xticks(np.arange(n + 1))
 			plt.yticks(np.arange(n + 1))
@@ -431,10 +432,10 @@ def calc_empot_yline():
 	
 	return mat
 
-#mat_static_epot_rect = calc_static_epot_rect()
-#mat_static_mpot_rect = calc_static_mpot_rect()
-#mat_static_mpot_xline = calc_static_mpot_xline()
-#mat_static_mpot_yline = calc_static_mpot_yline()
+# mat_static_epot_rect = calc_static_epot_rect()
+# mat_static_mpot_rect = calc_static_mpot_rect()
+# mat_static_mpot_xline = calc_static_mpot_xline()
+# mat_static_mpot_yline = calc_static_mpot_yline()
 mat_empot_rect = calc_empot_rect()
 mat_empot_xline = calc_empot_xline()
 mat_empot_yline = calc_empot_yline()

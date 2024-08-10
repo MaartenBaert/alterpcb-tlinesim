@@ -37,6 +37,9 @@ struct Box2D {
 	inline Box2D Normalize() const {
 		return Box2D(std::min(x1, x2), std::max(x1, x2), std::min(y1, y2), std::max(y1, y2));
 	}
+	inline Box2D Scale(real_t sx, real_t ys) const {
+		return Box2D(x1 * sx, x2 * sx, y1 * ys, y2 * ys);
+	}
 	inline Box2D MirrorX(real_t ref = 0.0) const {
 		return Box2D(2.0 * ref - x2, 2.0 * ref - x1, y1, y2);
 	}
@@ -46,6 +49,23 @@ struct Box2D {
 	inline Box2D Clip(const Box2D &clip) const {
 		return Box2D(clamp(x1, clip.x1, clip.x2), clamp(x2, clip.x1, clip.x2), clamp(y1, clip.y1, clip.y2), clamp(y2, clip.y1, clip.y2));
 	}
+	inline Box2D Map(const Box2D &from, const Box2D &to) const {
+		return Box2D(
+			(x1 - from.x1) / (from.x2 - from.x1) * (to.x2 - to.x1) + to.x1,
+			(x2 - from.x1) / (from.x2 - from.x1) * (to.x2 - to.x1) + to.x1,
+			(y1 - from.y1) / (from.y2 - from.y1) * (to.y2 - to.y1) + to.y1,
+			(y2 - from.y1) / (from.y2 - from.y1) * (to.y2 - to.y1) + to.y1
+		);
+	}
+	inline Box2D NearbyInt() const {
+		return Box2D(nearbyint(x1), nearbyint(x2), nearbyint(y1), nearbyint(y2));
+	}
+	inline real_t Width() const {
+		return x2 - x1;
+	}
+	inline real_t Height() const {
+		return y2 - y1;
+	}
 	inline real_t CenterX() const {
 		return 0.5 * (x1 + x2);
 	}
@@ -54,6 +74,12 @@ struct Box2D {
 	}
 	inline Vector2D Center() const {
 		return Vector2D(CenterX(), CenterY());
+	}
+	inline bool operator==(const Box2D &other) const {
+		return x1 == other.x1 && x2 == other.x2 && y1 == other.y1 && y2 == other.y2;
+	}
+	inline bool operator!=(const Box2D &other) const {
+		return x1 != other.x1 || x2 != other.x2 || y1 != other.y1 || y2 != other.y2;
 	}
 };
 

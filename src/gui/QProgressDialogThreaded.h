@@ -34,8 +34,8 @@ private:
 	std::atomic<bool> m_task_canceled, m_task_stopped;
 
 public:
-	QProgressDialogThreaded(QWidget *parent = 0, Qt::WindowFlags f = 0);
-	QProgressDialogThreaded(const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent = 0, Qt::WindowFlags f = 0);
+	QProgressDialogThreaded(QWidget *parent = NULL, Qt::WindowFlags f = Qt::WindowFlags());
+	QProgressDialogThreaded(const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent = NULL, Qt::WindowFlags f = Qt::WindowFlags());
 	~QProgressDialogThreaded();
 
 	void execThreaded(std::function<void(std::atomic<int>&, std::atomic<bool>&)> task);

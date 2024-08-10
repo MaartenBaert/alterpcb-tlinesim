@@ -23,6 +23,8 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "Basics.h"
 #include "Eigen.h"
 
+#define ALTERPCB_USE_UMFPACK 0
+
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -34,8 +36,10 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <Eigen/SparseCore>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseLU>
-//#include <Eigen/UmfPackSupport>
-//#include <umfpack.h>
+#if ALTERPCB_USE_UMFPACK
+#include <Eigen/UmfPackSupport>
+#include <umfpack.h>
+#endif
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
