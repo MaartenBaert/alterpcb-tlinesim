@@ -38,8 +38,7 @@ enum MeshImageType {
 	MESHIMAGETYPE_MFIELD_Z,
 	MESHIMAGETYPE_EPOT,
 	MESHIMAGETYPE_MPOT,
-	MESHIMAGETYPE_ENERGY,
-	MESHIMAGETYPE_CURRENT,
+	MESHIMAGETYPE_POYNTING,
 };
 
 enum SolverType {
@@ -76,8 +75,7 @@ public:
 
 	virtual Box2D GetWorldBox2D() = 0;
 	virtual Box2D GetWorldFocus2D() = 0;
-	virtual void GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient,
-							size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) = 0;
+	virtual void GetImage2D(std::vector<real_t> &image_value, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) = 0;
 
 public:
 	inline bool IsInitialized() { return m_initialized; }

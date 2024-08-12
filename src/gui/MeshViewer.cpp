@@ -63,8 +63,53 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 
 	// get image data
 	std::vector<real_t> image_value;
-	std::vector<Vector2D> image_gradient;
-	mesh->GetImage2D(image_value, image_gradient, image_w, image_h, image_view, image_type, mode);
+	mesh->GetImage2D(image_value, image_w, image_h, image_view, image_type, mode);
+
+	// generate gradient
+	std::vector<Vector2D> image_gradient(image_value.size());
+	{
+		uint32_t *row = (uint32_t*) image.scanLine(0);
+		real_t *row1_value = image_value.data() + 0 * image_w;
+		real_t *row2_value = image_value.data() + 1 * image_w;
+		Vector2D *row_gradient = image_gradient.data() + 0 * image_w;
+		row_gradient[0].x = row1_value[1] - row1_value[0];
+		row_gradient[0].y = row2_value[0] - row1_value[0];
+		for(size_t i = 1; i < image_w - 1; ++i) {
+			row_gradient[i].x = 0.5 * (row1_value[i + 1] - row1_value[i - 1]);
+			row_gradient[i].y = row2_value[i] - row1_value[i];
+		}
+		row_gradient[image_w - 1].x = row1_value[image_w - 1] - row1_value[image_w - 2];
+		row_gradient[image_w - 1].y = row2_value[image_w - 1] - row1_value[image_w - 1];
+	}
+	for(size_t j = 1; j < image_h - 1; ++j) {
+		uint32_t *row = (uint32_t*) image.scanLine((int) j);
+		real_t *row0_value = image_value.data() + (j - 1) * image_w;
+		real_t *row1_value = image_value.data() + j * image_w;
+		real_t *row2_value = image_value.data() + (j + 1) * image_w;
+		Vector2D *row_gradient = image_gradient.data() + j * image_w;
+		row_gradient[0].x = row1_value[1] - row1_value[0];
+		row_gradient[0].y = 0.5 * (row2_value[0] - row0_value[0]);
+		for(size_t i = 1; i < image_w - 1; ++i) {
+			row_gradient[i].x = 0.5 * (row1_value[i + 1] - row1_value[i - 1]);
+			row_gradient[i].y = 0.5 * (row2_value[i] - row0_value[i]);
+		}
+		row_gradient[image_w - 1].x = row1_value[image_w - 1] - row1_value[image_w - 2];
+		row_gradient[image_w - 1].y = 0.5 * (row2_value[image_w - 1] - row0_value[image_w - 1]);
+	}
+	{
+		uint32_t *row = (uint32_t*) image.scanLine((int) image_h - 1);
+		real_t *row0_value = image_value.data() + (image_h - 2) * image_w;
+		real_t *row1_value = image_value.data() + (image_h - 1) * image_w;
+		Vector2D *row_gradient = image_gradient.data() + (image_h - 1) * image_w;
+		row_gradient[0].x = row1_value[1] - row1_value[0];
+		row_gradient[0].y = row1_value[0] - row0_value[0];
+		for(size_t i = 1; i < image_w - 1; ++i) {
+			row_gradient[i].x = 0.5 * (row1_value[i + 1] - row1_value[i - 1]);
+			row_gradient[i].y = row1_value[i] - row0_value[i];
+		}
+		row_gradient[image_w - 1].x = row1_value[image_w - 1] - row1_value[image_w - 2];
+		row_gradient[image_w - 1].y = row1_value[image_w - 1] - row0_value[image_w - 1];
+	}
 
 	// create image
 	image = QImage((int) image_w, (int) image_h, QImage::Format_RGB32);
@@ -86,13 +131,12 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 
 		// get mesh data
 		std::vector<real_t> image_mesh_value;
-		std::vector<Vector2D> image_mesh_gradient;
 		if(mesh_overlay) {
-			mesh->GetImage2D(image_mesh_value, image_mesh_gradient, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
+			mesh->GetImage2D(image_mesh_value, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
 		}
 
 		// color + contour plot
-		real_t contours = 20.0, contour_scale = contours * (image_view.x2 - image_view.x1) / (real_t) image_w;
+		real_t contours = 20.0, contour_scale = contours;// * (image_view.x2 - image_view.x1) / (real_t) image_w;
 		const ColorMap &cmap = COLORMAP_MAGMA;
 		for(size_t j = 0; j < image_h; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
@@ -113,18 +157,17 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			}
 		}
 
-	} else if(image_type == MESHIMAGETYPE_ENERGY) {
+	} else  {
 
 		// get mesh data
 		std::vector<real_t> image_mesh_value;
-		std::vector<Vector2D> image_mesh_gradient;
 		if(mesh_overlay) {
-			mesh->GetImage2D(image_mesh_value, image_mesh_gradient, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
+			mesh->GetImage2D(image_mesh_value, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
 		}
 
 		// color + contour plot
-		real_t log_scale = 1.0 / log(1e4);
-		real_t contours = 20.0, contour_scale = contours * (image_view.x2 - image_view.x1) / (real_t) image_w;
+		real_t log_scale = 1.0 / log((image_type == MESHIMAGETYPE_POYNTING)? 1e4 : 1e2);
+		real_t contours = 20.0, contour_scale = contours;
 		const ColorMap &cmap = COLORMAP_MAGMA;
 		for(size_t j = 0; j < image_h; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
@@ -132,7 +175,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			Vector2D *row_gradient = image_gradient.data() + j * image_w;
 			real_t *row_mesh_value = image_mesh_value.data() + j * image_w;
 			for(size_t i = 0; i < image_w; ++i) {
-				real_t value = log(fabs(row_value[i])) * log_scale + 1.0;
+				real_t value = log(std::max(1e-8, row_value[i])) * log_scale + 1.0;
 				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
 				real_t temp = value * contours + 0.5;
 				real_t temp2 = (temp - nearbyint(temp)) / contour_range;
@@ -145,7 +188,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			}
 		}
 
-	} else {
+	} /*else {
 
 		// get mesh data
 		std::vector<real_t> image_mesh_value;
@@ -171,7 +214,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			}
 		}
 
-	}
+	}*/
 
 }
 

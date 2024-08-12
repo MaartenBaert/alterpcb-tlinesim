@@ -252,7 +252,7 @@ MainWindow::MainWindow() {
 			"Mesh",
 			"Electric Field", "Electric Field X", "Electric Field Y", "Electric Field Z",
 			"Magnetic Field", "Magnetic Field X", "Magnetic Field Y", "Magnetic Field Z",
-			"Electric Potential", "Magnetic Potential", "Energy", "Current",
+			"Electric Potential", "Magnetic Potential", "Poynting Vector",
 		});
 		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);

@@ -20,7 +20,9 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "GridMesh2D.h"
 
+#include "Basics.h"
 #include "FemMatrix.h"
+#include "GenericMesh.h"
 #include "MiscMath.h"
 #include "StringHelper.h"
 
@@ -29,47 +31,55 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <chrono>
 #include <deque>
+#include <fstream>
 #include <iostream>
-
-#include <fstream> // TODO remove this
+#include <random>
 
 #define SIMULATION_VERBOSE 1
-#define SIMULATION_SAVE_MATRIXMARKET 1
+#define SIMULATION_SAVE_MATRICES 1
 
-#if SIMULATION_SAVE_MATRIXMARKET
+#if SIMULATION_SAVE_MATRICES
 #include "MatrixMarket.h"
 #endif
 
-complex_t Interp_Ax(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
+inline complex_t Interp_Ax(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
 	return lerp(e1x0, e1x1, fy) + lerp(e2x0, e2x1, fy) * (fx - 0.5);
 }
-complex_t Interp_Ax_Dy(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
+inline complex_t Interp_Ax_Dy(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
 	UNUSED(fy); return (e1x1 - e1x0) + (e2x1 - e2x0) * (fx - 0.5);
 }
 
-complex_t Interp_Ay(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
+inline complex_t Interp_Ay(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
 	return lerp(e1y0, e1y1, fx) + lerp(e2y0, e2y1, fx) * (fy - 0.5);
 }
-complex_t Interp_Ay_Dx(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
+inline complex_t Interp_Ay_Dx(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
 	UNUSED(fx); return (e1y1 - e1y0) + (e2y1 - e2y0) * (fy - 0.5);
 }
 
-complex_t Interp_Az(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
+inline complex_t Interp_Az(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
 	return lerp(lerp(n00, n01, fx), lerp(n10, n11, fx), fy) + lerp(ex0, ex1, fy) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * fy * (1.0 - fy);
 }
-complex_t Interp_Az_Dx(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
-	return lerp(n01 - n00, n11 - n10, fy) + lerp(ex0, ex1, fy) * (1.0 - 2.0 * fx) + (ey1 - ey0) * fy * (1.0 - fy);
+inline complex_t Interp_Az_Dx(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
+	return (Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx + 1e-6, fy) - Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy)) * 1e6;
+	// return lerp(n01 - n00, n11 - n10, fy) + lerp(ex0, ex1, fy) * (1.0 - 2.0 * fx) + (ey1 - ey0) * fy * (1.0 - fy);
 }
-complex_t Interp_Az_Dy(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
-	return lerp(n10 - n00, n11 - n01, fx) + (ex1 - ex0) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * (1.0 - 2.0 * fy);
+inline complex_t Interp_Az_Dy(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
+	return (Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy + 1e-6) - Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy)) * 1e6;
+	// return lerp(n10 - n00, n11 - n01, fx) + (ex1 - ex0) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * (1.0 - 2.0 * fy);
 }
 
 // Returns the maximum length of a vector of phasors.
-real_t PhasorVectorMax(complex_t x, complex_t y, complex_t z) {
+inline real_t PhasorVectorMax(complex_t x, complex_t y, complex_t z) {
 	real_t a = x.real() * x.real() + y.real() * y.real() + z.real() * z.real();
 	real_t b = x.real() * x.imag() + y.real() * y.imag() + z.real() * z.imag();
 	real_t c = x.imag() * x.imag() + y.imag() * y.imag() + z.imag() * z.imag();
 	return sqrt(hypot(0.5 * (a - c), b) + 0.5 * (a + c));
+}
+inline real_t PhasorVectorCrossProductMax(complex_t x1, complex_t y1, complex_t z1, complex_t x2, complex_t y2, complex_t z2) {
+	complex_t cx = y1 * std::conj(z2) - z1 * std::conj(y2);
+	complex_t cy = z1 * std::conj(x2) - x1 * std::conj(z2);
+	complex_t cz = x1 * std::conj(y2) - y1 * std::conj(x2);
+	return PhasorVectorMax(cx, cy, cz);
 }
 
 template<class EigenSparseMatrix>
@@ -174,7 +184,7 @@ Box2D GridMesh2D::GetWorldFocus2D() {
 	return m_world_focus;
 }
 
-void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
+void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
 	if(!IsInitialized())
 		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
 	if(type != MESHIMAGETYPE_MESH) {
@@ -187,10 +197,6 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 	// clear image data
 	image_value.clear();
 	image_value.resize(width * height);
-	if(type != MESHIMAGETYPE_MESH) {
-		image_gradient.clear();
-		image_gradient.resize(width * height);
-	}
 
 	// prepare grid
 	std::vector<size_t> index_x, index_y;
@@ -245,7 +251,6 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			scale = 1.0 / scale;
 			for(size_t j = 0; j < height; ++j) {
 				real_t *row_value = image_value.data() + j * width;
-				Vector2D *row_gradient = image_gradient.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
 					size_t ix = index_x[i], iy = index_y[j];
 					real_t fx = frac_x[i], fy = frac_y[j];
@@ -258,8 +263,6 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 					complex_t eey0 = field.m_field_edges_y[GetEdgeYIndex(ix    , iy    )].e2;
 					complex_t eey1 = field.m_field_edges_y[GetEdgeYIndex(ix + 1, iy    )].e2;
 					row_value[i] = Interp_Az(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy).real() * scale;
-					row_gradient[i].x = Interp_Az_Dx(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy).real() / (m_grid_x[ix + 1] - m_grid_x[ix]) * scale;
-					row_gradient[i].y = Interp_Az_Dy(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy).real() / (m_grid_y[iy + 1] - m_grid_y[iy]) * scale;
 				}
 			}
 			break;
@@ -274,7 +277,6 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			scale = 1.0 / scale;
 			for(size_t j = 0; j < height; ++j) {
 				real_t *row_value = image_value.data() + j * width;
-				Vector2D *row_gradient = image_gradient.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
 					size_t ix = index_x[i], iy = index_y[j];
 					real_t fx = frac_x[i], fy = frac_y[j];
@@ -287,8 +289,6 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 					complex_t mey0 = field.m_field_edges_y[GetEdgeYIndex(ix    , iy    )].m2;
 					complex_t mey1 = field.m_field_edges_y[GetEdgeYIndex(ix + 1, iy    )].m2;
 					row_value[i] = Interp_Az(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy).real() * scale;
-					row_gradient[i].x = Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy).real() / (m_grid_x[ix + 1] - m_grid_x[ix]) * scale;
-					row_gradient[i].y = Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy).real() / (m_grid_y[iy + 1] - m_grid_y[iy]) * scale;
 				}
 			}
 			break;
@@ -326,7 +326,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = sqrt(square(fex.real()) + square(fey.real()) + square(fez.real())) * scale;
+							row_value[i] = PhasorVectorMax(fex, fey, fez) * scale;
 						}
 					}
 					break;
@@ -337,7 +337,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fex.real() * scale;
+							row_value[i] = std::abs(fex) * scale;
 						}
 					}
 					break;
@@ -348,7 +348,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fey.real() * scale;
+							row_value[i] = std::abs(fey) * scale;
 						}
 					}
 					break;
@@ -359,7 +359,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fez.real() * scale;
+							row_value[i] = std::abs(fez) * scale;
 						}
 					}
 					break;
@@ -395,7 +395,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = sqrt(square(fmx.real()) + square(fmy.real()) + square(fmz.real())) * scale;
+							row_value[i] = PhasorVectorMax(fmx, fmy, fmz) * scale;
 						}
 					}
 					break;
@@ -406,7 +406,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fmx.real() * scale;
+							row_value[i] = std::abs(fmx) * scale;
 						}
 					}
 					break;
@@ -417,7 +417,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fmy.real() * scale;
+							row_value[i] = std::abs(fmy) * scale;
 						}
 					}
 					break;
@@ -428,7 +428,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 						for(size_t i = 0; i < width; ++i) {
 							complex_t fex, fey, fez, fmx, fmy, fmz;
 							GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
-							row_value[i] = fmz.real() * scale;
+							row_value[i] = std::abs(fmz) * scale;
 						}
 					}
 					break;
@@ -437,27 +437,29 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, std::vector<Vector
 			}
 			break;
 		}
-		case MESHIMAGETYPE_ENERGY:
-		case MESHIMAGETYPE_CURRENT: {
-			std::vector<std::array<real_t, 4>> cellnode_values;
-			GetCellNodeValues(cellnode_values, mode, type);
+		case MESHIMAGETYPE_POYNTING: {
+			real_t scale = 0.0;
+			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+					complex_t fex, fey, fez, fmx, fmy, fmz;
+					GetCellField(mode, ix, iy, 0.0, 0.0, fex, fey, fez, fmx, fmy, fmz);
+					scale = std::max(scale, PhasorVectorCrossProductMax(fex, fey, fez, fmx, fmy, fmz));
+					GetCellField(mode, ix, iy, 0.0, 1.0, fex, fey, fez, fmx, fmy, fmz);
+					scale = std::max(scale, PhasorVectorCrossProductMax(fex, fey, fez, fmx, fmy, fmz));
+					GetCellField(mode, ix, iy, 1.0, 0.0, fex, fey, fez, fmx, fmy, fmz);
+					scale = std::max(scale, PhasorVectorCrossProductMax(fex, fey, fez, fmx, fmy, fmz));
+					GetCellField(mode, ix, iy, 1.0, 1.0, fex, fey, fez, fmx, fmy, fmz);
+					scale = std::max(scale, PhasorVectorCrossProductMax(fex, fey, fez, fmx, fmy, fmz));
+				}
+			}
+			std::cerr << "ENERGY scale = " << scale << std::endl;
+			scale = 1.0 / scale;
 			for(size_t j = 0; j < height; ++j) {
 				real_t *row_value = image_value.data() + j * width;
-				Vector2D *row_gradient = image_gradient.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
-					size_t ix = index_x[i], iy = index_y[j];
-					size_t cell_index = GetCellIndex(ix, iy);
-					real_t v00 = cellnode_values[cell_index][0];
-					real_t v01 = cellnode_values[cell_index][1];
-					real_t v10 = cellnode_values[cell_index][2];
-					real_t v11 = cellnode_values[cell_index][3];
-					real_t v0 = v00 + (v01 - v00) * frac_x[i];
-					real_t v1 = v10 + (v11 - v10) * frac_x[i];
-					row_value[i] = v0 + (v1 - v0) * frac_y[j];
-					real_t gx0 = v01 - v00, gx1 = v11 - v10;
-					real_t gy0 = v10 - v00, gy1 = v11 - v01;
-					row_gradient[i].x = (gx0 + (gx1 - gx0) * frac_y[j]) / (m_grid_x[ix + 1] - m_grid_x[ix]);
-					row_gradient[i].y = (gy0 + (gy1 - gy0) * frac_x[i]) / (m_grid_y[iy + 1] - m_grid_y[iy]);
+					complex_t fex, fey, fez, fmx, fmy, fmz;
+					GetCellField(mode, index_x[i], index_y[j], frac_x[i], frac_y[j], fex, fey, fez, fmx, fmy, fmz);
+					row_value[i] = PhasorVectorCrossProductMax(fex, fey, fez, fmx, fmy, fmz) * scale;
 				}
 			}
 			break;
@@ -745,131 +747,11 @@ void GridMesh2D::InitCells() {
 
 }
 
-#include <random> // TODO remove
-
 void GridMesh2D::InitVariables() {
 	assert(!IsInitialized());
 
 	if(m_ports.size() == 0)
 		throw std::runtime_error("GridMesh2D error: The mesh has no ports.");
-
-	// // assign variables to nodes
-	// for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
-	// 	for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
-	// 		Node &node = GetNode(ix, iy);
-	// 		if(node.m_conductor == INDEX_NONE) {
-	// 			node.m_var_static_e1 = m_vars_static_e_free++;
-	// 			node.m_var_static_m1 = m_vars_static_m_free++;
-	// 		} else if(node.m_surface) {
-	// 			node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-	// 			node.m_var_static_m1 = m_vars_static_m_free++;
-	// 		} else {
-	// 			node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-	// 			node.m_var_static_m1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_m;
-	// 		}
-	// 	}
-	// }
-
-	// // assign variables to edges
-	// if(m_element_type == ELEMENTTYPE_QUADRATIC) {
-	// 	for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
-	// 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-	// 			Edge &edge = GetEdgeX(ix, iy);
-	// 			if(edge.m_conductor == INDEX_NONE) {
-	// 				edge.m_var_static_e2 = m_vars_static_e_free++;
-	// 				edge.m_var_static_m2 = m_vars_static_m_free++;
-	// 			} else if(edge.m_surface) {
-	// 				edge.m_var_static_m2 = m_vars_static_m_free++;
-	// 			}
-	// 		}
-	// 	}
-	// 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-	// 		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
-	// 			Edge &edge = GetEdgeY(ix, iy);
-	// 			if(edge.m_conductor == INDEX_NONE) {
-	// 				edge.m_var_static_e2 = m_vars_static_e_free++;
-	// 				edge.m_var_static_m2 = m_vars_static_m_free++;
-	// 			} else if(edge.m_surface) {
-	// 				edge.m_var_static_m2 = m_vars_static_m_free++;
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-
-
-	// std::vector<size_t> perm_e(m_vars_static_e_free), perm_m(m_vars_static_m_free);
-	// std::mt19937_64 rng(123456789321654987);
-	// for(size_t i = 0; i < m_vars_static_e_free; ++i) {
-	// 	perm_e[i] = i;
-	// }
-	// for(size_t i = 0; i < m_vars_static_m_free; ++i) {
-	// 	perm_m[i] = i;
-	// }
-	// for(size_t i = 0; i < m_vars_static_e_free; ++i) {
-	// 	size_t j = i + rng() % (m_vars_static_e_free - i);
-	// 	std::swap(perm_e[i], perm_e[j]);
-	// }
-	// for(size_t i = 0; i < m_vars_static_m_free; ++i) {
-	// 	size_t j = i + rng() % (m_vars_static_m_free - i);
-	// 	std::swap(perm_m[i], perm_m[j]);
-	// }
-
-
-
-
-
-	// m_vars_static_e_free = 0;
-	// m_vars_static_m_free = 0;
-
-
-	// // assign variables to nodes
-	// for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
-	// 	for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
-	// 		Node &node = GetNode(ix, iy);
-	// 		if(node.m_conductor == INDEX_NONE) {
-	// 			node.m_var_static_e1 = perm_e[m_vars_static_e_free++];
-	// 			node.m_var_static_m1 = perm_m[m_vars_static_m_free++];
-	// 		} else if(node.m_surface) {
-	// 			node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-	// 			node.m_var_static_m1 = perm_m[m_vars_static_m_free++];
-	// 		} else {
-	// 			node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-	// 			node.m_var_static_m1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_m;
-	// 		}
-	// 	}
-	// }
-
-	// // assign variables to edges
-	// if(m_element_type == ELEMENTTYPE_QUADRATIC) {
-	// 	for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
-	// 		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-	// 			Edge &edge = GetEdgeX(ix, iy);
-	// 			if(edge.m_conductor == INDEX_NONE) {
-	// 				edge.m_var_static_e2 = perm_e[m_vars_static_e_free++];
-	// 				edge.m_var_static_m2 = perm_m[m_vars_static_m_free++];
-	// 			} else if(edge.m_surface) {
-	// 				edge.m_var_static_m2 = perm_m[m_vars_static_m_free++];
-	// 			}
-	// 		}
-	// 	}
-	// 	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-	// 		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
-	// 			Edge &edge = GetEdgeY(ix, iy);
-	// 			if(edge.m_conductor == INDEX_NONE) {
-	// 				edge.m_var_static_e2 = perm_e[m_vars_static_e_free++];
-	// 				edge.m_var_static_m2 = perm_m[m_vars_static_m_free++];
-	// 			} else if(edge.m_surface) {
-	// 				edge.m_var_static_m2 = perm_m[m_vars_static_m_free++];
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-
-
-
-
 
 	// generate tree-cotree gauge for the full-wave solver
 	if(m_solver_type == SOLVERTYPE_FULLWAVE) {
@@ -993,10 +875,6 @@ void GridMesh2D::InitVariables() {
 		if(placeholder_count != 0)
 			throw std::runtime_error("GridMesh2D error: The mesh contains unreachable nodes.");
 
-		// get absolute reference
-		//size_t ref_ix = (size_t) (std::upper_bound(m_midpoints_x.begin(), m_midpoints_x.end(), m_ports[0].m_anchor.x) - m_midpoints_x.begin());
-		//size_t ref_iy = (size_t) (std::upper_bound(m_midpoints_y.begin(), m_midpoints_y.end(), m_ports[0].m_anchor.y) - m_midpoints_y.begin());
-
 	}
 
 	// assign variables by recursive partitioning
@@ -1013,15 +891,11 @@ void GridMesh2D::InitVariables() {
 	for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 		for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 			Node &node = GetNode(ix, iy);
-			if(node.m_conductor == INDEX_NONE) {
-				// node.m_var_static_e1 = m_vars_static_e_free++;
-				// node.m_var_static_m1 = m_vars_static_m_free++;
-			} else if(node.m_surface) {
+			if(node.m_conductor != INDEX_NONE) {
 				node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-				// node.m_var_static_m1 = m_vars_static_m_free++;
-			} else {
-				node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-				node.m_var_static_m1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_m;
+				if(!node.m_surface) {
+					node.m_var_static_m1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_m;
+				}
 			}
 		}
 	}
@@ -1038,15 +912,10 @@ void GridMesh2D::InitVariables() {
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
 			for(size_t ix = 0; ix < m_grid_x.size(); ++ix) {
 				Node &node = GetNode(ix, iy);
-				if(node.m_conductor == INDEX_NONE) {
-					// node.m_var_full_e1 = m_vars_full_em++;
-					// node.m_var_full_m1 = m_vars_full_em++;
-				} else {
+				if(node.m_conductor != INDEX_NONE) {
 					size_t port = m_conductors[node.m_conductor].m_port;
 					node.m_var_full_e1 = m_ports[port].m_var_full_e;
-					if(node.m_surface) {
-						// node.m_var_full_m1 = m_vars_full_em++;
-					} else {
+					if(!node.m_surface) {
 						node.m_var_full_m1 = m_ports[port].m_var_full_e;
 					}
 				}
@@ -1134,11 +1003,7 @@ void GridMesh2D::InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size
 				node.m_var_static_e1 = m_vars_static_e_free++;
 				node.m_var_static_m1 = m_vars_static_m_free++;
 			} else if(node.m_surface) {
-				// node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
 				node.m_var_static_m1 = m_vars_static_m_free++;
-			} else {
-				// node.m_var_static_e1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_e;
-				// node.m_var_static_m1 = m_ports[m_conductors[node.m_conductor].m_port].m_var_static_m;
 			}
 		}
 	}
@@ -1191,12 +1056,8 @@ void GridMesh2D::InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size
 					node.m_var_full_e1 = m_vars_full_em++;
 					node.m_var_full_m1 = m_vars_full_em++;
 				} else {
-					// size_t port = m_conductors[node.m_conductor].m_port;
-					// node.m_var_full_e1 = m_ports[port].m_var_full_e;
 					if(node.m_surface) {
 						node.m_var_full_m1 = m_vars_full_em++;
-					} else {
-						// node.m_var_full_m1 = m_ports[port].m_var_full_e;
 					}
 				}
 			}
@@ -1408,7 +1269,7 @@ void GridMesh2D::BuildMatrices() {
 		matrix_full_em[1].ToEigen(m_matrix_full_em[1]);
 	}
 
-#if SIMULATION_SAVE_MATRIXMARKET
+#if SIMULATION_SAVE_MATRICES
 	MatrixMarket::Save("matrix_epot.mtx", m_matrix_static_e[0], MatrixMarket::TYPE_SYMMETRIC);
 	MatrixMarket::Save("matrix_mpot.mtx", m_matrix_static_m[0], MatrixMarket::TYPE_SYMMETRIC);
 	if(m_solver_type == SOLVERTYPE_FULLWAVE) {
@@ -1490,7 +1351,7 @@ void GridMesh2D::SolveStaticEigenModes() {
 	Eigen::MatrixXc matrix_zy = impedance * admittance;
 	Eigen::ComplexEigenSolver<Eigen::MatrixXc> eigensolver(matrix_zy);
 	if(eigensolver.info() != Eigen::Success)
-		throw std::runtime_error("Eigenmode decomposition failed!");
+		throw std::runtime_error("Eigenvalue decomposition failed!");
 	auto &eigval = eigensolver.eigenvalues();
 	auto &eigvec = eigensolver.eigenvectors();
 
@@ -1588,7 +1449,7 @@ void GridMesh2D::SolveFullEigenModes() {
 
 	real_t omega = 2.0 * M_PI * GetFrequency();
 
-
+#if SIMULATION_SAVE_MATRICES
 	{
 		std::ofstream f("mesh_empot.txt");
 		for(size_t iy = 0; iy < m_grid_y.size(); ++iy) {
@@ -1619,7 +1480,7 @@ void GridMesh2D::SolveFullEigenModes() {
 			}
 		}
 	}
-
+#endif
 
 	// generate orthogonalization
 	Eigen::VectorXc orthofactors(m_vars_full_em);
@@ -1679,7 +1540,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	std::uniform_real_distribution<double> dist(-1.0, 1.0);
 	Eigen::VectorXc eigv(m_vars_full_em);
 	for(size_t i = 0; i < m_vars_full_em; ++i) {
-		eigv[(Eigen::Index) i] = std::complex<double>(dist(rng), dist(rng));
+		eigv[(Eigen::Index) i] = complex_t(dist(rng), dist(rng));
 	}
 	eigv = orthofactors.cwiseProduct(m_matrix_full_em[1] * eigv);
 	eigv = m_ldlt_full_em.solve(eigv);
@@ -1705,7 +1566,7 @@ void GridMesh2D::SolveFullEigenModes() {
 			H.block(0, (Eigen::Index) k - 1, (Eigen::Index) k, 1) += dots;
 			eigv -= Q.block(0, 0, (Eigen::Index) k, (Eigen::Index) m_vars_full_em).transpose() * dots;
 		}
-		std::complex<double> norm = std::sqrt((eigv.transpose() * eigw)[0]);
+		complex_t norm = std::sqrt((eigv.transpose() * eigw)[0]);
 		std::cerr << "Arnoldi k " << k << " norm " << norm << " " << std::abs(norm) << std::endl;
 		eigv /= norm;
 		std::cerr << "eigv norm after normalization " << std::sqrt((eigv.transpose() * orthofactors.cwiseProduct(m_matrix_full_em[1] * eigv))[0]) << std::endl;
@@ -1718,7 +1579,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	// calculate eigenvalue decomposition
 	Eigen::ComplexEigenSolver<Eigen::MatrixXc> eigensolver(H);
 	if(eigensolver.info() != Eigen::Success)
-		throw std::runtime_error("Eigenmode decomposition failed!");
+		throw std::runtime_error("Eigenvalue decomposition failed!");
 	// auto &w = eigensolver.eigenvalues();
 	// auto &v = eigensolver.eigenvectors();
 	// std::cerr << "w" << std::endl;
@@ -1729,14 +1590,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	Eigen::VectorXc eigvals = (square(eigenvalue_guess) - 1.0 / eigensolver.eigenvalues().array()).cwiseSqrt();
 	Eigen::MatrixXc eigvecs = eigensolver.eigenvectors().transpose() * Q;
 
-	for(size_t k = 0; k < iters; ++k) {
-		std::complex<double> w = eigvals[(Eigen::Index) k];
-		Eigen::VectorXc v = eigvecs.row((Eigen::Index) k);
-		Eigen::VectorXc temp0 = m_matrix_full_em[0] * v;
-		Eigen::VectorXc temp1 = (m_matrix_full_em[1] * v) * square(w);
-		std::cerr << "resid " << k << " " << ((temp0 + temp1).norm() / temp0.norm()) << "     " << eigvals[(Eigen::Index) k] << std::endl;
-	}
-
+#if SIMULATION_SAVE_MATRICES
 	auto savevector = [](const std::string &filename, const Eigen::VectorXc &vec) {
 		std::filebuf stream;
 		if(stream.open(filename, std::ios_base::out | std::ios_base::binary) == NULL)
@@ -1746,113 +1600,50 @@ void GridMesh2D::SolveFullEigenModes() {
 	savevector("orthofactors.dat", orthofactors);
 	savevector("efactors.dat", efactors);
 	savevector("mfactors.dat", mfactors);
+#endif
 
-	// refine eigenmodes from static solver
+	// extract valid solutions
+	std::vector<complex_t> valid_eigvals;
+	std::vector<Eigen::VectorXc> valid_eigvecs;
+	for(size_t k = 0; k < iters; ++k) {
+		complex_t w = eigvals[(Eigen::Index) k];
+		Eigen::VectorXc v = eigvecs.row((Eigen::Index) k);
+		Eigen::VectorXc temp0 = m_matrix_full_em[0] * v;
+		Eigen::VectorXc temp1 = (m_matrix_full_em[1] * v) * square(w);
+		real_t resid = (temp0 + temp1).norm() / std::max(temp0.norm(), temp1.norm());
+		std::cerr << "resid " << k << " " << resid << "     " << w << std::endl;
+		if(resid < 1e-8 && w.real() >= 1.0 - 1e-6 && w.imag() <= 1e-6 && w.imag() >= -w.real()) {
+			valid_eigvals.push_back(w);
+			valid_eigvecs.push_back(v);
+		}
+	}
+	std::cerr << "Found " << valid_eigvals.size() << " valid mode(s), expected " << GetModeCount() << std::endl;
+	if(valid_eigvals.size() < GetModeCount()) {
+		throw std::runtime_error("Failed to find expected number of valid modes!");
+	}
+
+	// TODO reorder eigenmodes
+
+	// save fields
+	m_solution_fields.resize(GetModeCount());
 	for(size_t mode = 0; mode < GetModeCount(); ++mode) {
-		SolutionField &fields = m_solution_fields[mode];
 
-		// get static eigenmode and propagation constant
-		Eigen::VectorXc eigenmode = m_eigenmodes.col((Eigen::Index) mode);
-		complex_t eigenvalue = fields.m_effective_index;
-
-		// calculate static potentials for this mode
-		Eigen::VectorXc fixed_values = GetModes() * eigenmode;
-		Eigen::VectorXc static_epot = m_solution_static_e * eigenmode;
-		Eigen::VectorXc static_mpot = m_solution_static_m * eigenmode;
-
-		complex_t scale_factor_e = 1.0;
-		complex_t scale_factor_m = fields.m_effective_index / SPEED_OF_LIGHT;
-		complex_t scale_factor_mt = 1.0 / SPEED_OF_LIGHT;
-
-		// calculate initial guess
-		// TODO: deal with duplicates
-		Eigen::VectorXc eigenvector(m_vars_full_em);
-		Eigen::VectorXc orthofactors(m_vars_full_em);
-		orthofactors.setOnes();
-		for(size_t i = 0; i < m_nodes.size(); ++i) {
-			Node &node = m_nodes[i];
-			if(node.m_conductor == INDEX_NONE || node.m_surface) {
-				if(node.m_var_full_e1 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) node.m_var_full_e1] = fields.m_field_nodes[i].e1 / scale_factor_e;
-				}
-				if(node.m_var_full_m1 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) node.m_var_full_m1] = fields.m_field_nodes[i].m1 / scale_factor_m;
-					orthofactors[(Eigen::Index) node.m_var_full_m1] = 0.0;
-				}
-			}
-		}
-		for(size_t i = 0; i < m_edges_x.size(); ++i) {
-			Edge &edge = m_edges_x[i];
-			if(edge.m_conductor == INDEX_NONE || edge.m_surface) {
-				if(edge.m_var_full_e2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_e2] = fields.m_field_edges_x[i].e2 / scale_factor_e;
-				}
-				if(edge.m_var_full_m2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_m2] = fields.m_field_edges_x[i].m2 / scale_factor_m;
-					orthofactors[(Eigen::Index) edge.m_var_full_m2] = 0.0;
-				}
-				if(edge.m_var_full_mt1 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_mt1] = fields.m_field_edges_x[i].mt1 / scale_factor_mt;
-				}
-				if(edge.m_var_full_mt2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_mt2] = fields.m_field_edges_x[i].mt2 / scale_factor_mt;
-				}
-			}
-		}
-		for(size_t i = 0; i < m_edges_y.size(); ++i) {
-			Edge &edge = m_edges_y[i];
-			if(edge.m_conductor == INDEX_NONE || edge.m_surface) {
-				if(edge.m_var_full_e2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_e2] = fields.m_field_edges_y[i].e2 / scale_factor_e;
-				}
-				if(edge.m_var_full_m2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_m2] = fields.m_field_edges_y[i].m2 / scale_factor_m;
-					orthofactors[(Eigen::Index) edge.m_var_full_m2] = 0.0;
-				}
-				if(edge.m_var_full_mt1 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_mt1] = fields.m_field_edges_y[i].mt1 / scale_factor_mt;
-				}
-				if(edge.m_var_full_mt2 != INDEX_NONE) {
-					eigenvector[(Eigen::Index) edge.m_var_full_mt2] = fields.m_field_edges_y[i].mt2 / scale_factor_mt;
-				}
-			}
-		}
-		eigenvector /= std::sqrt((eigenvector.transpose() * m_matrix_full_em[1] * eigenvector)[0]);
-		savevector("eigvec_quasi_" + std::to_string(mode) + ".dat", eigenvector);
-
-		// find most similar eigenmode
-		size_t best_index = 0;
-		double best_dot = 0.0;
-		for(size_t k = 0; k < iters; ++k) {
-			std::complex<double> w = eigvals[(Eigen::Index) k];
-			Eigen::VectorXc v = eigvecs.row((Eigen::Index) k);
-			std::complex<double> dot = std::sqrt((v.transpose() * m_matrix_full_em[1] * eigenvector)[0]);
-			std::cerr << "dot " << k << " " << dot << " " << std::abs(dot) << std::endl;
-			if(std::norm(dot) > best_dot) {
-				best_index = k;
-				best_dot = std::norm(dot);
-			}
-		}
-		eigenvalue = eigvals[(Eigen::Index) best_index];
-		eigenvector = eigvecs.row((Eigen::Index) best_index);
-		savevector("eigvec_full_" + std::to_string(mode) + ".dat", eigenvector);
-
-		scale_factor_e = 1.0;
-		scale_factor_m = eigenvalue / SPEED_OF_LIGHT;
-		scale_factor_mt = 1.0 / SPEED_OF_LIGHT;
-
-		//std::cerr << "eigenvector_init:" << eigenvector_init << std::endl;
-		//std::cerr << "eigenvector:" << eigenvector << std::endl;
+		complex_t eigenvalue = valid_eigvals[mode];
+		Eigen::VectorXc eigenvector = valid_eigvecs[mode];
 
 		// TODO: remove
 		m_propagation_constants[(Eigen::Index) mode] = eigenvalue / SPEED_OF_LIGHT * complex_t(0.0, omega);
 
 		// save fields
+		SolutionField &fields = m_solution_fields[mode];
 		fields.m_propagation_constant = eigenvalue / SPEED_OF_LIGHT * complex_t(0.0, omega);
 		fields.m_effective_index = eigenvalue; //fields.m_propagation_constant * SPEED_OF_LIGHT / complex_t(0.0, omega);
 		fields.m_field_nodes.resize(m_nodes.size());
 		fields.m_field_edges_x.resize(m_edges_x.size());
 		fields.m_field_edges_y.resize(m_edges_y.size());
+		complex_t scale_factor_e = 1.0;
+		complex_t scale_factor_m = eigenvalue / SPEED_OF_LIGHT;
+		complex_t scale_factor_mt = 1.0 / SPEED_OF_LIGHT;
 		for(size_t i = 0; i < m_nodes.size(); ++i) {
 			Node &node = m_nodes[i];
 			fields.m_field_nodes[i].e1 = (node.m_var_full_e1 == INDEX_NONE)? 0.0 : eigenvector[(Eigen::Index) node.m_var_full_e1] * scale_factor_e;
@@ -1909,8 +1700,8 @@ void GridMesh2D::GetCellField(size_t mode, size_t ix, size_t iy, real_t fx, real
 	fex = -Interp_Az_Dx(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_x - s * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy);
 	fey = -Interp_Az_Dy(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_y - s * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy);
 	fez = fields.m_propagation_constant * Interp_Az(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) - s * Interp_Az(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy);
-	fmx =  Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_y + fields.m_propagation_constant * Interp_Ay(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy);
-	fmy = -Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_x - fields.m_propagation_constant * Interp_Ax(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy);
+	fmx =  Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_y + fields.m_propagation_constant * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy);
+	fmy = -Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_x - fields.m_propagation_constant * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy);
 	fmz = Interp_Ay_Dx(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy) / delta_x - Interp_Ax_Dy(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy) / delta_y;
 }
 
@@ -1958,116 +1749,7 @@ void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_
 		case MESHIMAGETYPE_MFIELD: {
 			break;
 		}
-		case MESHIMAGETYPE_ENERGY: {
-			complex_t *solution_epot = m_solution_static_e.data() + m_solution_static_e.outerStride() * (ptrdiff_t) mode;
-			complex_t *solution_mpot = m_solution_static_m.data() + m_solution_static_m.outerStride() * (ptrdiff_t) mode;
-			const real_t *fixed_values = GetModes().data() + GetModes().outerStride() * (ptrdiff_t) mode;
-			std::vector<std::vector<real_t>> dielectric_values(m_dielectrics.size() + 1);
-			std::vector<std::vector<int32_t>> dielectric_count(m_dielectrics.size() + 1);
-			for(size_t i = 0; i < dielectric_values.size(); ++i) {
-				dielectric_values[i].resize(m_nodes.size(), 0.0);
-				dielectric_count[i].resize(m_nodes.size(), 0);
-			}
-			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-					Cell &cell = GetCell(ix, iy);
-					if(cell.m_conductor != INDEX_NONE)
-						continue;
-					size_t node00_index = GetNodeIndex(ix    , iy    );
-					size_t node01_index = GetNodeIndex(ix + 1, iy    );
-					size_t node10_index = GetNodeIndex(ix    , iy + 1);
-					size_t node11_index = GetNodeIndex(ix + 1, iy + 1);
-					Node &node00 = m_nodes[node00_index];
-					Node &node01 = m_nodes[node01_index];
-					Node &node10 = m_nodes[node10_index];
-					Node &node11 = m_nodes[node11_index];
-					//Node &node00 = GetNode(ix    , iy    );
-					//Node &node01 = GetNode(ix + 1, iy    );
-					//Node &node10 = GetNode(ix    , iy + 1);
-					//Node &node11 = GetNode(ix + 1, iy + 1);
-					complex_t node00_value_epot = (node00.m_var_static_e1 < INDEX_OFFSET)? solution_epot[node00.m_var_static_e1] : fixed_values[node00.m_var_static_e1 - INDEX_OFFSET];
-					complex_t node01_value_epot = (node01.m_var_static_e1 < INDEX_OFFSET)? solution_epot[node01.m_var_static_e1] : fixed_values[node01.m_var_static_e1 - INDEX_OFFSET];
-					complex_t node10_value_epot = (node10.m_var_static_e1 < INDEX_OFFSET)? solution_epot[node10.m_var_static_e1] : fixed_values[node10.m_var_static_e1 - INDEX_OFFSET];
-					complex_t node11_value_epot = (node11.m_var_static_e1 < INDEX_OFFSET)? solution_epot[node11.m_var_static_e1] : fixed_values[node11.m_var_static_e1 - INDEX_OFFSET];
-					complex_t node00_value_mpot = (node00.m_var_static_m1 < INDEX_OFFSET)? solution_mpot[node00.m_var_static_m1] : fixed_values[node00.m_var_static_m1 - INDEX_OFFSET];
-					complex_t node01_value_mpot = (node01.m_var_static_m1 < INDEX_OFFSET)? solution_mpot[node01.m_var_static_m1] : fixed_values[node01.m_var_static_m1 - INDEX_OFFSET];
-					complex_t node10_value_mpot = (node10.m_var_static_m1 < INDEX_OFFSET)? solution_mpot[node10.m_var_static_m1] : fixed_values[node10.m_var_static_m1 - INDEX_OFFSET];
-					complex_t node11_value_mpot = (node11.m_var_static_m1 < INDEX_OFFSET)? solution_mpot[node11.m_var_static_m1] : fixed_values[node11.m_var_static_m1 - INDEX_OFFSET];
-					complex_t ex0 = node01_value_epot - node00_value_epot, ex1 = node11_value_epot - node10_value_epot;
-					complex_t ey0 = node10_value_epot - node00_value_epot, ey1 = node11_value_epot - node01_value_epot;
-					complex_t hx0 = node01_value_mpot - node00_value_mpot, hx1 = node11_value_mpot - node10_value_mpot;
-					complex_t hy0 = node10_value_mpot - node00_value_mpot, hy1 = node11_value_mpot - node01_value_mpot;
-					real_t scale_x = 1.0 / square(m_grid_x[ix + 1] - m_grid_x[ix]);
-					real_t scale_y = 1.0 / square(m_grid_y[iy + 1] - m_grid_y[iy]);
-					size_t dielectric_index = (cell.m_dielectric == INDEX_NONE)? 0 : cell.m_dielectric + 1;
-					dielectric_values[dielectric_index][node00_index] += (ex0 * std::conj(hx0)).real() * scale_x + (ey0 * std::conj(hy0)).real() * scale_y;
-					dielectric_values[dielectric_index][node01_index] += (ex0 * std::conj(hx0)).real() * scale_x + (ey1 * std::conj(hy1)).real() * scale_y;
-					dielectric_values[dielectric_index][node10_index] += (ex1 * std::conj(hx1)).real() * scale_x + (ey0 * std::conj(hy0)).real() * scale_y;
-					dielectric_values[dielectric_index][node11_index] += (ex1 * std::conj(hx1)).real() * scale_x + (ey1 * std::conj(hy1)).real() * scale_y;
-					++dielectric_count[dielectric_index][node00_index];
-					++dielectric_count[dielectric_index][node01_index];
-					++dielectric_count[dielectric_index][node10_index];
-					++dielectric_count[dielectric_index][node11_index];
-					//cellnode_values[cell_index][0] = ex0 * hx0 * scale_x + ey0 * hy0 * scale_y;
-					//cellnode_values[cell_index][1] = ex0 * hx0 * scale_x + ey1 * hy1 * scale_y;
-					//cellnode_values[cell_index][2] = ex1 * hx1 * scale_x + ey0 * hy0 * scale_y;
-					//cellnode_values[cell_index][3] = ex1 * hx1 * scale_x + ey1 * hy1 * scale_y;
-				}
-			}
-			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-					size_t cell_index = GetCellIndex(ix, iy);
-					Cell &cell = m_cells[cell_index];
-					if(cell.m_conductor != INDEX_NONE)
-						continue;
-					size_t node00_index = GetNodeIndex(ix    , iy    );
-					size_t node01_index = GetNodeIndex(ix + 1, iy    );
-					size_t node10_index = GetNodeIndex(ix    , iy + 1);
-					size_t node11_index = GetNodeIndex(ix + 1, iy + 1);
-					size_t dielectric_index = (cell.m_dielectric == INDEX_NONE)? 0 : cell.m_dielectric + 1;
-					cellnode_values[cell_index][0] = dielectric_values[dielectric_index][node00_index] / (real_t) dielectric_count[dielectric_index][node00_index];
-					cellnode_values[cell_index][1] = dielectric_values[dielectric_index][node01_index] / (real_t) dielectric_count[dielectric_index][node01_index];
-					cellnode_values[cell_index][2] = dielectric_values[dielectric_index][node10_index] / (real_t) dielectric_count[dielectric_index][node10_index];
-					cellnode_values[cell_index][3] = dielectric_values[dielectric_index][node11_index] / (real_t) dielectric_count[dielectric_index][node11_index];
-				}
-			}
-			real_t max_value = 0.0;
-			for(size_t i = 0; i < cellnode_values.size(); ++i) {
-				for(size_t j = 0; j < 4; ++j) {
-					max_value = std::max(max_value, fabs(cellnode_values[i][j]));
-				}
-			}
-			real_t scale = 1.0 / max_value;
-			for(size_t i = 0; i < cellnode_values.size(); ++i) {
-				for(size_t j = 0; j < 4; ++j) {
-					cellnode_values[i][j] *= scale;
-				}
-			}
-			break;
-		}
-		case MESHIMAGETYPE_CURRENT: {
-			/*real_t *solution_values = m_solution_full_em.data() + m_solution_full_em.outerStride() * (ptrdiff_t) mode;
-			real_t max_value = 0.0;
-			for(size_t i = 0; i < m_vars_surf; ++i) {
-				max_value = std::max(max_value, fabs(solution_values[i]));
-			}
-			real_t scale = 1.0 / max_value;
-			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-					size_t cell_index = GetCellIndex(ix, iy);
-					if(m_cells[cell_index].m_conductor == INDEX_NONE)
-						continue;
-					Node &node00 = GetNode(ix    , iy    );
-					Node &node01 = GetNode(ix + 1, iy    );
-					Node &node10 = GetNode(ix    , iy + 1);
-					Node &node11 = GetNode(ix + 1, iy + 1);
-					cellnode_values[cell_index][0] = (node00.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node00.m_var_surf] * scale;
-					cellnode_values[cell_index][1] = (node01.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node01.m_var_surf] * scale;
-					cellnode_values[cell_index][2] = (node10.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node10.m_var_surf] * scale;
-					cellnode_values[cell_index][3] = (node11.m_var_surf == INDEX_NONE)? 0.0 : solution_values[node11.m_var_surf] * scale;
-				}
-			}*/
-			// TODO: reimplement
+		case MESHIMAGETYPE_POYNTING: {
 			break;
 		}
 		default: assert(false);

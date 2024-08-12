@@ -164,7 +164,7 @@ public:
 
 	virtual Box2D GetWorldBox2D() override;
 	virtual Box2D GetWorldFocus2D() override;
-	virtual void GetImage2D(std::vector<real_t> &image_value, std::vector<Vector2D> &image_gradient, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) override;
+	virtual void GetImage2D(std::vector<real_t> &image_value, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) override;
 
 protected:
 	virtual void DoInitialize() override;

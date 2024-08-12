@@ -73,6 +73,18 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 		0.0,
 		0.0,
 	};
+	Box2D via1_box = {
+		world_box.x1,
+		ground1_box.x2 - substrate_thickness,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D via2_box = {
+		ground2_box.x1 + substrate_thickness,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
 	Box2D substrate_box = {
 		world_box.x1,
 		world_box.x2,
@@ -103,6 +115,12 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 		ground2_box.y1,
 		ground2_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, ground_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
@@ -116,11 +134,14 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 	mesh->AddConductor(track_box, step1, track_material, port_signal);
 	mesh->AddConductor(ground1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
 	mesh->AddConductor(ground2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
+	mesh->AddConductor(via1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
+	mesh->AddConductor(via2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box4, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
 
 	context.m_output_mesh = std::move(mesh);
 
@@ -179,6 +200,18 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 		0.0,
 		0.0,
 	};
+	Box2D via1_box = {
+		world_box.x1,
+		ground1_box.x2 - substrate_thickness,
+		0.0,
+		substrate_thickness,
+	};
+	Box2D via2_box = {
+		ground2_box.x1 + substrate_thickness,
+		world_box.x2,
+		0.0,
+		substrate_thickness,
+	};
 	Box2D substrate_box = {
 		world_box.x1,
 		world_box.x2,
@@ -215,6 +248,18 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 		ground2_box.y1,
 		ground2_box.y2 + solder_mask_thickness_1,
 	};
+	Box2D integration_line_1 = {
+		track1_box.x2,
+		track2_box.x1,
+		track1_box.y1,
+		track2_box.y1,
+	};
+	Box2D integration_line_2 = {
+		0.0,
+		0.0,
+		ground_box.y2,
+		track1_box.y1,
+	};
 
 	real_t critical_dimension = vmin(track_width, track_spacing, ground_spacing, substrate_thickness);
 	real_t step0 = REAL_MAX, step1 = critical_dimension * GridMesh2D::DEFAULT_GRID_STEP / context.m_mesh_detail;
@@ -236,6 +281,8 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	mesh->AddDielectric(solder_mask_box3, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box4, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box5, step0, solder_mask_material);
+	mesh->AddIntegrationLine(integration_line_1);
+	mesh->AddIntegrationLine(integration_line_2);
 
 	context.m_output_mesh = std::move(mesh);
 
