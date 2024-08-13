@@ -42,30 +42,28 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "MatrixMarket.h"
 #endif
 
-inline complex_t Interp_Ax(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
-	return lerp(e1x0, e1x1, fy) + lerp(e2x0, e2x1, fy) * (fx - 0.5);
+inline complex_t Interp_Ax(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, complex_t c2x, real_t fx, real_t fy) {
+	return lerp(e1x0, e1x1, fy) + lerp(e2x0, e2x1, fy) * (fx - 0.5) + c2x * fy * (1.0 - fy);
 }
-inline complex_t Interp_Ax_Dy(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, real_t fx, real_t fy) {
-	UNUSED(fy); return (e1x1 - e1x0) + (e2x1 - e2x0) * (fx - 0.5);
+inline complex_t Interp_Ax_Dy(complex_t e1x0, complex_t e1x1, complex_t e2x0, complex_t e2x1, complex_t c2x, real_t fx, real_t fy) {
+	UNUSED(fy); return (e1x1 - e1x0) + (e2x1 - e2x0) * (fx - 0.5) + c2x * (1.0 - 2.0 * fy);
 }
 
-inline complex_t Interp_Ay(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
-	return lerp(e1y0, e1y1, fx) + lerp(e2y0, e2y1, fx) * (fy - 0.5);
+inline complex_t Interp_Ay(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, complex_t c2y, real_t fx, real_t fy) {
+	return lerp(e1y0, e1y1, fx) + lerp(e2y0, e2y1, fx) * (fy - 0.5) + c2y * fx * (1.0 - fx);
 }
-inline complex_t Interp_Ay_Dx(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, real_t fx, real_t fy) {
-	UNUSED(fx); return (e1y1 - e1y0) + (e2y1 - e2y0) * (fy - 0.5);
+inline complex_t Interp_Ay_Dx(complex_t e1y0, complex_t e1y1, complex_t e2y0, complex_t e2y1, complex_t c2y, real_t fx, real_t fy) {
+	UNUSED(fx); return (e1y1 - e1y0) + (e2y1 - e2y0) * (fy - 0.5) + c2y * (1.0 - 2.0 * fx);
 }
 
 inline complex_t Interp_Az(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
 	return lerp(lerp(n00, n01, fx), lerp(n10, n11, fx), fy) + lerp(ex0, ex1, fy) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * fy * (1.0 - fy);
 }
 inline complex_t Interp_Az_Dx(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
-	return (Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx + 1e-6, fy) - Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy)) * 1e6;
-	// return lerp(n01 - n00, n11 - n10, fy) + lerp(ex0, ex1, fy) * (1.0 - 2.0 * fx) + (ey1 - ey0) * fy * (1.0 - fy);
+	return lerp(n01 - n00, n11 - n10, fy) + lerp(ex0, ex1, fy) * (1.0 - 2.0 * fx) + (ey1 - ey0) * fy * (1.0 - fy);
 }
 inline complex_t Interp_Az_Dy(complex_t n00, complex_t n01, complex_t n10, complex_t n11, complex_t ex0, complex_t ex1, complex_t ey0, complex_t ey1, real_t fx, real_t fy) {
-	return (Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy + 1e-6) - Interp_Az(n00, n01, n10, n11, ex0, ex1, ey0, ey1, fx, fy)) * 1e6;
-	// return lerp(n10 - n00, n11 - n01, fx) + (ex1 - ex0) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * (1.0 - 2.0 * fy);
+	return lerp(n10 - n00, n11 - n01, fx) + (ex1 - ex0) * fx * (1.0 - fx) + lerp(ey0, ey1, fx) * (1.0 - 2.0 * fy);
 }
 
 // Returns the maximum length of a vector of phasors.
@@ -1010,14 +1008,33 @@ void GridMesh2D::InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size
 
 	if(m_solver_type == SOLVERTYPE_FULLWAVE) {
 
+		// assign variables to cells
+		for(size_t iy = ey1; iy < ey2; ++iy) {
+			for(size_t ix = ex1; ix < ex2; ++ix) {
+				Cell &cell = GetCell(ix, iy);
+				if(cell.m_conductor == INDEX_NONE) {
+					// Edge &edge_x1 = GetEdgeX(ix, iy);
+					// Edge &edge_x2 = GetEdgeX(ix, iy + 1);
+					// Edge &edge_y1 = GetEdgeY(ix, iy);
+					// Edge &edge_y2 = GetEdgeY(ix + 1, iy);
+					if(m_element_type == ELEMENTTYPE_QUADRATIC) {
+					// if(edge_y1.m_var_full_mt1 == INDEX_NONE && edge_y2.m_var_full_mt1 == INDEX_NONE)
+						cell.m_var_full_mtx2 = m_vars_full_em++;
+					// if(edge_x1.m_var_full_mt1 == INDEX_NONE && edge_x2.m_var_full_mt1 == INDEX_NONE)
+						cell.m_var_full_mty2 = m_vars_full_em++;
+					}
+				}
+			}
+		}
+
 		// assign variables to edges
 		for(size_t iy = iy1; iy < iy2; ++iy) {
 			for(size_t ix = ex1; ix < ex2; ++ix) {
 				Edge &edge = GetEdgeX(ix, iy);
 				if(edge.m_var_full_mt1 == INDEX_OFFSET) {
 					edge.m_var_full_mt1 = m_vars_full_em++;
-					if(m_element_type == ELEMENTTYPE_QUADRATIC)
-						edge.m_var_full_mt2 = m_vars_full_em++;
+					// if(m_element_type == ELEMENTTYPE_QUADRATIC)
+					// 	edge.m_var_full_mt2 = m_vars_full_em++;
 				}
 				if(m_element_type == ELEMENTTYPE_QUADRATIC) {
 					if(edge.m_conductor == INDEX_NONE) {
@@ -1034,8 +1051,8 @@ void GridMesh2D::InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size
 				Edge &edge = GetEdgeY(ix, iy);
 				if(edge.m_var_full_mt1 == INDEX_OFFSET) {
 					edge.m_var_full_mt1 = m_vars_full_em++;
-					if(m_element_type == ELEMENTTYPE_QUADRATIC)
-						edge.m_var_full_mt2 = m_vars_full_em++;
+					// if(m_element_type == ELEMENTTYPE_QUADRATIC)
+					// 	edge.m_var_full_mt2 = m_vars_full_em++;
 				}
 				if(m_element_type == ELEMENTTYPE_QUADRATIC) {
 					if(edge.m_conductor == INDEX_NONE) {
@@ -1167,11 +1184,11 @@ void GridMesh2D::BuildMatrices() {
 
 			// add to full EM matrix
 			if(m_solver_type == SOLVERTYPE_FULLWAVE) {
-				size_t vars_full_empot_rect[24] = {
+				size_t vars_full_empot_rect[26] = {
 					node00.m_var_full_e1, node01.m_var_full_e1, node10.m_var_full_e1, node11.m_var_full_e1,
 					edgex0.m_var_full_e2, edgex1.m_var_full_e2, edgey0.m_var_full_e2, edgey1.m_var_full_e2,
-					edgex0.m_var_full_mt1, edgex1.m_var_full_mt1, edgex0.m_var_full_mt2, edgex1.m_var_full_mt2,
-					edgey0.m_var_full_mt1, edgey1.m_var_full_mt1, edgey0.m_var_full_mt2, edgey1.m_var_full_mt2,
+					edgex0.m_var_full_mt1, edgex1.m_var_full_mt1, edgex0.m_var_full_mt2, edgex1.m_var_full_mt2, cell.m_var_full_mtx2,
+					edgey0.m_var_full_mt1, edgey1.m_var_full_mt1, edgey0.m_var_full_mt2, edgey1.m_var_full_mt2, cell.m_var_full_mty2,
 					node00.m_var_full_m1, node01.m_var_full_m1, node10.m_var_full_m1, node11.m_var_full_m1,
 					edgex0.m_var_full_m2, edgex1.m_var_full_m2, edgey0.m_var_full_m2, edgey1.m_var_full_m2,
 				};
@@ -1416,6 +1433,7 @@ void GridMesh2D::SolveStaticEigenModes() {
 		fields.m_field_nodes.resize(m_nodes.size());
 		fields.m_field_edges_x.resize(m_edges_x.size());
 		fields.m_field_edges_y.resize(m_edges_y.size());
+		fields.m_field_cells.resize(m_cells.size());
 		complex_t scale_factor_e = 1.0;
 		complex_t scale_factor_m = fields.m_effective_index / SPEED_OF_LIGHT;
 		for(size_t i = 0; i < m_nodes.size(); ++i) {
@@ -1436,6 +1454,11 @@ void GridMesh2D::SolveStaticEigenModes() {
 			fields.m_field_edges_y[i].m2 = (edge.m_var_static_m2 == INDEX_NONE)? 0.0 : solution_m[(Eigen::Index) edge.m_var_static_m2] * scale_factor_m;
 			fields.m_field_edges_y[i].mt1 = 0.0;
 			fields.m_field_edges_y[i].mt2 = 0.0;
+		}
+		for(size_t i = 0; i < m_cells.size(); ++i) {
+			Cell &cell = m_cells[i];
+			fields.m_field_cells[i].mtx2 = 0.0;
+			fields.m_field_cells[i].mty2 = 0.0;
 		}
 	}
 
@@ -1663,6 +1686,11 @@ void GridMesh2D::SolveFullEigenModes() {
 			fields.m_field_edges_y[i].mt1 = (edge.m_var_full_mt1 == INDEX_NONE)? 0.0 : eigenvector[(Eigen::Index) edge.m_var_full_mt1] * scale_factor_mt;
 			fields.m_field_edges_y[i].mt2 = (edge.m_var_full_mt2 == INDEX_NONE)? 0.0 : eigenvector[(Eigen::Index) edge.m_var_full_mt2] * scale_factor_mt;
 		}
+		for(size_t i = 0; i < m_cells.size(); ++i) {
+			Cell &cell = m_cells[i];
+			fields.m_field_cells[i].mtx2 = (cell.m_var_full_mtx2 == INDEX_NONE)? 0.0 : eigenvector[(Eigen::Index) cell.m_var_full_mtx2] * scale_factor_mt;
+			fields.m_field_cells[i].mty2 = (cell.m_var_full_mty2 == INDEX_NONE)? 0.0 : eigenvector[(Eigen::Index) cell.m_var_full_mty2] * scale_factor_mt;
+		}
 
 	}
 
@@ -1697,12 +1725,14 @@ void GridMesh2D::GetCellField(size_t mode, size_t ix, size_t iy, real_t fx, real
 	complex_t mt2x1 = fields.m_field_edges_x[GetEdgeXIndex(ix    , iy + 1)].mt2;
 	complex_t mt2y0 = fields.m_field_edges_y[GetEdgeYIndex(ix    , iy    )].mt2;
 	complex_t mt2y1 = fields.m_field_edges_y[GetEdgeYIndex(ix + 1, iy    )].mt2;
-	fex = -Interp_Az_Dx(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_x - s * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy);
-	fey = -Interp_Az_Dy(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_y - s * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy);
+	complex_t mt2x01 = fields.m_field_cells[GetCellIndex(ix    , iy    )].mtx2;
+	complex_t mt2y01 = fields.m_field_cells[GetCellIndex(ix    , iy    )].mty2;
+	fex = -Interp_Az_Dx(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_x - s * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, mt2x01, fx, fy);
+	fey = -Interp_Az_Dy(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) / delta_y - s * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, mt2y01, fx, fy);
 	fez = fields.m_propagation_constant * Interp_Az(en00, en01, en10, en11, eex0, eex1, eey0, eey1, fx, fy) - s * Interp_Az(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy);
-	fmx =  Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_y + fields.m_propagation_constant * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy);
-	fmy = -Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_x - fields.m_propagation_constant * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy);
-	fmz = Interp_Ay_Dx(mt1y0, mt1y1, mt2y0, mt2y1, fx, fy) / delta_x - Interp_Ax_Dy(mt1x0, mt1x1, mt2x0, mt2x1, fx, fy) / delta_y;
+	fmx =  Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_y + fields.m_propagation_constant * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, mt2y01, fx, fy);
+	fmy = -Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_x - fields.m_propagation_constant * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, mt2x01, fx, fy);
+	fmz = Interp_Ay_Dx(mt1y0, mt1y1, mt2y0, mt2y1, mt2y01, fx, fy) / delta_x - Interp_Ax_Dy(mt1x0, mt1x1, mt2x0, mt2x1, mt2x01, fx, fy) / delta_y;
 }
 
 void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type) {

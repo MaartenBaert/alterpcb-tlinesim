@@ -92,7 +92,8 @@ private:
 	struct Cell {
 		size_t m_conductor;
 		size_t m_dielectric;
-		inline Cell() : m_conductor(INDEX_NONE), m_dielectric(INDEX_NONE) {}
+		size_t m_var_full_mtx2, m_var_full_mty2;
+		inline Cell() : m_conductor(INDEX_NONE), m_dielectric(INDEX_NONE), m_var_full_mtx2(INDEX_NONE), m_var_full_mty2(INDEX_NONE) {}
 	};
 
 public:
@@ -103,11 +104,15 @@ public:
 		complex_t e2, m2;
 		complex_t mt1, mt2;
 	};
+	struct CellField {
+		complex_t mtx2, mty2;
+	};
 	struct SolutionField {
 		complex_t m_propagation_constant;
 		complex_t m_effective_index;
 		std::vector<NodeField> m_field_nodes;
 		std::vector<EdgeField> m_field_edges_x, m_field_edges_y;
+		std::vector<CellField> m_field_cells;
 	};
 
 private:

@@ -130,9 +130,9 @@ basis_hx_xline = [
 basis_hx_rect = [
 	by0,
 	by1,
-	#by0 * by1,
 	bx2 * by0,
 	bx2 * by1,
+	by0 * by1,
 	#bx2 * by0 * by1,
 ]
 
@@ -144,9 +144,9 @@ basis_hy_yline = [
 basis_hy_rect = [
 	bx0,
 	bx1,
-	#bx0 * bx1,
 	bx0 * by2,
 	bx1 * by2,
+	bx0 * bx1,
 	#bx0 * bx1 * by2,
 ]
 
