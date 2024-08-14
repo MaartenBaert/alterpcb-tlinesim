@@ -257,6 +257,8 @@ MainWindow::MainWindow() {
 		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
+		m_checkbox_contour_lines = new QCheckBox("Contour Lines", groupbox_viewer);
+		m_checkbox_contour_lines->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
 		m_combobox_modes = new QComboBox(groupbox_viewer);
 		m_combobox_modes->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -264,6 +266,7 @@ MainWindow::MainWindow() {
 		connect(m_slider_zoom, SIGNAL(valueChanged(int)), this, SLOT(OnZoomChange()));
 		connect(m_combobox_image_type, SIGNAL(activated(int)), this, SLOT(OnImageTypeChange()));
 		connect(m_checkbox_mesh_overlay, SIGNAL(clicked(bool)), this, SLOT(OnMeshOverlayChange()));
+		connect(m_checkbox_contour_lines, SIGNAL(clicked(bool)), this, SLOT(OnContourLinesChange()));
 		connect(m_combobox_modes, SIGNAL(activated(int)), this, SLOT(OnModeChange()));
 
 		QVBoxLayout *layout = new QVBoxLayout(groupbox_viewer);
@@ -280,6 +283,7 @@ MainWindow::MainWindow() {
 			layout2->addWidget(label_imagetype);
 			layout2->addWidget(m_combobox_image_type);
 			layout2->addWidget(m_checkbox_mesh_overlay);
+			layout2->addWidget(m_checkbox_contour_lines);
 			layout2->addStretch();
 			layout2->addWidget(label_mode);
 			layout2->addWidget(m_combobox_modes);
@@ -317,6 +321,7 @@ MainWindow::MainWindow() {
 	OnZoomChange();
 	OnImageTypeChange();
 	OnMeshOverlayChange();
+	OnContourLinesChange();
 	OnModeChange();
 
 	showMaximized();
@@ -811,6 +816,10 @@ void MainWindow::OnImageTypeChange() {
 
 void MainWindow::OnMeshOverlayChange() {
 	m_meshviewer->SetMeshOverlay(m_checkbox_mesh_overlay->isChecked());
+}
+
+void MainWindow::OnContourLinesChange() {
+	m_meshviewer->SetContourLines(m_checkbox_contour_lines->isChecked());
 }
 
 void MainWindow::OnModeChange() {

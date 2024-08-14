@@ -99,7 +99,7 @@ private:
 	MeshViewer *m_meshviewer;
 	QSlider *m_slider_zoom;
 	QComboBox *m_combobox_image_type;
-	QCheckBox *m_checkbox_mesh_overlay;
+	QCheckBox *m_checkbox_mesh_overlay, *m_checkbox_contour_lines;
 	QComboBox *m_combobox_modes;
 
 public:
@@ -127,6 +127,7 @@ private slots:
 	void OnZoomChange();
 	void OnImageTypeChange();
 	void OnMeshOverlayChange();
+	void OnContourLinesChange();
 	void OnModeChange();
 
 	void OnAbout();

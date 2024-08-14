@@ -46,6 +46,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 	GenericMesh *mesh = request_info.m_mesh.get();
 	auto image_type = request_info.m_image_type;
 	auto mesh_overlay = request_info.m_mesh_overlay;
+	auto contour_lines = request_info.m_contour_lines;
 	auto mode = request_info.m_mode;
 	auto image_w = request_info.m_image_w;
 	auto image_h = request_info.m_image_h;
@@ -127,7 +128,17 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			}
 		}
 
-	} else if(image_type == MESHIMAGETYPE_EPOT || image_type == MESHIMAGETYPE_MPOT) {
+	} else {
+
+		bool logarithmic;
+		real_t log_scale;
+		if(image_type == MESHIMAGETYPE_EPOT || image_type == MESHIMAGETYPE_MPOT) {
+			logarithmic = false;
+			log_scale = 1.0;
+		} else {
+			logarithmic = true;
+			log_scale = 1.0 / log((image_type == MESHIMAGETYPE_POYNTING)? 1e4 : 1e2);
+		}
 
 		// get mesh data
 		std::vector<real_t> image_mesh_value;
@@ -136,7 +147,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 		}
 
 		// color + contour plot
-		real_t contours = 20.0, contour_scale = contours;// * (image_view.x2 - image_view.x1) / (real_t) image_w;
+		real_t contours = 20.0;
 		const ColorMap &cmap = COLORMAP_MAGMA;
 		for(size_t j = 0; j < image_h; ++j) {
 			uint32_t *row = (uint32_t*) image.scanLine((int) j);
@@ -144,77 +155,31 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			Vector2D *row_gradient = image_gradient.data() + j * image_w;
 			real_t *row_mesh_value = image_mesh_value.data() + j * image_w;
 			for(size_t i = 0; i < image_w; ++i) {
-				real_t value = row_value[i];
-				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contour_scale;
-				real_t temp = value * contours + 0.5;
-				real_t temp2 = (temp - nearbyint(temp)) / contour_range;
-				Color plot_color = cmap(fabs(value));
-				if(mesh_overlay) {
-					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+				real_t value;
+				if(logarithmic) {
+					value = log(1e-8 + row_value[i]) * log_scale + 1.0;
+				} else {
+					value = fabs(row_value[i]);
 				}
-				Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
-				row[i] = ColorBlend(plot_color, contour_color).ToUint32();
-			}
-		}
-
-	} else  {
-
-		// get mesh data
-		std::vector<real_t> image_mesh_value;
-		if(mesh_overlay) {
-			mesh->GetImage2D(image_mesh_value, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
-		}
-
-		// color + contour plot
-		real_t log_scale = 1.0 / log((image_type == MESHIMAGETYPE_POYNTING)? 1e4 : 1e2);
-		real_t contours = 20.0, contour_scale = contours;
-		const ColorMap &cmap = COLORMAP_MAGMA;
-		for(size_t j = 0; j < image_h; ++j) {
-			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * image_w;
-			Vector2D *row_gradient = image_gradient.data() + j * image_w;
-			real_t *row_mesh_value = image_mesh_value.data() + j * image_w;
-			for(size_t i = 0; i < image_w; ++i) {
-				real_t value = log(std::max(1e-8, row_value[i])) * log_scale + 1.0;
-				real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) / row_value[i] * log_scale * contour_scale;
-				real_t temp = value * contours + 0.5;
-				real_t temp2 = (temp - nearbyint(temp)) / contour_range;
 				Color plot_color = cmap(value);
 				if(mesh_overlay) {
 					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
 				}
-				Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
-				row[i] = ColorBlend(plot_color, contour_color).ToUint32();
-			}
-		}
-
-	} /*else {
-
-		// get mesh data
-		std::vector<real_t> image_mesh_value;
-		std::vector<Vector2D> image_mesh_gradient;
-		if(mesh_overlay) {
-			mesh->GetImage2D(image_mesh_value, image_mesh_gradient, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
-		}
-
-		// color plot
-		real_t log_scale = 1.0 / log(1e2);
-		const ColorMap &cmap = COLORMAP_MAGMA;
-		for(size_t j = 0; j < image_h; ++j) {
-			uint32_t *row = (uint32_t*) image.scanLine((int) j);
-			real_t *row_value = image_value.data() + j * image_w;
-			real_t *row_mesh_value = image_mesh_value.data() + j * image_w;
-			for(size_t i = 0; i < image_w; ++i) {
-				real_t value = row_value[i];
-				Color plot_color = cmap(log(fabs(value)) * log_scale + 1.0);
-				if(mesh_overlay) {
-					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
+				if(contour_lines) {
+					real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contours;
+					if(logarithmic) {
+						contour_range *= log_scale / (1e-8 + row_value[i]);
+					}
+					real_t temp = value * contours + 0.5;
+					real_t temp2 = (temp - nearbyint(temp)) / contour_range;
+					Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
+					plot_color = ColorBlend(plot_color, contour_color);
 				}
 				row[i] = plot_color.ToUint32();
 			}
 		}
 
-	}*/
+	}
 
 }
 
@@ -271,6 +236,7 @@ MeshViewer::MeshViewer(QWidget* parent)
 	m_zoom = 0.0;
 	m_image_type = MESHIMAGETYPE_MESH;
 	m_mesh_overlay = false;
+	m_contour_lines = false;
 	m_mode = 0;
 
 	m_request_id = 0;
@@ -278,6 +244,7 @@ MeshViewer::MeshViewer(QWidget* parent)
 	m_request_info.m_mesh = nullptr;
 	m_request_info.m_image_type = MESHIMAGETYPE_MESH;
 	m_request_info.m_mesh_overlay = false;
+	m_request_info.m_contour_lines = false;
 	m_request_info.m_mode = 0;
 	m_request_info.m_image_w = 0;
 	m_request_info.m_image_h = 0;
@@ -317,6 +284,11 @@ void MeshViewer::SetMode(size_t mode) {
 
 void MeshViewer::SetMeshOverlay(bool mesh_overlay) {
 	m_mesh_overlay = mesh_overlay;
+	update();
+}
+
+void MeshViewer::SetContourLines(bool contour_lines) {
+	m_contour_lines = contour_lines;
 	update();
 }
 
@@ -367,6 +339,7 @@ void MeshViewer::paintEvent(QPaintEvent *event) {
 	request_info.m_mesh = m_mesh;
 	request_info.m_image_type = m_image_type;
 	request_info.m_mesh_overlay = m_mesh_overlay;
+	request_info.m_contour_lines = m_contour_lines;
 	request_info.m_mode = m_mode;
 	request_info.m_image_w = (size_t) widget_valid.Width();
 	request_info.m_image_h = (size_t) widget_valid.Height();
@@ -380,8 +353,11 @@ void MeshViewer::paintEvent(QPaintEvent *event) {
 		Q_UNUSED(lock);
 
 		// check whether we already have a usable response
-		if(m_response_info.m_mesh == request_info.m_mesh && m_response_info.m_image_type == request_info.m_image_type &&
-		   m_response_info.m_mesh_overlay == request_info.m_mesh_overlay && m_response_info.m_mode == request_info.m_mode) {
+		if(m_response_info.m_mesh == request_info.m_mesh &&
+		   m_response_info.m_image_type == request_info.m_image_type &&
+		   m_response_info.m_mesh_overlay == request_info.m_mesh_overlay &&
+		   m_response_info.m_contour_lines == request_info.m_contour_lines &&
+		   m_response_info.m_mode == request_info.m_mode) {
 			image = m_response_image;
 			image_view = m_response_info.m_image_view;
 			submit_request = !(
@@ -393,9 +369,13 @@ void MeshViewer::paintEvent(QPaintEvent *event) {
 
 		// submit new request if required
 		if(submit_request && !(
-		   m_request_info.m_mesh == request_info.m_mesh && m_request_info.m_image_type == request_info.m_image_type &&
-		   m_request_info.m_mesh_overlay == request_info.m_mesh_overlay && m_request_info.m_mode == request_info.m_mode &&
-		   m_request_info.m_image_w == request_info.m_image_w && m_request_info.m_image_h == request_info.m_image_h &&
+		   m_request_info.m_mesh == request_info.m_mesh &&
+		   m_request_info.m_image_type == request_info.m_image_type &&
+		   m_request_info.m_mesh_overlay == request_info.m_mesh_overlay &&
+		   m_request_info.m_contour_lines == request_info.m_contour_lines &&
+		   m_request_info.m_mode == request_info.m_mode &&
+		   m_request_info.m_image_w == request_info.m_image_w &&
+		   m_request_info.m_image_h == request_info.m_image_h &&
 		   m_request_info.m_image_view == request_info.m_image_view)) {
 			++m_request_id;
 			m_request_info = request_info;

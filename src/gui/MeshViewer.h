@@ -32,7 +32,7 @@ class MeshViewer;
 struct MeshRequestInfo {
 	std::shared_ptr<GenericMesh> m_mesh;
 	MeshImageType m_image_type;
-	bool m_mesh_overlay;
+	bool m_mesh_overlay, m_contour_lines;
 	size_t m_mode;
 	size_t m_image_w, m_image_h;
 	Box2D m_image_view;
@@ -82,7 +82,7 @@ private:
 	std::shared_ptr<GenericMesh> m_mesh;
 	real_t m_zoom;
 	MeshImageType m_image_type;
-	bool m_mesh_overlay;
+	bool m_mesh_overlay, m_contour_lines;
 	size_t m_mode;
 
 	std::mutex m_request_mutex;
@@ -100,6 +100,7 @@ public:
 	void SetZoom(real_t zoom);
 	void SetImageType(MeshImageType image_type);
 	void SetMeshOverlay(bool mesh_overlay);
+	void SetContourLines(bool contour_lines);
 	void SetMode(size_t mode);
 
 public:
