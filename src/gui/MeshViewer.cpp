@@ -20,8 +20,12 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "MeshViewer.h"
 
+#include "Basics.h"
 #include "ColorMap.h"
 #include "GenericMesh.h"
+#include "Vector.h"
+
+#include <fstream> // TODO remove
 
 inline Box2D AdjustAspectRatio(const Box2D &view, real_t w, real_t h) {
 	if(view.Width() * h > view.Height() * w) {
@@ -33,6 +37,32 @@ inline Box2D AdjustAspectRatio(const Box2D &view, real_t w, real_t h) {
 		real_t offset = (view.y2 - view.y1) * 0.5 * w / h;
 		return Box2D(center - offset, center + offset, view.y1, view.y2);
 	}
+}
+
+inline Vector2D HaltonSequence(uint32_t index) {
+	uint32_t i2 = index;
+	i2 = ((i2 & 0xffff0000) >> 16) | ((i2 & 0x0000ffff) << 16);
+	i2 = ((i2 & 0xff00ff00) >>  8) | ((i2 & 0x00ff00ff) <<  8);
+	i2 = ((i2 & 0xf0f0f0f0) >>  4) | ((i2 & 0x0f0f0f0f) <<  4);
+	i2 = ((i2 & 0xcccccccc) >>  2) | ((i2 & 0x33333333) <<  2);
+	i2 = ((i2 & 0xaaaaaaaa) >>  1) | ((i2 & 0x55555555) <<  1);
+	uint64_t i3 = index, i3a, i3b;
+	i3a = (i3 * 2681326939) >> 44;
+	i3b = i3 - i3a * 6561;
+	i3 = i3a | (i3b << 32);
+	i3a = ((i3 * 25891) >> 21) & 0x000007ff000007ff;
+	i3b = i3 - i3a * 81;
+	i3 = i3a | (i3b << 16);
+	i3a = ((i3 * 57) >> 9) & 0x007f007f007f007f;
+	i3b = i3 - i3a * 9;
+	i3 = i3a | (i3b << 8);
+	i3a = ((i3 * 11) >> 5) & 0x0707070707070707;
+	i3b = i3 - i3a * 3;
+	i3 = i3a + i3b * 3;
+	i3 = (i3 & 0x00ff00ff00ff00ff) + ((i3 & 0xff00ff00ff00ff00) >>  8) * 9;
+	i3 = (i3 & 0x0000ffff0000ffff) + ((i3 & 0xffff0000ffff0000) >> 16) * 81;
+	i3 = (i3 & 0x00000000ffffffff) + ((i3 & 0xffffffff00000000) >> 32) * 6561;
+	return Vector2D((real_t) i2 / 4294967296.0, (real_t) i3 / 43046721.0);
 }
 
 MeshRenderer::MeshRenderer(MeshViewer *meshviewer) {
@@ -146,6 +176,48 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			mesh->GetImage2D(image_mesh_value, image_w, image_h, image_view, MESHIMAGETYPE_MESH, mode);
 		}
 
+		// field lines
+		bool field_lines = (image_type == MESHIMAGETYPE_EFIELD || image_type == MESHIMAGETYPE_MFIELD);
+		std::vector<real_t> image_field_value;
+		if(field_lines) {
+			image_field_value.resize((image_h + 2) * (image_w + 2), 0.0);
+			size_t num_lines = image_w * image_h / 400;
+			for(size_t k = 0; k < num_lines; ++k) {
+				Vector2D halton = HaltonSequence((uint32_t) k + 1);
+				real_t scalex = (image_view.x2 - image_view.x1) / (real_t) image_w;
+				real_t scaley = (image_view.y2 - image_view.y1) / (real_t) image_h;
+				for(size_t d = 0; d < 2; ++d) {
+					real_t dir = (d == 0)? 1.0 : -1.0;
+					real_t px = halton.x * (real_t) image_w, py = halton.y * (real_t) image_h;
+					for(size_t l = 0; l < 15; ++l) {
+						real_t x = image_view.x1 + px * scalex;
+						real_t y = image_view.y1 + py * scaley;
+						complex_t fx, fy;
+						mesh->GetPointField(x, y, image_type, mode, fx, fy);
+						real_t d = dir * sqrt(square(fx.real()) + square(fy.real()));
+						if(d == 0.0)
+							break;
+						real_t px2 = px + fx.real() / d;
+						real_t py2 = py - fy.real() / d; // Y-axis is upside down
+						real_t pxx = (px + px2) * 0.5;
+						real_t pyy = (py + py2) * 0.5;
+						ptrdiff_t pxi = rintp(pxx);
+						ptrdiff_t pyi = rintp(pyy);
+						if(pxi < 0 || pxi > (ptrdiff_t) image_w || pyi < 0 || pyi > (ptrdiff_t) image_h)
+							break;
+						real_t pxf = pxx + 0.5 - (real_t) pxi;
+						real_t pyf = pyy + 0.5 - (real_t) pyi;
+						image_field_value[(size_t) (pyi + 0) * (image_w + 2) + (size_t) (pxi + 0)] += (1.0 - pyf) * (1.0 - pxf);
+						image_field_value[(size_t) (pyi + 0) * (image_w + 2) + (size_t) (pxi + 1)] += (1.0 - pyf) * pxf;
+						image_field_value[(size_t) (pyi + 1) * (image_w + 2) + (size_t) (pxi + 0)] += pyf * (1.0 - pxf);
+						image_field_value[(size_t) (pyi + 1) * (image_w + 2) + (size_t) (pxi + 1)] += pyf * pxf;
+						px = px2;
+						py = py2;
+					}
+				}
+			}
+		}
+
 		// color + contour plot
 		real_t contours = 20.0;
 		const ColorMap &cmap = COLORMAP_MAGMA;
@@ -154,6 +226,7 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 			real_t *row_value = image_value.data() + j * image_w;
 			Vector2D *row_gradient = image_gradient.data() + j * image_w;
 			real_t *row_mesh_value = image_mesh_value.data() + j * image_w;
+			real_t *row_field_value = image_field_value.data() + (j + 1) * (image_w + 2) + 1;
 			for(size_t i = 0; i < image_w; ++i) {
 				real_t value;
 				if(logarithmic) {
@@ -166,14 +239,20 @@ void MeshRenderer::GenerateImage(MeshRequestInfo &request_info, QImage &image) {
 					plot_color = ColorMix(plot_color, cmap(row_mesh_value[i]), 0.2f);
 				}
 				if(contour_lines) {
-					real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contours;
-					if(logarithmic) {
-						contour_range *= log_scale / (1e-8 + row_value[i]);
+					float alpha;
+					if(field_lines) {
+						alpha = 0.5f * std::min(1.0f, (float) row_field_value[i]);
+					} else {
+						real_t contour_range = hypot(row_gradient[i].x, row_gradient[i].y) * contours;
+						if(logarithmic) {
+							contour_range *= log_scale / (1e-8 + row_value[i]);
+						}
+						real_t temp = value * contours + 0.5;
+						real_t temp2 = (temp - nearbyint(temp)) / contour_range;
+						alpha = 0.5f * std::max(0.0f, 1.0f - (float) fabs(temp2));
 					}
-					real_t temp = value * contours + 0.5;
-					real_t temp2 = (temp - nearbyint(temp)) / contour_range;
-					Color contour_color = {1.0f, 1.0f, 1.0f, 0.5f * fmaxf(0.0f, 1.0f - (float) fabs(temp2))};
-					plot_color = ColorBlend(plot_color, contour_color);
+					Color line_color = {1.0f, 1.0f, 1.0f, alpha};
+					plot_color = ColorBlend(plot_color, line_color);
 				}
 				row[i] = plot_color.ToUint32();
 			}
@@ -328,10 +407,10 @@ void MeshViewer::paintEvent(QPaintEvent *event) {
 
 	// calculate valid part of widget
 	Box2D widget_full = {0.0, (real_t) width() * devicePixelRatioF(), 0.0, (real_t) height() * devicePixelRatioF()};
-	if(widget_full.Width() <= 0.0 || widget_full.Height() <= 0.0)
+	if(widget_full.Width() < 2.0 || widget_full.Height() < 2.0)
 		return;
 	Box2D widget_valid = world_box.Map(view_full, widget_full).Clip(widget_full).NearbyInt();
-	if(widget_valid.Width() <= 0.0 || widget_valid.Height() <= 0.0)
+	if(widget_valid.Width() < 2.0 || widget_valid.Height() < 2.0)
 		return;
 
 	// create image request

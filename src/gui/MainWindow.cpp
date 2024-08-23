@@ -148,7 +148,7 @@ MainWindow::MainWindow() {
 		QLabel *label_mesh_detail = new QLabel("Mesh Detail:", groupbox_simulation);
 		m_combobox_mesh_detail = new QComboBox(groupbox_simulation);
 		m_combobox_mesh_detail->addItems({"Very Low", "Lower", "Low", "Medium", "High", "Higher", "Very High"});
-		m_combobox_mesh_detail->setCurrentIndex(MESHDETAIL_LOWER);
+		m_combobox_mesh_detail->setCurrentIndex(MESHDETAIL_LOW);
 
 		connect(m_combobox_simulation_type, SIGNAL(currentIndexChanged(int)), this, SLOT(OnUpdateSimulationType()));
 		connect(m_pushbutton_simulate, SIGNAL(clicked(bool)), this, SLOT(OnSimulate()));
@@ -257,7 +257,7 @@ MainWindow::MainWindow() {
 		m_combobox_image_type->setCurrentIndex(MESHIMAGETYPE_EPOT);
 		m_checkbox_mesh_overlay = new QCheckBox("Mesh Overlay", groupbox_viewer);
 		m_checkbox_mesh_overlay->setChecked(true);
-		m_checkbox_contour_lines = new QCheckBox("Contour Lines", groupbox_viewer);
+		m_checkbox_contour_lines = new QCheckBox("Field/Contour Lines", groupbox_viewer);
 		m_checkbox_contour_lines->setChecked(true);
 		QLabel *label_mode = new QLabel("Mode:", groupbox_viewer);
 		m_combobox_modes = new QComboBox(groupbox_viewer);

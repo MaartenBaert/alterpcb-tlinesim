@@ -211,7 +211,30 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, size_t width, size
 	switch(type) {
 		case MESHIMAGETYPE_MESH: {
 			std::vector<real_t> cell_values;
-			GetCellValues(cell_values, mode, type);
+			size_t num_materials = 0;
+			const MaterialDielectric *last_material = NULL;
+			std::vector<real_t> dielectric_values(m_dielectrics.size());
+			for(size_t i = 0; i < m_dielectrics.size(); ++i) {
+				if(m_dielectrics[i].m_material != last_material) {
+					++num_materials;
+					last_material = m_dielectrics[i].m_material;
+				}
+				dielectric_values[i] = (real_t) num_materials;
+			}
+			for(size_t i = 0; i < m_dielectrics.size(); ++i) {
+				dielectric_values[i] *= 0.9 / (real_t) (num_materials + 1);
+			}
+			cell_values.resize(m_cells.size());
+			for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
+				for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
+					size_t cell_index = GetCellIndex(ix, iy);
+					Cell &cell = m_cells[cell_index];
+					real_t val = (cell.m_conductor != INDEX_NONE)? 0.0 : (cell.m_dielectric != INDEX_NONE)? dielectric_values[cell.m_dielectric] : 0.9;
+					if((ix & 1) == (iy & 1))
+						val += 0.1;
+					cell_values[cell_index] = val;
+				}
+			}
 			for(size_t j = 0; j < height; ++j) {
 				real_t *row_value = image_value.data() + j * width;
 				for(size_t i = 0; i < width; ++i) {
@@ -232,7 +255,7 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, size_t width, size
 						real_t ey1 = (GetEdgeY(ix + 1, iy + 1).m_var_full_mt1 == INDEX_NONE)? std::max(fabs(frac_x[i]) - 0.5, 0.0) : 1.0;
 						real_t ex = ex0 + (ex1 - ex0) * fx;
 						real_t ey = ey0 + (ey1 - ey0) * fy;
-						v *= ex * ey;
+						v *= (0.5 + 0.5 * ex * ey);
 					}
 					row_value[i] = v;
 				}
@@ -464,6 +487,48 @@ void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, size_t width, size
 		}
 	}
 
+}
+
+void GridMesh2D::GetPointField(real_t x, real_t y, MeshImageType type, size_t mode, complex_t &fx, complex_t &fy) {
+	if(!IsInitialized())
+		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
+	if(!IsSolved())
+		throw std::runtime_error("GridMesh2D error: The mesh must be solved first.");
+	if(mode >= GetModeCount())
+		throw std::runtime_error("GridMesh2D error: Invalid mode index.");
+	auto range_begin_x = m_grid_x.begin() + 1, range_end_x = m_grid_x.end() - 1;
+	auto range_begin_y = m_grid_y.begin() + 1, range_end_y = m_grid_y.end() - 1;
+	size_t index_x = (size_t) (std::upper_bound(range_begin_x, range_end_x, x) - range_begin_x);
+	size_t index_y = (size_t) (std::upper_bound(range_begin_y, range_end_y, y) - range_begin_y);
+	real_t frac_x = (x - m_grid_x[index_x]) / (m_grid_x[index_x + 1] - m_grid_x[index_x]);
+	real_t frac_y = (y - m_grid_y[index_y]) / (m_grid_y[index_y + 1] - m_grid_y[index_y]);
+	switch(type) {
+		case MESHIMAGETYPE_EFIELD:
+		case MESHIMAGETYPE_EFIELD_X:
+		case MESHIMAGETYPE_EFIELD_Y:
+		case MESHIMAGETYPE_EFIELD_Z: {
+			complex_t fex, fey, fez, fmx, fmy, fmz;
+			GetCellField(mode, index_x, index_y, frac_x, frac_y, fex, fey, fez, fmx, fmy, fmz);
+			fx = fex;
+			fy = fey;
+			break;
+		}
+		case MESHIMAGETYPE_MFIELD:
+		case MESHIMAGETYPE_MFIELD_X:
+		case MESHIMAGETYPE_MFIELD_Y:
+		case MESHIMAGETYPE_MFIELD_Z: {
+			complex_t fex, fey, fez, fmx, fmy, fmz;
+			GetCellField(mode, index_x, index_y, frac_x, frac_y, fex, fey, fez, fmx, fmy, fmz);
+			fx = fmx;
+			fy = fmy;
+			break;
+		}
+		default: {
+			fx = 0.0;
+			fy = 0.0;
+			break;
+		}
+	}
 }
 
 void GridMesh2D::DoInitialize() {
@@ -1101,6 +1166,7 @@ void GridMesh2D::BuildMatrices() {
 	m_dielectric_properties.resize(m_dielectrics.size());
 	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
 		m_dielectrics[i].m_material->GetProperties(GetFrequency(), m_dielectric_properties[i]);
+		std::cerr << "Dielectric " << i << ": " << m_dielectric_properties[i].permittivity_x << " " << m_dielectric_properties[i].permittivity_y << " " << m_dielectric_properties[i].permittivity_z << std::endl;
 	}
 
 	// prepare PML
@@ -1548,7 +1614,8 @@ void GridMesh2D::SolveFullEigenModes() {
 		}
 	}
 
-	complex_t eigenvalue_guess = 1.5;
+	complex_t eigenvalue_guess = m_propagation_constants.mean() * SPEED_OF_LIGHT / complex_t(0.0, omega);
+	std::cerr << "eigenvalue_guess = " << eigenvalue_guess << std::endl;
 
 	// factorize matrix
 	Eigen::SparseMatrix<complex_t> mat = m_matrix_full_em[0] + square(eigenvalue_guess) * m_matrix_full_em[1];
@@ -1573,7 +1640,7 @@ void GridMesh2D::SolveFullEigenModes() {
 	std::cerr << "eigv norm after normalization " << std::sqrt((eigv.transpose() * orthofactors.cwiseProduct(m_matrix_full_em[1] * eigv))[0]) << std::endl;
 
 	// Arnoldi algorithm
-	size_t iters = 20;
+	size_t iters = 40;
 	Eigen::MatrixXc Q(iters, m_vars_full_em);
 	Eigen::MatrixXc H(iters, iters);
 	Q.row(0) = eigv;
@@ -1733,57 +1800,6 @@ void GridMesh2D::GetCellField(size_t mode, size_t ix, size_t iy, real_t fx, real
 	fmx =  Interp_Az_Dy(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_y + fields.m_propagation_constant * Interp_Ay(mt1y0, mt1y1, mt2y0, mt2y1, mt2y01, fx, fy);
 	fmy = -Interp_Az_Dx(mn00, mn01, mn10, mn11, mex0, mex1, mey0, mey1, fx, fy) / delta_x - fields.m_propagation_constant * Interp_Ax(mt1x0, mt1x1, mt2x0, mt2x1, mt2x01, fx, fy);
 	fmz = Interp_Ay_Dx(mt1y0, mt1y1, mt2y0, mt2y1, mt2y01, fx, fy) / delta_x - Interp_Ax_Dy(mt1x0, mt1x1, mt2x0, mt2x1, mt2x01, fx, fy) / delta_y;
-}
-
-void GridMesh2D::GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type) {
-	assert(IsInitialized());
-	assert(mode < GetModeCount());
-	assert(type == MESHIMAGETYPE_MESH);
-	UNUSED(mode);
-	UNUSED(type);
-	size_t num_materials = 0;
-	const MaterialDielectric *last_material = NULL;
-	std::vector<real_t> dielectric_values(m_dielectrics.size());
-	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
-		if(m_dielectrics[i].m_material != last_material) {
-			++num_materials;
-			last_material = m_dielectrics[i].m_material;
-		}
-		dielectric_values[i] = (real_t) num_materials;
-	}
-	for(size_t i = 0; i < m_dielectrics.size(); ++i) {
-		dielectric_values[i] *= 0.9 / (real_t) (num_materials + 1);
-	}
-	cell_values.resize(m_cells.size());
-	for(size_t iy = 0; iy < m_grid_y.size() - 1; ++iy) {
-		for(size_t ix = 0; ix < m_grid_x.size() - 1; ++ix) {
-			size_t cell_index = GetCellIndex(ix, iy);
-			Cell &cell = m_cells[cell_index];
-			real_t val = (cell.m_conductor != INDEX_NONE)? 0.0 : (cell.m_dielectric != INDEX_NONE)? dielectric_values[cell.m_dielectric] : 0.9;
-			if((ix & 1) == (iy & 1))
-				val += 0.1;
-			cell_values[cell_index] = val;
-		}
-	}
-}
-
-void GridMesh2D::GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type) {
-	assert(IsInitialized() && IsSolved());
-	assert(mode < GetModeCount());
-	cellnode_values.clear();
-	cellnode_values.resize(m_cells.size());
-	switch(type) {
-		case MESHIMAGETYPE_EFIELD: {
-			break;
-		}
-		case MESHIMAGETYPE_MFIELD: {
-			break;
-		}
-		case MESHIMAGETYPE_POYNTING: {
-			break;
-		}
-		default: assert(false);
-	}
 }
 
 void GridMesh2D::GridAddBox(std::vector<GridLine> &grid_x, std::vector<GridLine> &grid_y, const Box2D &box, const Box2D &step) {

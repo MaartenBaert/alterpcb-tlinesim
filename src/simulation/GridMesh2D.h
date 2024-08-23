@@ -170,6 +170,7 @@ public:
 	virtual Box2D GetWorldBox2D() override;
 	virtual Box2D GetWorldFocus2D() override;
 	virtual void GetImage2D(std::vector<real_t> &image_value, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) override;
+	virtual void GetPointField(real_t x, real_t y, MeshImageType type, size_t mode, complex_t &fx, complex_t &fy) override;
 
 protected:
 	virtual void DoInitialize() override;
@@ -188,11 +189,6 @@ private:
 	void SolveFullEigenModes();
 
 	void GetCellField(size_t mode, size_t ix, size_t iy, real_t fx, real_t fy, complex_t &fex, complex_t &fey, complex_t &fez, complex_t &fmx, complex_t &fmy, complex_t &fmz);
-
-	// TODO: remove
-	void GetCellValues(std::vector<real_t> &cell_values, size_t mode, MeshImageType type);
-	void GetNodeValues(std::vector<real_t> &node_values, size_t mode, MeshImageType type);
-	void GetCellNodeValues(std::vector<std::array<real_t, 4>> &cellnode_values, size_t mode, MeshImageType type);
 
 private:
 	inline size_t GetNodeIndex(size_t ix, size_t iy) { assert(ix < m_grid_x.size()); assert(iy < m_grid_y.size()); return ix + iy * m_grid_x.size(); }
