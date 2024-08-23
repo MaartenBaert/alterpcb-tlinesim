@@ -275,6 +275,8 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 	mesh->AddConductor(track2_box, step1, track_material, port_signal2);
 	mesh->AddConductor(ground1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
 	mesh->AddConductor(ground2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
+	mesh->AddConductor(via1_box, Box2D(step0, step1, step1, step1), track_material, port_ground);
+	mesh->AddConductor(via2_box, Box2D(step1, step0, step1, step1), track_material, port_ground);
 	mesh->AddDielectric(substrate_box, step0, substrate_material);
 	mesh->AddDielectric(solder_mask_box1, step0, solder_mask_material);
 	mesh->AddDielectric(solder_mask_box2, step0, solder_mask_material);
