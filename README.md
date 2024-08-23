@@ -5,6 +5,10 @@ This program is a part of AlterPCB, an open-source, cross-platform PCB design pr
 
 ![Screenshot](data/screenshots/screenshot1-small.png)
 
+Note: This project uses Git submodules. You should run the following command to initialize these submodules after cloning this repository:
+
+	git submodule update --init
+
 Features
 --------
 
@@ -29,14 +33,9 @@ Dependencies
 
 - Compiler with C++11 support (GCC >= 5.0 or Clang >= 3.3)
 - Qt 4 or 5
-- SuiteSparse (specifically CHOLMOD)
-- BLAS and LAPACK (OpenBLAS performs best, ATLAS is reasonable, reference (netlib) BLAS is quite slow)
-
-CHOLMOD appears to interact badly with multithreaded BLAS/LAPACK implementations, especially those without OpenMP support. If you are using OpenBLAS, you will get the best performance when OpenBLAS is compiled without any threading support (USE_OPENMP=0 USE_THREAD=0). If you can't recompile OpenBLAS, the next best option is to disable threads at runtime using the OMP_NUM_THREADS environment variable:
-
-	OMP_NUM_THREADS=1 ./alterpcb-tlinesim
+- Eigen (included as a git submodule)
 
 Compiling and installing
 ------------------------
 
-Compiling should be done with Qt Creator or 'qmake' as usual. Right now installation is not supported yet.
+Compiling should be done with `cmake` as usual. Installation is not supported yet.
