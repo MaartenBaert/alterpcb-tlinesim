@@ -60,7 +60,6 @@ private:
 
 protected:
 	Eigen::MatrixXr m_inductance_matrix, m_capacitance_matrix, m_resistance_matrix, m_conductance_matrix;
-	Eigen::MatrixXc m_characteristic_impedance_matrix;
 	Eigen::VectorXc m_characteristic_impedances, m_propagation_constants;
 	Eigen::MatrixXc m_eigenmodes;
 	Eigen::VectorXc m_eigenmode_propagation_constants;
@@ -91,7 +90,6 @@ public:
 	inline const Eigen::MatrixXr& GetResistanceMatrix() { return m_resistance_matrix; }
 	inline const Eigen::MatrixXr& GetConductanceMatrix() { return m_conductance_matrix; }
 
-	inline const Eigen::MatrixXc& GetCharacteristicImpedanceMatrix() { return m_characteristic_impedance_matrix; }
 	inline const Eigen::VectorXc& GetCharacteristicImpedances() { return m_characteristic_impedances; }
 	inline const Eigen::VectorXc& GetPropagationConstants() { return m_propagation_constants; }
 

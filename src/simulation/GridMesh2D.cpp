@@ -21,6 +21,7 @@ along with this AlterPCB.  If not, see <http://www.gnu.org/licenses/>.
 #include "GridMesh2D.h"
 
 #include "Basics.h"
+#include "Eigen/Core"
 #include "FemMatrix.h"
 #include "GenericMesh.h"
 #include "MiscMath.h"
@@ -183,6 +184,7 @@ Box2D GridMesh2D::GetWorldFocus2D() {
 }
 
 void GridMesh2D::GetImage2D(std::vector<real_t> &image_value, size_t width, size_t height, const Box2D &view, MeshImageType type, size_t mode) {
+
 	if(!IsInitialized())
 		throw std::runtime_error("GridMesh2D error: The mesh must be initialized first.");
 	if(type != MESHIMAGETYPE_MESH) {
@@ -1078,14 +1080,8 @@ void GridMesh2D::InitVariablesPartition(size_t ix1, size_t ix2, size_t iy1, size
 			for(size_t ix = ex1; ix < ex2; ++ix) {
 				Cell &cell = GetCell(ix, iy);
 				if(cell.m_conductor == INDEX_NONE) {
-					// Edge &edge_x1 = GetEdgeX(ix, iy);
-					// Edge &edge_x2 = GetEdgeX(ix, iy + 1);
-					// Edge &edge_y1 = GetEdgeY(ix, iy);
-					// Edge &edge_y2 = GetEdgeY(ix + 1, iy);
 					if(m_element_type == ELEMENTTYPE_QUADRATIC) {
-					// if(edge_y1.m_var_full_mt1 == INDEX_NONE && edge_y2.m_var_full_mt1 == INDEX_NONE)
 						cell.m_var_full_mtx2 = m_vars_full_em++;
-					// if(edge_x1.m_var_full_mt1 == INDEX_NONE && edge_x2.m_var_full_mt1 == INDEX_NONE)
 						cell.m_var_full_mty2 = m_vars_full_em++;
 					}
 				}
@@ -1447,15 +1443,15 @@ void GridMesh2D::SolveStaticEigenModes() {
 
 	// calculate impedances, admittance and (approximated) characteristic impedance
 	Eigen::MatrixXc matrix_zy_invsqrt = eigvec * eigval_sqrt.cwiseInverse().asDiagonal() * eigvec.inverse();
-	m_characteristic_impedance_matrix = matrix_zy_invsqrt * impedance;
-	Eigen::VectorXc diag_impedance = m_characteristic_impedance_matrix.diagonal();
-	Eigen::VectorXc diag_admittance = m_characteristic_impedance_matrix.inverse().diagonal();
+	Eigen::MatrixXc characteristic_impedance_matrix = matrix_zy_invsqrt * impedance;
+	Eigen::VectorXc diag_impedance = characteristic_impedance_matrix.diagonal();
+	Eigen::VectorXc diag_admittance = characteristic_impedance_matrix.inverse().diagonal();
 	m_characteristic_impedances = (diag_impedance.array() / diag_admittance.array()).sqrt().matrix();
 
 	// calculate propagation constants
 	m_propagation_constants = (-matrix_zy.diagonal()).cwiseSqrt() * complex_t(0.0, 1.0);
 
-	std::cerr << "m_characteristic_impedance_matrix =\n" << m_characteristic_impedance_matrix << std::endl;
+	std::cerr << "characteristic_impedance_matrix =\n" << characteristic_impedance_matrix << std::endl;
 	std::cerr << "m_characteristic_impedances =\n" << m_characteristic_impedances << std::endl;
 	std::cerr << "m_propagation_constants =\n" << m_propagation_constants << std::endl;
 	std::cerr << std::endl;
@@ -1692,9 +1688,8 @@ void GridMesh2D::SolveFullEigenModes() {
 	savevector("mfactors.dat", mfactors);
 #endif
 
-	// extract valid solutions
-	std::vector<complex_t> valid_eigvals;
-	std::vector<Eigen::VectorXc> valid_eigvecs;
+	// select only the valid propagation modes
+	std::vector<size_t> valid_modes;
 	for(size_t k = 0; k < iters; ++k) {
 		complex_t w = eigvals[(Eigen::Index) k];
 		Eigen::VectorXc v = eigvecs.row((Eigen::Index) k);
@@ -1703,23 +1698,64 @@ void GridMesh2D::SolveFullEigenModes() {
 		real_t resid = (temp0 + temp1).norm() / std::max(temp0.norm(), temp1.norm());
 		std::cerr << "resid " << k << " " << resid << "     " << w << std::endl;
 		if(resid < 1e-8 && w.real() >= 1.0 - 1e-6 && w.imag() <= 1e-6 && w.imag() >= -w.real()) {
-			valid_eigvals.push_back(w);
-			valid_eigvecs.push_back(v);
+			valid_modes.push_back(k);
 		}
 	}
-	std::cerr << "Found " << valid_eigvals.size() << " valid mode(s), expected " << GetModeCount() << std::endl;
-	if(valid_eigvals.size() < GetModeCount()) {
+	std::cerr << "Found " << valid_modes.size() << " valid mode(s), expected " << GetModeCount() << std::endl;
+	if(valid_modes.size() < GetModeCount()) {
 		throw std::runtime_error("Failed to find expected number of valid modes!");
 	}
 
-	// TODO reorder eigenmodes
+	// determine port epot values for valid modes
+	Eigen::MatrixXc port_epot(valid_modes.size(), m_ports.size());
+	Eigen::VectorXc port_epot_norm(valid_modes.size());
+	for(size_t i = 0; i < valid_modes.size(); ++i) {
+		for(size_t j = 0; j < m_ports.size(); ++j) {
+			port_epot((Eigen::Index) i, (Eigen::Index) j) = (m_ports[j].m_var_full_e == INDEX_NONE)? 0.0 : eigvecs((Eigen::Index) valid_modes[i], (Eigen::Index) m_ports[j].m_var_full_e);
+		}
+		port_epot_norm((Eigen::Index) i) = port_epot.row((Eigen::Index) i).norm();
+	}
+	std::cerr << "port_epot =\n" << port_epot << std::endl;
+
+	// match valid eigenmodes to user-provided modes
+	std::vector<size_t> modemap(valid_modes.size());
+	for(size_t i = 0; i < valid_modes.size(); ++i) {
+		modemap[i] = i;
+	}
+	Eigen::VectorXc matched_eigvals(GetModeCount());
+	Eigen::MatrixXc matched_eigvecs(GetModeCount(), m_vars_full_em);
+	for(size_t i = 0; i < GetModeCount(); ++i) {
+		Eigen::VectorXc dots = (port_epot * GetModes().col((Eigen::Index) i).conjugate()).cwiseQuotient(port_epot_norm);
+		size_t best_index = i;
+		complex_t best_value = complex_t(0.0, 0.0);
+		for(size_t j = i; j < valid_modes.size(); ++j) {
+			complex_t value = dots((Eigen::Index) modemap[j]);
+			if(std::norm(value) > std::norm(best_value)) {
+				best_index = j;
+				best_value = value;
+			}
+		}
+		std::swap(modemap[i], modemap[best_index]);
+		complex_t scale = GetModes().col((Eigen::Index) i).squaredNorm() / (best_value * port_epot_norm((Eigen::Index) modemap[i]));
+		matched_eigvals((Eigen::Index) i) = eigvals((Eigen::Index) valid_modes[modemap[i]]);
+		matched_eigvecs.row((Eigen::Index) i) = eigvecs.row((Eigen::Index) valid_modes[modemap[i]]) * scale;
+	}
+
+	Eigen::MatrixXc port_epot2(GetModeCount(), m_ports.size());
+	for(size_t i = 0; i < GetModeCount(); ++i) {
+		for(size_t j = 0; j < m_ports.size(); ++j) {
+			port_epot2((Eigen::Index) i, (Eigen::Index) j) = (m_ports[j].m_var_full_e == INDEX_NONE)? 0.0 : matched_eigvecs((Eigen::Index) i, (Eigen::Index) m_ports[j].m_var_full_e);
+		}
+		// port_epot2.row((Eigen::Index) i) /= port_epot2.row((Eigen::Index) i).norm();
+	}
+	std::cerr << "port_epot2 =\n" << port_epot2 << std::endl;
 
 	// save fields
 	m_solution_fields.resize(GetModeCount());
 	for(size_t mode = 0; mode < GetModeCount(); ++mode) {
 
-		complex_t eigenvalue = valid_eigvals[mode];
-		Eigen::VectorXc eigenvector = valid_eigvecs[mode];
+		complex_t eigenvalue = matched_eigvals((Eigen::Index) mode);
+		Eigen::VectorXc eigenvector = matched_eigvecs.row((Eigen::Index) mode);
 
 		// TODO: remove
 		m_propagation_constants[(Eigen::Index) mode] = eigenvalue / SPEED_OF_LIGHT * complex_t(0.0, omega);

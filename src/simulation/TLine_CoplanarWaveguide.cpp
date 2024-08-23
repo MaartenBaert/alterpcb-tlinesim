@@ -86,8 +86,8 @@ void TLine_CoplanarWaveguide_Single(TLineContext &context) {
 		substrate_thickness,
 	};
 	Box2D substrate_box = {
-		world_box.x1,
-		world_box.x2,
+		via1_box.x2,
+		via2_box.x1,
 		0.0,
 		substrate_thickness,
 	};
@@ -213,8 +213,8 @@ void TLine_CoplanarWaveguide_Differential(TLineContext &context) {
 		substrate_thickness,
 	};
 	Box2D substrate_box = {
-		world_box.x1,
-		world_box.x2,
+		via1_box.x2,
+		via2_box.x1,
 		0.0,
 		substrate_thickness,
 	};
