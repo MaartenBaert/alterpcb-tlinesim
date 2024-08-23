@@ -168,14 +168,13 @@
 		{
 			"name": "Air",
 			"categories": ["Generic"],
-			"model": "djordjevic-sarkar",
+			"model": "constant",
 			"permittivity_x": 1.0,
 			"permittivity_y": 1.0,
 			"permittivity_z": 1.0,
 			"loss_tangent_x": 0.0,
 			"loss_tangent_y": 0.0,
-			"loss_tangent_z": 0.0,
-			"reference_frequency": 1.0e9
+			"loss_tangent_z": 0.0
 		},
 		{
 			"name": "Arlon 25N",

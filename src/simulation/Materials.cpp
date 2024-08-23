@@ -31,24 +31,11 @@ complex_t DjordjevicSarkar(real_t permittivity, real_t loss_tangent, real_t refe
 	// The Djordjevic-Sarkar model generates permittivity values that satisfy the Kramers-Kronig relations,
 	// which is necessary to ensure that frequency domain simulations will produce causal results.
 	// The parameters f_min and f_max exist purely for numerical reasons, they have no physical meaning.
-	constexpr real_t f_min = 1.0e3, f_max = 1.0e12;
-	//real_t permittivity_slope = permittivity * loss_tangent * 2.0 / M_PI;
-	//real_t permittivity_inf = permittivity - permittivity_slope * log(f_max / reference_frequency);
-
-	complex_t reference_log = log(complex_t(f_max, reference_frequency) / complex_t(f_min, reference_frequency));
-	complex_t target_log = log(complex_t(f_max, target_frequency) / complex_t(f_min, target_frequency));
-
-	//complex_t(permittivity, -permittivity * loss_tangent) = permittivity_inf + permittivity_slope * reference_log;
-	//permittivity = permittivity_inf + permittivity_slope * reference_log.real();
-	//-permittivity * loss_tangent = permittivity_inf + permittivity_slope * reference_log.imag();
-
-	complex_t permittivity_slope = permittivity * (loss_tangent + 1.0) / (reference_log.real() - reference_log.imag());
-	complex_t permittivity_inf = permittivity - permittivity_slope * reference_log.real();
-
-	//permittivity_inf = permittivity * (reference_log.real() * loss_tangent + reference_log.imag()) / (reference_log.imag() - reference_log.real());
-	//permittivity_slope = (permittivity - permittivity_inf) / reference_log.real();
-
-	return  permittivity_inf + permittivity_slope * target_log;
+	real_t f_min = 1.0e-6 * reference_frequency, f_max = 1.0e6 * reference_frequency;
+	complex_t log1 = log(complex_t(f_max, reference_frequency) / complex_t(f_min, reference_frequency));
+	complex_t log2 = log(complex_t(f_max, target_frequency) / complex_t(f_min, target_frequency));
+	real_t slope = permittivity * loss_tangent * 2.0 / M_PI;
+	return permittivity + slope * (log2 - log1.real());
 }
 
 void MaterialConductor::GetProperties(real_t frequency, Properties &properties) const {
