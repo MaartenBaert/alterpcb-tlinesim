@@ -1,7 +1,7 @@
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt5 5.7 COMPONENTS Core Gui Widgets REQUIRED)
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+# find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 add_executable(alterpcb-tlinesim
 	common/Basics.h
@@ -73,7 +73,7 @@ target_include_directories(alterpcb-tlinesim PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/common
 	${CMAKE_CURRENT_SOURCE_DIR}/gui
 	${CMAKE_CURRENT_SOURCE_DIR}/simulation
-	/home/maarten/nobackup/build-from-source/eigen
+	${CMAKE_SOURCE_DIR}/external/eigen
 )
 target_link_libraries(alterpcb-tlinesim
 	Qt5::Core
